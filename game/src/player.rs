@@ -32,8 +32,11 @@ pub struct InputController {
 
 impl InputController {
     pub fn update(&mut self, event: &Event<()>, dt: f32) {
-        if let Event::WindowEvent { event, .. } = event {
-            if let WindowEvent::KeyboardInput { input, .. } = event {
+        match event {
+            Event::WindowEvent {
+                event: WindowEvent::KeyboardInput { input, .. },
+                ..
+            } => {
                 if let Some(keycode) = input.virtual_keycode {
                     let state = input.state == ElementState::Pressed;
                     match keycode {
@@ -46,14 +49,15 @@ impl InputController {
                     }
                 }
             }
-        }
-
-        if let Event::DeviceEvent { event, .. } = event {
-            if let DeviceEvent::MouseMotion { delta } = event {
+            Event::DeviceEvent {
+                event: DeviceEvent::MouseMotion { delta },
+                ..
+            } => {
                 self.yaw -= delta.0 as f32 * dt;
                 self.pitch = (self.pitch + delta.1 as f32 * dt)
                     .clamp(-90.0f32.to_radians(), 90.0f32.to_radians());
             }
+            _ => {}
         }
     }
 }

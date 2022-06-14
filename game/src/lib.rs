@@ -15,6 +15,7 @@ use fyrox::{
 mod camera;
 mod player;
 
+#[derive(Default)]
 pub struct Game {
     scene: Handle<Scene>,
 }
