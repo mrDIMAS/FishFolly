@@ -23,6 +23,9 @@ pub struct CameraController {
     player: Handle<Node>,
 
     #[visit(optional)]
+    default_distance: f32,
+
+    #[visit(optional)]
     hinge: Handle<Node>,
 
     #[visit(optional)]
@@ -34,10 +37,6 @@ pub struct CameraController {
     #[inspect(skip)]
     #[visit(skip)]
     target_position: Vector3<f32>,
-
-    #[inspect(skip)]
-    #[visit(skip)]
-    default_distance: f32,
 }
 
 impl Default for CameraController {
@@ -54,39 +53,47 @@ impl Default for CameraController {
 }
 
 impl CameraController {
-    fn check_for_obstacles(&self, context: &mut ScriptContext, player_collider: Handle<Node>) {
-        let begin = context.scene.graph[context.handle].global_position();
+    fn check_for_obstacles(
+        &self,
+        begin: Vector3<f32>,
+        end: Vector3<f32>,
+        context: &mut ScriptContext,
+        player_collider: Handle<Node>,
+    ) {
+        let mut buffer = ArrayVec::<_, 64>::new();
 
-        if let Some(camera) = context.scene.graph.try_get_mut(self.camera) {
-            let mut buffer = ArrayVec::<_, 64>::new();
+        let dir = (end - begin)
+            .try_normalize(f32::EPSILON)
+            .unwrap_or_default()
+            .scale(10.0);
 
-            let end = camera.global_position();
+        context.scene.graph.physics.cast_ray(
+            RayCastOptions {
+                ray_origin: Point3::from(begin),
+                ray_direction: dir,
+                max_len: dir.norm(),
+                groups: Default::default(),
+                sort_results: true,
+            },
+            &mut buffer,
+        );
 
-            context.scene.graph.physics.cast_ray(
-                RayCastOptions {
-                    ray_origin: Point3::from(begin),
-                    ray_direction: end - begin,
-                    max_len: (end - begin).norm(),
-                    groups: Default::default(),
-                    sort_results: true,
-                },
-                &mut buffer,
-            );
-
-            let mut distance = self.default_distance;
-            for intersection in buffer {
-                if intersection.collider == player_collider {
-                    continue;
-                }
-
-                distance = (begin - intersection.position.coords).norm();
-                break;
+        let mut distance = self.default_distance;
+        for intersection in buffer {
+            if intersection.collider == player_collider {
+                continue;
             }
 
-            context.scene.graph[self.camera]
-                .local_transform_mut()
-                .set_position(Vector3::new(0.0, 0.0, -distance + self.probe_radius));
+            let new_offset =
+                (intersection.toi.min(self.default_distance) - self.probe_radius).max(0.1);
+            if new_offset < distance {
+                distance = new_offset;
+            }
         }
+
+        context.scene.graph[self.camera]
+            .local_transform_mut()
+            .set_position(Vector3::new(0.0, 0.0, -distance));
     }
 }
 
@@ -102,16 +109,9 @@ impl ScriptTrait for CameraController {
             Self::PLAYER => player,
             Self::HINGE => hinge,
             Self::CAMERA => camera,
-            Self::PROBE_RADIUS => probe_radius
+            Self::PROBE_RADIUS => probe_radius,
+            Self::DEFAULT_DISTANCE => default_distance
         )
-    }
-
-    fn on_init(&mut self, context: ScriptContext) {
-        if let Some(camera) = context.scene.graph.try_get(self.camera) {
-            let begin = context.scene.graph[context.handle].global_position();
-            let end = camera.global_position();
-            self.default_distance = (end - begin).norm();
-        }
     }
 
     fn on_update(&mut self, mut context: ScriptContext) {
@@ -132,14 +132,20 @@ impl ScriptTrait for CameraController {
                 local_transform
                     .set_rotation(UnitQuaternion::from_axis_angle(&Vector3::y_axis(), yaw));
                 local_transform.set_position(new_position);
+                let camera_global_position = camera.global_position();
 
                 if let Some(hinge) = context.scene.graph.try_get_mut(self.hinge) {
                     hinge
                         .local_transform_mut()
                         .set_rotation(UnitQuaternion::from_axis_angle(&Vector3::x_axis(), pitch));
-                }
 
-                self.check_for_obstacles(&mut context, player_collider);
+                    self.check_for_obstacles(
+                        hinge.global_position(),
+                        camera_global_position,
+                        &mut context,
+                        player_collider,
+                    );
+                }
             } else {
                 Log::warn("Must be player script!".to_owned())
             }
