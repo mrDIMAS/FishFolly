@@ -70,6 +70,9 @@ pub struct Player {
     model_pivot: Handle<Node>,
 
     #[visit(optional)]
+    pub collider: Handle<Node>,
+
+    #[visit(optional)]
     model_resource: Option<Model>,
 
     #[visit(optional)]
@@ -93,6 +96,7 @@ impl Default for Player {
         Self {
             speed: 1.0,
             model_pivot: Default::default(),
+            collider: Default::default(),
             model_resource: None,
             absm_resource: None,
             model: Default::default(),
@@ -114,7 +118,8 @@ impl ScriptTrait for Player {
             Self::SPEED => speed,
             Self::ABSM_RESOURCE => absm_resource,
             Self::MODEL_RESOURCE => model_resource,
-            Self::MODEL_PIVOT => model_pivot
+            Self::MODEL_PIVOT => model_pivot,
+            Self::COLLIDER => collider
         )
     }
 
