@@ -2,12 +2,14 @@
 use crate::{camera::CameraController, player::Player};
 use fyrox::{
     core::{
+        futures::executor::block_on,
         pool::Handle,
         uuid::{uuid, Uuid},
     },
     event::Event,
     plugin::{Plugin, PluginContext, PluginRegistrationContext},
-    scene::{node::TypeUuidProvider, Scene},
+    scene::{node::TypeUuidProvider, Scene, SceneLoader},
+    utils::log::Log,
 };
 
 mod camera;
@@ -34,7 +36,7 @@ impl Game {
     fn set_scene(&mut self, scene: Handle<Scene>, _context: PluginContext) {
         self.scene = scene;
 
-        // Do additional actions with scene here.
+        Log::info("Scene was set successfully!".to_owned());
     }
 }
 
@@ -46,7 +48,16 @@ impl Plugin for Game {
     }
 
     fn on_standalone_init(&mut self, context: PluginContext) {
-        self.set_scene(context.scenes.add(Scene::new()), context);
+        let scene = block_on(
+            block_on(SceneLoader::from_file(
+                "data/scene.rgs",
+                context.serialization_context.clone(),
+            ))
+            .unwrap()
+            .finish(context.resource_manager.clone()),
+        );
+
+        self.set_scene(context.scenes.add(scene), context);
     }
 
     fn on_enter_play_mode(&mut self, scene: Handle<Scene>, context: PluginContext) {

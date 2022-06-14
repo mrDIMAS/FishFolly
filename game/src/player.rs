@@ -1,10 +1,11 @@
-use crate::{Event, Game, Handle};
+use crate::{Event, Game};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
         algebra::{UnitQuaternion, Vector3},
         futures::executor::block_on,
         inspect::prelude::*,
+        pool::Handle,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
@@ -15,6 +16,7 @@ use fyrox::{
     resource::{absm::AbsmResource, model::Model},
     scene::{node::Node, node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
+    utils::log::Log,
 };
 
 #[derive(Clone, Default, Debug)]
@@ -124,31 +126,38 @@ impl ScriptTrait for Player {
     }
 
     fn on_init(&mut self, context: ScriptContext) {
-        self.model = self
-            .model_resource
-            .as_ref()
-            .unwrap()
-            .instantiate_geometry(context.scene);
+        if let Some(model_resource) = self.model_resource.as_ref() {
+            // Wait until model is fully loaded.
+            let _ = block_on(model_resource.clone());
 
-        context.scene.graph[self.model]
-            .local_transform_mut()
-            .set_scale(Vector3::new(0.01, 0.01, 0.01));
+            self.model = model_resource.instantiate_geometry(context.scene);
 
-        context.scene.graph.link_nodes(
-            self.model,
-            if self.model_pivot.is_some() {
-                self.model_pivot
+            context.scene.graph[self.model]
+                .local_transform_mut()
+                .set_scale(Vector3::new(0.01, 0.01, 0.01));
+
+            context.scene.graph.link_nodes(
+                self.model,
+                if self.model_pivot.is_some() {
+                    self.model_pivot
+                } else {
+                    context.handle
+                },
+            );
+
+            if let Some(absm_resource) = self.absm_resource.as_ref() {
+                self.absm = block_on(absm_resource.instantiate(
+                    self.model,
+                    context.scene,
+                    context.resource_manager.clone(),
+                ))
+                .unwrap();
             } else {
-                context.handle
-            },
-        );
-
-        self.absm = block_on(self.absm_resource.as_ref().unwrap().instantiate(
-            self.model,
-            context.scene,
-            context.resource_manager.clone(),
-        ))
-        .unwrap();
+                Log::err("There is no resource specified for player ABSM!".to_owned());
+            }
+        } else {
+            Log::err("There is no resource specified for player model!".to_owned());
+        }
     }
 
     fn on_os_event(&mut self, event: &Event<()>, context: ScriptContext) {
