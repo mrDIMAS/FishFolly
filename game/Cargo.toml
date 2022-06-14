@@ -1,0 +1,8 @@
+
+[package]
+name = "fish_fall"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fyrox = { path = "../../Fyrox" }

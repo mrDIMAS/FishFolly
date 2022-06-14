@@ -1,0 +1,10 @@
+
+[package]
+name = "editor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fyrox = { path = "../../Fyrox" }
+fyroxed_base = { path = "../../Fyrox/editor"}
+fish_fall = { path = "../game" }
