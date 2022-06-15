@@ -65,17 +65,9 @@ impl InputController {
 #[derive(Clone, Inspect, Visit, Debug)]
 pub struct Player {
     speed: f32,
-
-    #[visit(optional)]
     model_pivot: Handle<Node>,
-
-    #[visit(optional)]
     pub collider: Handle<Node>,
-
-    #[visit(optional)]
     model_resource: Option<Model>,
-
-    #[visit(optional)]
     absm_resource: Option<AbsmResource>,
 
     #[visit(skip)]

@@ -21,17 +21,9 @@ use fyrox::{
 #[derive(Clone, Inspect, Visit, Debug)]
 pub struct CameraController {
     player: Handle<Node>,
-
-    #[visit(optional)]
     default_distance: f32,
-
-    #[visit(optional)]
     hinge: Handle<Node>,
-
-    #[visit(optional)]
     camera: Handle<Node>,
-
-    #[visit(optional)]
     probe_radius: f32,
 
     #[inspect(skip)]
@@ -65,7 +57,7 @@ impl CameraController {
         let dir = (end - begin)
             .try_normalize(f32::EPSILON)
             .unwrap_or_default()
-            .scale(10.0);
+            .scale(self.default_distance);
 
         context.scene.graph.physics.cast_ray(
             RayCastOptions {
@@ -84,8 +76,7 @@ impl CameraController {
                 continue;
             }
 
-            let new_offset =
-                (intersection.toi.min(self.default_distance) - self.probe_radius).max(0.1);
+            let new_offset = intersection.toi;
             if new_offset < distance {
                 distance = new_offset;
             }
@@ -93,7 +84,7 @@ impl CameraController {
 
         context.scene.graph[self.camera]
             .local_transform_mut()
-            .set_position(Vector3::new(0.0, 0.0, -distance));
+            .set_position(Vector3::new(0.0, 0.0, -distance + self.probe_radius));
     }
 }
 
@@ -124,27 +115,29 @@ impl ScriptTrait for CameraController {
                 let pitch = player_script.input_controller.pitch;
                 let player_collider = player_script.collider;
 
-                let camera = &mut context.scene.graph[context.handle];
+                let controller = &mut context.scene.graph[context.handle];
 
-                let local_transform = camera.local_transform_mut();
+                let local_transform = controller.local_transform_mut();
                 let new_position = **local_transform.position()
                     + (self.target_position - **local_transform.position()) * 0.1;
                 local_transform
                     .set_rotation(UnitQuaternion::from_axis_angle(&Vector3::y_axis(), yaw));
                 local_transform.set_position(new_position);
-                let camera_global_position = camera.global_position();
 
                 if let Some(hinge) = context.scene.graph.try_get_mut(self.hinge) {
                     hinge
                         .local_transform_mut()
                         .set_rotation(UnitQuaternion::from_axis_angle(&Vector3::x_axis(), pitch));
 
-                    self.check_for_obstacles(
-                        hinge.global_position(),
-                        camera_global_position,
-                        &mut context,
-                        player_collider,
-                    );
+                    let hinge_position = hinge.global_position();
+                    if let Some(camera) = context.scene.graph.try_get(self.camera) {
+                        self.check_for_obstacles(
+                            hinge_position,
+                            camera.global_position(),
+                            &mut context,
+                            player_collider,
+                        );
+                    }
                 }
             } else {
                 Log::warn("Must be player script!".to_owned())
