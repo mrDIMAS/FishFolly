@@ -1,5 +1,5 @@
 //! Game project.
-use crate::{camera::CameraController, player::Player};
+use crate::{bot::Bot, camera::CameraController, player::Player, target::Target};
 use fyrox::{
     core::{
         futures::executor::block_on,
@@ -8,16 +8,22 @@ use fyrox::{
     },
     event::Event,
     plugin::{Plugin, PluginContext, PluginRegistrationContext},
-    scene::{node::TypeUuidProvider, Scene, SceneLoader},
+    scene::{
+        node::{Node, TypeUuidProvider},
+        Scene, SceneLoader,
+    },
     utils::log::Log,
 };
 
+mod bot;
 mod camera;
 mod player;
+mod target;
 
 #[derive(Default)]
 pub struct Game {
     scene: Handle<Scene>,
+    targets: Vec<Handle<Node>>,
 }
 
 impl TypeUuidProvider for Game {
@@ -29,13 +35,34 @@ impl TypeUuidProvider for Game {
 
 impl Game {
     pub fn new() -> Self {
-        Self {
-            scene: Default::default(),
-        }
+        Self::default()
     }
 
-    fn set_scene(&mut self, scene: Handle<Scene>, _context: PluginContext) {
+    fn set_scene(&mut self, scene: Handle<Scene>, context: PluginContext) {
         self.scene = scene;
+
+        // Add test bot.
+        if let Some(scene) = context.scenes.try_get_mut(self.scene) {
+            block_on(
+                context
+                    .resource_manager
+                    .request_model("data/models/bot.rgs"),
+            )
+            .unwrap()
+            .instantiate_geometry(scene);
+
+            // Find all targets.
+            for (handle, node) in scene.graph.pair_iter() {
+                if node
+                    .script
+                    .as_ref()
+                    .and_then(|s| s.cast::<Target>())
+                    .is_some()
+                {
+                    self.targets.push(handle);
+                }
+            }
+        }
 
         Log::info("Scene was set successfully!".to_owned());
     }
@@ -46,6 +73,8 @@ impl Plugin for Game {
         let script_constructors = &context.serialization_context.script_constructors;
         script_constructors.add::<Game, Player, _>("Player");
         script_constructors.add::<Game, CameraController, _>("Camera Controller");
+        script_constructors.add::<Game, Bot, _>("Bot");
+        script_constructors.add::<Game, Target, _>("Target");
     }
 
     fn on_standalone_init(&mut self, context: PluginContext) {
