@@ -115,22 +115,8 @@ impl ScriptTrait for Player {
         )
     }
 
-    fn restore_resources(&mut self, resource_manager: ResourceManager) {
-        let mut state = resource_manager.state();
-        let containers = state.containers_mut();
-        containers
-            .absm
-            .try_restore_optional_resource(&mut self.absm_resource);
-        containers
-            .models
-            .try_restore_optional_resource(&mut self.model_resource);
-    }
-
     fn on_init(&mut self, context: ScriptContext) {
         if let Some(model_resource) = self.model_resource.as_ref() {
-            // Wait until model is fully loaded.
-            let _ = block_on(model_resource.clone());
-
             self.model = model_resource.instantiate_geometry(context.scene);
 
             context.scene.graph[self.model]
@@ -147,12 +133,12 @@ impl ScriptTrait for Player {
             );
 
             if let Some(absm_resource) = self.absm_resource.as_ref() {
-                self.absm = block_on(absm_resource.instantiate(
-                    self.model,
-                    context.scene,
-                    context.resource_manager.clone(),
-                ))
-                .unwrap();
+                let animations =
+                    block_on(absm_resource.load_animations(context.resource_manager.clone()));
+
+                self.absm = absm_resource
+                    .instantiate(self.model, context.scene, animations)
+                    .unwrap();
             } else {
                 Log::err("There is no resource specified for player ABSM!".to_owned());
             }
@@ -248,6 +234,17 @@ impl ScriptTrait for Player {
                 .set_parameter("Run", Parameter::Rule(is_moving))
                 .set_parameter("Jump", Parameter::Rule(jump));
         }
+    }
+
+    fn restore_resources(&mut self, resource_manager: ResourceManager) {
+        let mut state = resource_manager.state();
+        let containers = state.containers_mut();
+        containers
+            .absm
+            .try_restore_optional_resource(&mut self.absm_resource);
+        containers
+            .models
+            .try_restore_optional_resource(&mut self.model_resource);
     }
 
     fn id(&self) -> Uuid {

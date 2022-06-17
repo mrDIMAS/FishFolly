@@ -1,9 +1,19 @@
-use crate::{Game, Uuid};
+use crate::Game;
 use fyrox::{
-    core::{algebra::Vector3, inspect::prelude::*, uuid::uuid, visitor::prelude::*},
+    animation::machine::Machine,
+    core::{
+        algebra::Vector3, futures::executor::block_on, inspect::prelude::*, pool::Handle,
+        uuid::uuid, uuid::Uuid, visitor::prelude::*,
+    },
+    engine::resource_manager::ResourceManager,
+    fxhash::FxHashMap,
     gui::inspector::PropertyChanged,
     handle_object_property_changed,
-    scene::{node::TypeUuidProvider, rigidbody::RigidBody},
+    resource::absm::AbsmResource,
+    scene::{
+        node::{Node, TypeUuidProvider},
+        rigidbody::RigidBody,
+    },
     script::{ScriptContext, ScriptTrait},
 };
 
@@ -11,6 +21,14 @@ use fyrox::{
 pub struct Bot {
     #[visit(optional)]
     speed: f32,
+    #[visit(optional)]
+    model_root: Handle<Node>,
+    #[visit(optional)]
+    absm_resource: Option<AbsmResource>,
+
+    #[visit(skip)]
+    #[inspect(skip)]
+    absm: Handle<Machine>,
 }
 
 impl TypeUuidProvider for Bot {
@@ -21,13 +39,40 @@ impl TypeUuidProvider for Bot {
 
 impl Default for Bot {
     fn default() -> Self {
-        Self { speed: 1.0 }
+        Self {
+            speed: 1.0,
+            model_root: Default::default(),
+            absm_resource: None,
+            absm: Default::default(),
+        }
     }
 }
 
 impl ScriptTrait for Bot {
     fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args, Self::SPEED => speed)
+        handle_object_property_changed!(self, args,
+            Self::SPEED => speed,
+            Self::ABSM_RESOURCE => absm_resource,
+            Self::MODEL_ROOT => model_root)
+    }
+
+    fn on_init(&mut self, context: ScriptContext) {
+        if context.scene.graph.is_valid_handle(self.model_root) {
+            if let Some(absm) = self.absm_resource.as_ref() {
+                let animations = block_on(absm.load_animations(context.resource_manager.clone()));
+
+                self.absm = absm
+                    .instantiate(self.model_root, context.scene, animations)
+                    .unwrap();
+            }
+        }
+    }
+
+    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
+        self.model_root = old_new_mapping
+            .get(&self.model_root)
+            .cloned()
+            .unwrap_or_default();
     }
 
     fn on_update(&mut self, context: ScriptContext) {
@@ -62,6 +107,14 @@ impl ScriptTrait for Bot {
                 rigid_body.set_lin_vel(velocity);
             }
         }
+    }
+
+    fn restore_resources(&mut self, resource_manager: ResourceManager) {
+        let mut state = resource_manager.state();
+        let containers = state.containers_mut();
+        containers
+            .absm
+            .try_restore_optional_resource(&mut self.absm_resource);
     }
 
     fn id(&self) -> Uuid {
