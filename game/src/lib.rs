@@ -1,5 +1,6 @@
 //! Game project.
 use crate::{bot::Bot, camera::CameraController, player::Player, target::Target};
+use fyrox::core::algebra::Vector3;
 use fyrox::core::color::Color;
 use fyrox::{
     core::{
@@ -46,13 +47,16 @@ impl Game {
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
             scene.ambient_lighting_color = Color::opaque(200, 200, 200);
 
-            block_on(
+            let bot = block_on(
                 context
                     .resource_manager
                     .request_model("data/models/bot.rgs"),
             )
             .unwrap()
             .instantiate_geometry(scene);
+            scene.graph[bot]
+                .local_transform_mut()
+                .set_position(Vector3::new(5.0, 2.0, 5.0));
 
             // Find all targets.
             for (handle, node) in scene.graph.pair_iter() {
