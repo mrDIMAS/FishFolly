@@ -107,7 +107,7 @@ impl ScriptTrait for Bot {
                     horizontal_velocity.z,
                 ));
 
-                let is_running = horizontal_velocity.norm() > 0.01;
+                let is_running = horizontal_velocity.norm() > 0.1;
 
                 if is_running {
                     rigid_body
