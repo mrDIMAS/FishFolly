@@ -6,3 +6,5 @@ edition = "2021"
 
 [dependencies]
 fyrox = { path = "../../Fyrox" }
+strum = "0.24.1"
+strum_macros = "0.24.1"

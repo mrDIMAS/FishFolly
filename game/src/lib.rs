@@ -1,9 +1,11 @@
 //! Game project.
-use crate::{bot::Bot, camera::CameraController, player::Player, target::Target};
-use fyrox::core::algebra::Vector3;
-use fyrox::core::color::Color;
+use crate::{
+    bot::Bot, camera::CameraController, obstacle::Obstacle, player::Player, target::Target,
+};
 use fyrox::{
     core::{
+        algebra::Vector3,
+        color::Color,
         futures::executor::block_on,
         pool::Handle,
         uuid::{uuid, Uuid},
@@ -17,10 +19,11 @@ use fyrox::{
     utils::log::Log,
 };
 
-mod bot;
-mod camera;
-mod player;
-mod target;
+pub mod bot;
+pub mod camera;
+pub mod obstacle;
+pub mod player;
+pub mod target;
 
 #[derive(Default)]
 pub struct Game {
@@ -82,6 +85,7 @@ impl Plugin for Game {
         script_constructors.add::<Game, CameraController, _>("Camera Controller");
         script_constructors.add::<Game, Bot, _>("Bot");
         script_constructors.add::<Game, Target, _>("Target");
+        script_constructors.add::<Game, Obstacle, _>("Obstacle");
     }
 
     fn on_standalone_init(&mut self, context: PluginContext) {
