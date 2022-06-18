@@ -1,6 +1,7 @@
 use crate::Game;
+use fyrox::core::algebra::UnitQuaternion;
 use fyrox::{
-    animation::machine::Machine,
+    animation::machine::{Machine, Parameter},
     core::{
         algebra::Vector3, futures::executor::block_on, inspect::prelude::*, pool::Handle,
         uuid::uuid, uuid::Uuid, visitor::prelude::*,
@@ -98,13 +99,28 @@ impl ScriptTrait for Bot {
                     .try_normalize(f32::EPSILON)
                     .unwrap_or_default();
 
-                let velocity = Vector3::new(
-                    dir.x * self.speed,
-                    rigid_body.lin_vel().y,
-                    dir.z * self.speed,
-                );
+                let horizontal_velocity = Vector3::new(dir.x * self.speed, 0.0, dir.z * self.speed);
 
-                rigid_body.set_lin_vel(velocity);
+                rigid_body.set_lin_vel(Vector3::new(
+                    horizontal_velocity.x,
+                    rigid_body.lin_vel().y,
+                    horizontal_velocity.z,
+                ));
+
+                let is_running = horizontal_velocity.norm() > 0.01;
+
+                if is_running {
+                    rigid_body
+                        .local_transform_mut()
+                        .set_rotation(UnitQuaternion::face_towards(
+                            &horizontal_velocity,
+                            &Vector3::y_axis(),
+                        ));
+                }
+
+                if let Some(absm) = scene.animation_machines.try_get_mut(self.absm) {
+                    absm.set_parameter("Run", Parameter::Rule(is_running));
+                }
             }
         }
     }
