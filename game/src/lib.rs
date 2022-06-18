@@ -1,5 +1,6 @@
 //! Game project.
 use crate::{bot::Bot, camera::CameraController, player::Player, target::Target};
+use fyrox::core::color::Color;
 use fyrox::{
     core::{
         futures::executor::block_on,
@@ -43,6 +44,8 @@ impl Game {
 
         // Add test bot.
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
+            scene.ambient_lighting_color = Color::opaque(200, 200, 200);
+
             block_on(
                 context
                     .resource_manager
