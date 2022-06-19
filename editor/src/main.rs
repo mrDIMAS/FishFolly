@@ -1,8 +1,6 @@
 //! Editor with your game connected to it as a plugin.
-use fish_fall::obstacle::{Axis, ObstacleKind};
 use fish_fall::Game;
 use fyrox::event_loop::EventLoop;
-use fyrox::gui::inspector::editors::enumeration::EnumPropertyEditorDefinition;
 use fyroxed_base::{Editor, StartupData};
 
 fn main() {
@@ -14,14 +12,6 @@ fn main() {
             scene: "data/scene.rgs".into(),
         }),
     );
-    editor
-        .inspector
-        .property_editors
-        .insert(EnumPropertyEditorDefinition::<ObstacleKind>::new());
-    editor
-        .inspector
-        .property_editors
-        .insert(EnumPropertyEditorDefinition::<Axis>::new());
 
     editor.add_game_plugin(Game::new());
     editor.run(event_loop)

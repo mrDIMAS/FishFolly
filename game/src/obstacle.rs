@@ -1,59 +1,64 @@
 use crate::Game;
 use fyrox::{
-    core::{inspect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*},
+    core::{
+        algebra::{UnitQuaternion, UnitVector3, Vector3},
+        inspect::prelude::*,
+        uuid::{uuid, Uuid},
+        visitor::prelude::*,
+    },
     gui::inspector::PropertyChanged,
     handle_object_property_changed,
-    scene::node::TypeUuidProvider,
+    scene::{node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
 };
-use strum_macros::{AsRefStr, EnumString, EnumVariantNames};
 
-#[derive(Clone, Debug, Visit, Inspect, AsRefStr, EnumString, EnumVariantNames)]
-pub enum Axis {
-    X,
-    Y,
-    Z,
+/// TODO: Ideally any animation for obstacles should be done in the editor, but there is no
+/// animation editor yet.
+#[derive(Clone, Debug, Visit, Inspect)]
+pub struct RotatorObstacle {
+    angle: f32,
+    axis: Vector3<f32>,
+    #[visit(optional)]
+    speed: f32,
 }
 
-impl Default for Axis {
+impl Default for RotatorObstacle {
     fn default() -> Self {
-        Self::X
-    }
-}
-
-#[derive(Clone, Debug, Visit, Inspect, AsRefStr, EnumString, EnumVariantNames)]
-pub enum ObstacleKind {
-    Rotator { angle: f32, axis: Axis },
-}
-
-impl Default for ObstacleKind {
-    fn default() -> Self {
-        Self::Rotator {
+        Self {
             angle: 0.0,
             axis: Default::default(),
+            speed: 2.0,
         }
     }
 }
 
-/// TODO: Ideally any animation for obstacles should be done in the editor, but there is no
-/// animation editor yet.
-#[derive(Clone, Default, Debug, Visit, Inspect)]
-pub struct Obstacle {
-    kind: ObstacleKind,
-}
-
-impl TypeUuidProvider for Obstacle {
+impl TypeUuidProvider for RotatorObstacle {
     fn type_uuid() -> Uuid {
         uuid!("54ce703d-a56c-4534-a8a8-33ee1c6dd0a2")
     }
 }
 
-impl ScriptTrait for Obstacle {
+impl ScriptTrait for RotatorObstacle {
     fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args, Self::KIND => kind)
+        handle_object_property_changed!(self, args,
+            Self::ANGLE => angle,
+            Self::AXIS => axis,
+            Self::SPEED => speed
+        )
     }
 
-    fn on_update(&mut self, _context: ScriptContext) {}
+    fn on_update(&mut self, context: ScriptContext) {
+        self.angle += self.speed * context.dt;
+
+        if let Some(rigid_body) = context.scene.graph[context.handle].cast_mut::<RigidBody>() {
+            rigid_body
+                .local_transform_mut()
+                .set_rotation(UnitQuaternion::from_axis_angle(
+                    &UnitVector3::new_normalize(self.axis),
+                    self.angle,
+                ));
+        }
+    }
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
