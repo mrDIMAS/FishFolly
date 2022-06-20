@@ -1,10 +1,11 @@
+//! A simple bot that tries to react Target points on a level.
+
 use crate::Game;
-use fyrox::core::algebra::UnitQuaternion;
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
-        algebra::Vector3, futures::executor::block_on, inspect::prelude::*, pool::Handle,
-        uuid::uuid, uuid::Uuid, visitor::prelude::*,
+        algebra::UnitQuaternion, algebra::Vector3, futures::executor::block_on,
+        inspect::prelude::*, pool::Handle, uuid::uuid, uuid::Uuid, visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
     fxhash::FxHashMap,
@@ -20,8 +21,11 @@ use fyrox::{
 
 #[derive(Clone, Visit, Inspect, Debug)]
 pub struct Bot {
+    #[inspect(description = "Speed of the bot.")]
     speed: f32,
+    #[inspect(description = "Handle of a model of the bot.")]
     model_root: Handle<Node>,
+    #[inspect(description = "Animation blending state machine used by bot's model.")]
     absm_resource: Option<AbsmResource>,
     #[visit(skip)]
     #[inspect(skip)]

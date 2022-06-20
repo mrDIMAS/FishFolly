@@ -1,3 +1,5 @@
+//! A target that bots will try to reach.
+
 use crate::{Game, Uuid};
 use fyrox::{
     core::{inspect::prelude::*, uuid::uuid, visitor::prelude::*},

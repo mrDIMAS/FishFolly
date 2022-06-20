@@ -1,3 +1,6 @@
+//! Camera controller for the main player (host). It smoothly follows the host and has obstacle
+//! avoiding functionality.
+
 use crate::{Game, Player};
 use fyrox::{
     core::{
@@ -21,12 +24,16 @@ use fyrox::{
 
 #[derive(Clone, Inspect, Visit, Debug)]
 pub struct CameraController {
+    #[inspect(description = "Handle of a node that has Player script.")]
     player: Handle<Node>,
+    #[inspect(description = "Default distance from the hinge to the camera.")]
     default_distance: f32,
+    #[inspect(description = "Handle of camera hinge.")]
     hinge: Handle<Node>,
+    #[inspect(description = "Handle of Camera node.")]
     camera: Handle<Node>,
+    #[inspect(description = "Distance from first blocker that in the way of camera.")]
     probe_radius: f32,
-
     #[inspect(skip)]
     #[visit(skip)]
     target_position: Vector3<f32>,
@@ -106,21 +113,6 @@ impl ScriptTrait for CameraController {
         )
     }
 
-    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
-        self.player = old_new_mapping
-            .get(&self.player)
-            .cloned()
-            .unwrap_or_default();
-        self.hinge = old_new_mapping
-            .get(&self.hinge)
-            .cloned()
-            .unwrap_or_default();
-        self.camera = old_new_mapping
-            .get(&self.camera)
-            .cloned()
-            .unwrap_or_default();
-    }
-
     fn on_update(&mut self, mut context: ScriptContext) {
         if let Some(player) = context.scene.graph.try_get(self.player) {
             // Sync position with player.
@@ -161,6 +153,21 @@ impl ScriptTrait for CameraController {
         } else {
             Log::warn("Player is not set!".to_owned());
         }
+    }
+
+    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
+        self.player = old_new_mapping
+            .get(&self.player)
+            .cloned()
+            .unwrap_or_default();
+        self.hinge = old_new_mapping
+            .get(&self.hinge)
+            .cloned()
+            .unwrap_or_default();
+        self.camera = old_new_mapping
+            .get(&self.camera)
+            .cloned()
+            .unwrap_or_default();
     }
 
     fn id(&self) -> Uuid {

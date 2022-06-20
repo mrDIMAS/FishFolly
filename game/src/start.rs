@@ -1,3 +1,5 @@
+//! A spawn point for players (bots).
+
 use crate::{Game, Uuid};
 use fyrox::{
     core::{inspect::prelude::*, uuid::uuid, visitor::prelude::*},
@@ -12,6 +14,9 @@ use fyrox::{
 
 #[derive(Clone, Default, Debug, Visit, Inspect)]
 pub struct StartPoint {
+    #[inspect(
+        description = "A handle of a player resource. The resource will be instantiated to the scene."
+    )]
     model: Option<Model>,
 }
 

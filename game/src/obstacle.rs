@@ -1,3 +1,5 @@
+//! A dynamic (rotating, moving) obstacle.
+
 use crate::Game;
 use fyrox::{
     core::{

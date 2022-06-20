@@ -1,3 +1,5 @@
+//! Main player (host) script.
+
 use crate::{Event, Game};
 use fyrox::{
     animation::machine::{Machine, Parameter},
@@ -65,9 +67,13 @@ impl InputController {
 
 #[derive(Clone, Inspect, Visit, Debug)]
 pub struct Player {
+    #[inspect(description = "Speed of the player.")]
     speed: f32,
+    #[inspect(description = "Handle to player's collider.")]
     pub collider: Handle<Node>,
+    #[inspect(description = "Animation blending state machine used by player's model.")]
     absm_resource: Option<AbsmResource>,
+    #[inspect(description = "Handle to player's model.")]
     model: Handle<Node>,
     #[visit(skip)]
     #[inspect(skip)]
