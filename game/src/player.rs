@@ -66,18 +66,12 @@ impl InputController {
 #[derive(Clone, Inspect, Visit, Debug)]
 pub struct Player {
     speed: f32,
-
     pub collider: Handle<Node>,
-
     absm_resource: Option<AbsmResource>,
-
-    #[visit(optional)]
     model: Handle<Node>,
-
     #[visit(skip)]
     #[inspect(skip)]
     absm: Handle<Machine>,
-
     #[visit(skip)]
     #[inspect(skip)]
     pub input_controller: InputController,
@@ -127,17 +121,6 @@ impl ScriptTrait for Player {
         } else {
             Log::err("There is no model set for player!".to_owned());
         }
-    }
-
-    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
-        self.model = old_new_mapping
-            .get(&self.model)
-            .cloned()
-            .unwrap_or_default();
-        self.collider = old_new_mapping
-            .get(&self.collider)
-            .cloned()
-            .unwrap_or_default();
     }
 
     fn on_os_event(&mut self, event: &Event<()>, context: ScriptContext) {
@@ -227,6 +210,17 @@ impl ScriptTrait for Player {
                 .set_parameter("Run", Parameter::Rule(is_moving))
                 .set_parameter("Jump", Parameter::Rule(jump));
         }
+    }
+
+    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
+        self.model = old_new_mapping
+            .get(&self.model)
+            .cloned()
+            .unwrap_or_default();
+        self.collider = old_new_mapping
+            .get(&self.collider)
+            .cloned()
+            .unwrap_or_default();
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {

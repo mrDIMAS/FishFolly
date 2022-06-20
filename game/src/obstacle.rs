@@ -18,7 +18,6 @@ use fyrox::{
 pub struct RotatorObstacle {
     angle: f32,
     axis: Vector3<f32>,
-    #[visit(optional)]
     speed: f32,
 }
 

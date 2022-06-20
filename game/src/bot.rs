@@ -20,13 +20,9 @@ use fyrox::{
 
 #[derive(Clone, Visit, Inspect, Debug)]
 pub struct Bot {
-    #[visit(optional)]
     speed: f32,
-    #[visit(optional)]
     model_root: Handle<Node>,
-    #[visit(optional)]
     absm_resource: Option<AbsmResource>,
-
     #[visit(skip)]
     #[inspect(skip)]
     absm: Handle<Machine>,
@@ -67,13 +63,6 @@ impl ScriptTrait for Bot {
                     .unwrap();
             }
         }
-    }
-
-    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
-        self.model_root = old_new_mapping
-            .get(&self.model_root)
-            .cloned()
-            .unwrap_or_default();
     }
 
     fn on_update(&mut self, context: ScriptContext) {
@@ -123,6 +112,13 @@ impl ScriptTrait for Bot {
                 }
             }
         }
+    }
+
+    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
+        self.model_root = old_new_mapping
+            .get(&self.model_root)
+            .cloned()
+            .unwrap_or_default();
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {
