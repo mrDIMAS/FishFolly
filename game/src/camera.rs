@@ -8,6 +8,7 @@ use fyrox::{
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
+    fxhash::FxHashMap,
     gui::inspector::PropertyChanged,
     handle_object_property_changed,
     scene::{
@@ -103,6 +104,21 @@ impl ScriptTrait for CameraController {
             Self::PROBE_RADIUS => probe_radius,
             Self::DEFAULT_DISTANCE => default_distance
         )
+    }
+
+    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
+        self.player = old_new_mapping
+            .get(&self.player)
+            .cloned()
+            .unwrap_or_default();
+        self.hinge = old_new_mapping
+            .get(&self.hinge)
+            .cloned()
+            .unwrap_or_default();
+        self.camera = old_new_mapping
+            .get(&self.camera)
+            .cloned()
+            .unwrap_or_default();
     }
 
     fn on_update(&mut self, mut context: ScriptContext) {

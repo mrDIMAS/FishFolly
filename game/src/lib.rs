@@ -1,10 +1,10 @@
 //! Game project.
 use crate::{
-    bot::Bot, camera::CameraController, obstacle::RotatorObstacle, player::Player, target::Target,
+    bot::Bot, camera::CameraController, obstacle::RotatorObstacle, player::Player,
+    start::StartPoint, target::Target,
 };
 use fyrox::{
     core::{
-        algebra::Vector3,
         color::Color,
         futures::executor::block_on,
         pool::Handle,
@@ -23,6 +23,7 @@ pub mod bot;
 pub mod camera;
 pub mod obstacle;
 pub mod player;
+pub mod start;
 pub mod target;
 
 #[derive(Default)]
@@ -49,28 +50,12 @@ impl Game {
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
             scene.ambient_lighting_color = Color::opaque(200, 200, 200);
 
-            // Add test bot.
-            let bot = block_on(
-                context
-                    .resource_manager
-                    .request_model("data/models/bot.rgs"),
-            )
-            .unwrap()
-            .instantiate_geometry(scene);
-
-            scene.graph[bot]
-                .local_transform_mut()
-                .set_position(Vector3::new(5.0, 2.0, 5.0));
-
-            // Find all targets.
+            // Find entities.
             for (handle, node) in scene.graph.pair_iter() {
-                if node
-                    .script
-                    .as_ref()
-                    .and_then(|s| s.cast::<Target>())
-                    .is_some()
-                {
-                    self.targets.push(handle);
+                if let Some(script) = node.script.as_ref() {
+                    if script.cast::<Target>().is_some() {
+                        self.targets.push(handle);
+                    }
                 }
             }
         }
@@ -87,6 +72,7 @@ impl Plugin for Game {
         script_constructors.add::<Game, Bot, _>("Bot");
         script_constructors.add::<Game, Target, _>("Target");
         script_constructors.add::<Game, RotatorObstacle, _>("Rotator Obstacle");
+        script_constructors.add::<Game, StartPoint, _>("Start Point");
     }
 
     fn on_standalone_init(&mut self, context: PluginContext) {

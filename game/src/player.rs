@@ -1,4 +1,5 @@
 use crate::{Event, Game};
+use fyrox::fxhash::FxHashMap;
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -65,13 +66,13 @@ impl InputController {
 #[derive(Clone, Inspect, Visit, Debug)]
 pub struct Player {
     speed: f32,
-    model_pivot: Handle<Node>,
-    pub collider: Handle<Node>,
+
     model_resource: Option<Model>,
+    pub collider: Handle<Node>,
+
     absm_resource: Option<AbsmResource>,
 
-    #[visit(skip)]
-    #[inspect(skip)]
+    #[visit(optional)]
     model: Handle<Node>,
 
     #[visit(skip)]
@@ -87,7 +88,6 @@ impl Default for Player {
     fn default() -> Self {
         Self {
             speed: 1.0,
-            model_pivot: Default::default(),
             collider: Default::default(),
             model_resource: None,
             absm_resource: None,
@@ -109,29 +109,13 @@ impl ScriptTrait for Player {
         handle_object_property_changed!(self, args,
             Self::SPEED => speed,
             Self::ABSM_RESOURCE => absm_resource,
-            Self::MODEL_RESOURCE => model_resource,
-            Self::MODEL_PIVOT => model_pivot,
+            Self::MODEL => model,
             Self::COLLIDER => collider
         )
     }
 
     fn on_init(&mut self, context: ScriptContext) {
-        if let Some(model_resource) = self.model_resource.as_ref() {
-            self.model = model_resource.instantiate_geometry(context.scene);
-
-            context.scene.graph[self.model]
-                .local_transform_mut()
-                .set_scale(Vector3::new(0.01, 0.01, 0.01));
-
-            context.scene.graph.link_nodes(
-                self.model,
-                if self.model_pivot.is_some() {
-                    self.model_pivot
-                } else {
-                    context.handle
-                },
-            );
-
+        if self.model.is_some() {
             if let Some(absm_resource) = self.absm_resource.as_ref() {
                 let animations =
                     block_on(absm_resource.load_animations(context.resource_manager.clone()));
@@ -143,8 +127,19 @@ impl ScriptTrait for Player {
                 Log::err("There is no resource specified for player ABSM!".to_owned());
             }
         } else {
-            Log::err("There is no resource specified for player model!".to_owned());
+            Log::err("There is no model set for player!".to_owned());
         }
+    }
+
+    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
+        self.model = old_new_mapping
+            .get(&self.model)
+            .cloned()
+            .unwrap_or_default();
+        self.collider = old_new_mapping
+            .get(&self.collider)
+            .cloned()
+            .unwrap_or_default();
     }
 
     fn on_os_event(&mut self, event: &Event<()>, context: ScriptContext) {
@@ -222,12 +217,12 @@ impl ScriptTrait for Player {
                     0.0
                 };
 
-                scene.graph[self.model_pivot]
-                    .local_transform_mut()
-                    .set_rotation(UnitQuaternion::from_axis_angle(
+                scene.graph[self.model].local_transform_mut().set_rotation(
+                    UnitQuaternion::from_axis_angle(
                         &Vector3::y_axis(),
                         (angle + 180.0).to_radians(),
-                    ));
+                    ),
+                );
             }
 
             scene.animation_machines[self.absm]
@@ -242,9 +237,6 @@ impl ScriptTrait for Player {
         containers
             .absm
             .try_restore_optional_resource(&mut self.absm_resource);
-        containers
-            .models
-            .try_restore_optional_resource(&mut self.model_resource);
     }
 
     fn id(&self) -> Uuid {
