@@ -1,5 +1,4 @@
 use crate::{Event, Game};
-use fyrox::fxhash::FxHashMap;
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -12,9 +11,10 @@ use fyrox::{
     },
     engine::resource_manager::ResourceManager,
     event::{DeviceEvent, ElementState, VirtualKeyCode, WindowEvent},
+    fxhash::FxHashMap,
     gui::inspector::PropertyChanged,
     handle_object_property_changed,
-    resource::{absm::AbsmResource, model::Model},
+    resource::absm::AbsmResource,
     scene::{node::Node, node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
     utils::log::Log,
@@ -67,7 +67,6 @@ impl InputController {
 pub struct Player {
     speed: f32,
 
-    model_resource: Option<Model>,
     pub collider: Handle<Node>,
 
     absm_resource: Option<AbsmResource>,
@@ -89,7 +88,6 @@ impl Default for Player {
         Self {
             speed: 1.0,
             collider: Default::default(),
-            model_resource: None,
             absm_resource: None,
             model: Default::default(),
             absm: Default::default(),
