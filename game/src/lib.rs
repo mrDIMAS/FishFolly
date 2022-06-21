@@ -63,14 +63,39 @@ impl Game {
         }
     }
 
+    fn reset(&mut self) {
+        self.actors.clear();
+        self.start_points.clear();
+        self.targets.clear();
+
+        // Clear pending messages.
+        while self.message_receiver.try_recv().is_ok() {}
+    }
+
+    fn poll_messages(&mut self) {
+        while let Ok(message) = self.message_receiver.try_recv() {
+            match dbg!(message) {
+                Message::UnregisterTarget(target) => {
+                    assert!(self.targets.remove(&target));
+                }
+                Message::UnregisterActor(actor) => {
+                    assert!(self.actors.remove(&actor));
+                }
+                Message::UnregisterStartPoint(start_point) => {
+                    assert!(self.start_points.remove(&start_point));
+                }
+            }
+        }
+    }
+
     fn set_scene(&mut self, scene: Handle<Scene>, context: PluginContext) {
         self.scene = scene;
 
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
             scene.ambient_lighting_color = Color::opaque(200, 200, 200);
-        }
 
-        Log::info("Scene was set successfully!".to_owned());
+            Log::info("Scene was set successfully!".to_owned());
+        }
     }
 }
 
@@ -104,25 +129,17 @@ impl Plugin for Game {
     }
 
     fn on_leave_play_mode(&mut self, context: PluginContext) {
-        self.set_scene(Handle::NONE, context)
+        self.set_scene(Handle::NONE, context);
+    }
+
+    fn on_left_play_mode(&mut self, context: PluginContext) {
+        self.reset();
     }
 
     fn on_unload(&mut self, _context: &mut PluginContext) {}
 
     fn update(&mut self, _context: &mut PluginContext) {
-        while let Ok(message) = self.message_receiver.try_recv() {
-            match message {
-                Message::UnregisterTarget(target) => {
-                    assert!(self.targets.remove(&target));
-                }
-                Message::UnregisterActor(actor) => {
-                    assert!(self.actors.remove(&actor));
-                }
-                Message::UnregisterStartPoint(start_point) => {
-                    assert!(self.start_points.remove(&start_point));
-                }
-            }
-        }
+        self.poll_messages();
     }
 
     fn id(&self) -> Uuid {
