@@ -104,11 +104,16 @@ impl ScriptTrait for Bot {
 
         if let Some(target_pos) = target_pos {
             if let Some(rigid_body) = scene.graph[handle].cast_mut::<RigidBody>() {
-                let dir = (target_pos - rigid_body.global_position())
-                    .try_normalize(f32::EPSILON)
-                    .unwrap_or_default();
+                let target_vec = target_pos - rigid_body.global_position();
+                let distance = target_vec.norm();
+                let dir = target_vec.try_normalize(f32::EPSILON).unwrap_or_default();
 
-                let horizontal_velocity = Vector3::new(dir.x * self.speed, 0.0, dir.z * self.speed);
+                let reached_target = distance < 2.5;
+                let horizontal_velocity = if reached_target {
+                    Vector3::default()
+                } else {
+                    Vector3::new(dir.x * self.speed, 0.0, dir.z * self.speed)
+                };
 
                 rigid_body.set_lin_vel(Vector3::new(
                     horizontal_velocity.x,
