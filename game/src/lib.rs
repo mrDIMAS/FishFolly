@@ -1,7 +1,7 @@
 //! Game project.
 use crate::{
-    bot::Bot, camera::CameraController, obstacle::RotatorObstacle, player::Player,
-    start::StartPoint, target::Target,
+    bot::Bot, camera::CameraController, message::Message, obstacle::RotatorObstacle,
+    player::Player, respawn::RespawnZone, start::StartPoint, target::Target,
 };
 use fyrox::{
     core::{
@@ -18,18 +18,28 @@ use fyrox::{
     },
     utils::log::Log,
 };
+use std::{
+    collections::HashSet,
+    sync::mpsc::{self, Receiver, Sender},
+};
 
 pub mod bot;
 pub mod camera;
+pub mod marker;
+pub mod message;
 pub mod obstacle;
 pub mod player;
+pub mod respawn;
 pub mod start;
 pub mod target;
 
-#[derive(Default)]
 pub struct Game {
     scene: Handle<Scene>,
-    targets: Vec<Handle<Node>>,
+    pub targets: HashSet<Handle<Node>>,
+    pub start_points: HashSet<Handle<Node>>,
+    pub actors: HashSet<Handle<Node>>,
+    pub message_sender: Sender<Message>,
+    pub message_receiver: Receiver<Message>,
 }
 
 impl TypeUuidProvider for Game {
@@ -41,7 +51,16 @@ impl TypeUuidProvider for Game {
 
 impl Game {
     pub fn new() -> Self {
-        Self::default()
+        let (message_sender, message_receiver) = mpsc::channel();
+
+        Self {
+            scene: Default::default(),
+            targets: Default::default(),
+            start_points: Default::default(),
+            actors: Default::default(),
+            message_sender,
+            message_receiver,
+        }
     }
 
     fn set_scene(&mut self, scene: Handle<Scene>, context: PluginContext) {
@@ -49,15 +68,6 @@ impl Game {
 
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
             scene.ambient_lighting_color = Color::opaque(200, 200, 200);
-
-            // Find entities.
-            for (handle, node) in scene.graph.pair_iter() {
-                if let Some(script) = node.script.as_ref() {
-                    if script.cast::<Target>().is_some() {
-                        self.targets.push(handle);
-                    }
-                }
-            }
         }
 
         Log::info("Scene was set successfully!".to_owned());
@@ -73,6 +83,7 @@ impl Plugin for Game {
         script_constructors.add::<Game, Target, _>("Target");
         script_constructors.add::<Game, RotatorObstacle, _>("Rotator Obstacle");
         script_constructors.add::<Game, StartPoint, _>("Start Point");
+        script_constructors.add::<Game, RespawnZone, _>("Respawn Zone");
     }
 
     fn on_standalone_init(&mut self, context: PluginContext) {
@@ -98,11 +109,30 @@ impl Plugin for Game {
 
     fn on_unload(&mut self, _context: &mut PluginContext) {}
 
-    fn update(&mut self, _context: &mut PluginContext) {}
+    fn update(&mut self, _context: &mut PluginContext) {
+        while let Ok(message) = self.message_receiver.try_recv() {
+            match message {
+                Message::UnregisterTarget(target) => {
+                    self.targets.remove(&target);
+                }
+                Message::UnregisterActor(actor) => {
+                    self.actors.remove(&actor);
+                }
+            }
+        }
+    }
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
     }
 
     fn on_os_event(&mut self, _event: &Event<()>, _context: PluginContext) {}
+}
+
+pub fn game_ref(plugin: &dyn Plugin) -> &Game {
+    plugin.cast::<Game>().unwrap()
+}
+
+pub fn game_mut(plugin: &mut dyn Plugin) -> &mut Game {
+    plugin.cast_mut::<Game>().unwrap()
 }

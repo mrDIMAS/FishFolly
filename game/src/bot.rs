@@ -1,6 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::Game;
+use crate::{game_ref, marker::Actor, Game};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -10,7 +10,7 @@ use fyrox::{
     engine::resource_manager::ResourceManager,
     fxhash::FxHashMap,
     gui::inspector::PropertyChanged,
-    handle_object_property_changed,
+    handle_object_property_changed, impl_component_provider,
     resource::absm::AbsmResource,
     scene::{
         node::{Node, TypeUuidProvider},
@@ -30,7 +30,12 @@ pub struct Bot {
     #[visit(skip)]
     #[inspect(skip)]
     absm: Handle<Machine>,
+    #[visit(skip)]
+    #[inspect(skip)]
+    pub actor: Actor,
 }
+
+impl_component_provider!(Bot, actor: Actor);
 
 impl TypeUuidProvider for Bot {
     fn type_uuid() -> Uuid {
@@ -45,6 +50,7 @@ impl Default for Bot {
             model_root: Default::default(),
             absm_resource: None,
             absm: Default::default(),
+            actor: Default::default(),
         }
     }
 }
@@ -58,6 +64,13 @@ impl ScriptTrait for Bot {
     }
 
     fn on_init(&mut self, context: ScriptContext) {
+        let game_ref = game_ref(context.plugin);
+
+        self.actor = Actor {
+            self_handle: context.handle,
+            sender: Some(game_ref.message_sender.clone()),
+        };
+
         if context.scene.graph.is_valid_handle(self.model_root) {
             if let Some(absm) = self.absm_resource.as_ref() {
                 let animations = block_on(absm.load_animations(context.resource_manager.clone()));
@@ -82,7 +95,8 @@ impl ScriptTrait for Bot {
         // Dead-simple AI - run straight to target.
         let target_pos = plugin
             .targets
-            .first()
+            .iter()
+            .next()
             .cloned()
             .map(|t| scene.graph[t].global_position());
 

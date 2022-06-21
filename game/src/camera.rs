@@ -13,7 +13,7 @@ use fyrox::{
     },
     fxhash::FxHashMap,
     gui::inspector::PropertyChanged,
-    handle_object_property_changed,
+    handle_object_property_changed, impl_component_provider,
     scene::{
         graph::physics::RayCastOptions,
         node::{Node, TypeUuidProvider},
@@ -101,6 +101,8 @@ impl TypeUuidProvider for CameraController {
         uuid!("0c45d21f-878e-4aa5-b4e1-097aaa44f314")
     }
 }
+
+impl_component_provider!(CameraController);
 
 impl ScriptTrait for CameraController {
     fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {

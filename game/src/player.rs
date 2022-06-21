@@ -1,6 +1,6 @@
 //! Main player (host) script.
 
-use crate::{Event, Game};
+use crate::{game_ref, marker::Actor, Event, Game};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -15,7 +15,7 @@ use fyrox::{
     event::{DeviceEvent, ElementState, VirtualKeyCode, WindowEvent},
     fxhash::FxHashMap,
     gui::inspector::PropertyChanged,
-    handle_object_property_changed,
+    handle_object_property_changed, impl_component_provider,
     resource::absm::AbsmResource,
     scene::{node::Node, node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
@@ -81,7 +81,12 @@ pub struct Player {
     #[visit(skip)]
     #[inspect(skip)]
     pub input_controller: InputController,
+    #[visit(skip)]
+    #[inspect(skip)]
+    pub actor: Actor,
 }
+
+impl_component_provider!(Player, actor: Actor);
 
 impl Default for Player {
     fn default() -> Self {
@@ -92,6 +97,7 @@ impl Default for Player {
             model: Default::default(),
             absm: Default::default(),
             input_controller: Default::default(),
+            actor: Default::default(),
         }
     }
 }
@@ -113,6 +119,13 @@ impl ScriptTrait for Player {
     }
 
     fn on_init(&mut self, context: ScriptContext) {
+        let game_ref = game_ref(context.plugin);
+
+        self.actor = Actor {
+            self_handle: context.handle,
+            sender: Some(game_ref.message_sender.clone()),
+        };
+
         if self.model.is_some() {
             if let Some(absm_resource) = self.absm_resource.as_ref() {
                 let animations =

@@ -5,7 +5,7 @@ use fyrox::{
     core::{inspect::prelude::*, uuid::uuid, visitor::prelude::*},
     engine::resource_manager::ResourceManager,
     gui::inspector::PropertyChanged,
-    handle_object_property_changed,
+    handle_object_property_changed, impl_component_provider,
     resource::model::Model,
     scene::node::TypeUuidProvider,
     script::{ScriptContext, ScriptTrait},
@@ -19,6 +19,8 @@ pub struct StartPoint {
     )]
     model: Option<Model>,
 }
+
+impl_component_provider!(StartPoint);
 
 impl TypeUuidProvider for StartPoint {
     fn type_uuid() -> Uuid {

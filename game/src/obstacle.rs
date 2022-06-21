@@ -9,7 +9,7 @@ use fyrox::{
         visitor::prelude::*,
     },
     gui::inspector::PropertyChanged,
-    handle_object_property_changed,
+    handle_object_property_changed, impl_component_provider,
     scene::{node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
 };
@@ -22,6 +22,8 @@ pub struct RotatorObstacle {
     axis: Vector3<f32>,
     speed: f32,
 }
+
+impl_component_provider!(RotatorObstacle);
 
 impl Default for RotatorObstacle {
     fn default() -> Self {
