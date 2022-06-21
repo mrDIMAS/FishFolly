@@ -1,10 +1,10 @@
 //! Object marker components.
 
-//! A marker that indicates that an object is an actor (player or bot).
 use crate::Message;
 use fyrox::{core::pool::Handle, scene::node::Node};
 use std::sync::mpsc::Sender;
 
+/// A marker that indicates that an object is an actor (player or bot).
 #[derive(Clone, Default, Debug)]
 pub struct Actor {
     pub self_handle: Handle<Node>,
