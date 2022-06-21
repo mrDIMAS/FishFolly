@@ -1,10 +1,10 @@
-//! Executor with your game connected to it as a plugin.
+//! Executor runs the game in standalone (production) mode.
 use fish_fall::Game;
 use fyrox::{engine::executor::Executor, renderer::QualitySettings};
 
 fn main() {
     let mut executor = Executor::new();
-    executor.get_window().set_title("Fish Fall");
+    executor.get_window().set_title("Fish Folly");
     let mut quality_settings = QualitySettings::default();
     quality_settings.use_ssao = false;
     executor
