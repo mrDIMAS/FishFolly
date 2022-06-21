@@ -1,6 +1,6 @@
 //! Main player (host) script.
 
-use crate::{game_ref, marker::Actor, Event, Game};
+use crate::{game_mut, marker::Actor, Event, Game};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -119,12 +119,14 @@ impl ScriptTrait for Player {
     }
 
     fn on_init(&mut self, context: ScriptContext) {
-        let game_ref = game_ref(context.plugin);
+        let game = game_mut(context.plugin);
 
         self.actor = Actor {
             self_handle: context.handle,
-            sender: Some(game_ref.message_sender.clone()),
+            sender: Some(game.message_sender.clone()),
         };
+
+        game.actors.insert(context.handle);
 
         if self.model.is_some() {
             if let Some(absm_resource) = self.absm_resource.as_ref() {

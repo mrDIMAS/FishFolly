@@ -1,6 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{game_ref, marker::Actor, Game};
+use crate::{game_mut, marker::Actor, Game};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -64,12 +64,14 @@ impl ScriptTrait for Bot {
     }
 
     fn on_init(&mut self, context: ScriptContext) {
-        let game_ref = game_ref(context.plugin);
+        let game = game_mut(context.plugin);
 
         self.actor = Actor {
             self_handle: context.handle,
-            sender: Some(game_ref.message_sender.clone()),
+            sender: Some(game.message_sender.clone()),
         };
+
+        game.actors.insert(context.handle);
 
         if context.scene.graph.is_valid_handle(self.model_root) {
             if let Some(absm) = self.absm_resource.as_ref() {

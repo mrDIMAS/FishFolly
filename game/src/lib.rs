@@ -113,10 +113,13 @@ impl Plugin for Game {
         while let Ok(message) = self.message_receiver.try_recv() {
             match message {
                 Message::UnregisterTarget(target) => {
-                    self.targets.remove(&target);
+                    assert!(self.targets.remove(&target));
                 }
                 Message::UnregisterActor(actor) => {
-                    self.actors.remove(&actor);
+                    assert!(self.actors.remove(&actor));
+                }
+                Message::UnregisterStartPoint(start_point) => {
+                    assert!(self.start_points.remove(&start_point));
                 }
             }
         }
