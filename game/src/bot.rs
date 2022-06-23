@@ -16,7 +16,8 @@ use fyrox::{
         node::{Node, TypeUuidProvider},
         rigidbody::RigidBody,
     },
-    script::{ScriptContext, ScriptTrait},
+    script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
+    utils::log::Log,
 };
 
 #[derive(Clone, Visit, Inspect, Debug)]
@@ -66,11 +67,6 @@ impl ScriptTrait for Bot {
     fn on_init(&mut self, context: ScriptContext) {
         let game = game_mut(context.plugin);
 
-        self.actor = Actor {
-            self_handle: context.handle,
-            sender: Some(game.message_sender.clone()),
-        };
-
         game.actors.insert(context.handle);
 
         if context.scene.graph.is_valid_handle(self.model_root) {
@@ -82,6 +78,11 @@ impl ScriptTrait for Bot {
                     .unwrap();
             }
         }
+    }
+
+    fn on_deinit(&mut self, context: ScriptDeinitContext) {
+        assert!(game_mut(context.plugin).actors.remove(&context.node_handle));
+        Log::info(format!("Bot {:?} destroyed!", context.node_handle));
     }
 
     fn on_update(&mut self, context: ScriptContext) {

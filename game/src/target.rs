@@ -1,23 +1,16 @@
 //! A target that bots will try to reach.
 
-use crate::{game_mut, Game, Message};
+use crate::{game_mut, Game};
 use fyrox::{
-    core::{inspect::prelude::*, pool::Handle, uuid::uuid, uuid::Uuid, visitor::prelude::*},
+    core::{inspect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*},
     impl_component_provider,
-    scene::{node::Node, node::TypeUuidProvider},
-    script::{ScriptContext, ScriptTrait},
+    scene::node::TypeUuidProvider,
+    script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
+    utils::log::Log,
 };
-use std::sync::mpsc::Sender;
 
 #[derive(Clone, Default, Debug, Visit, Inspect)]
-pub struct Target {
-    #[visit(skip)]
-    #[inspect(skip)]
-    self_handle: Handle<Node>,
-    #[visit(skip)]
-    #[inspect(skip)]
-    sender: Option<Sender<Message>>,
-}
+pub struct Target {}
 
 impl_component_provider!(Target);
 
@@ -27,22 +20,17 @@ impl TypeUuidProvider for Target {
     }
 }
 
-impl Drop for Target {
-    fn drop(&mut self) {
-        if let Some(sender) = self.sender.as_ref() {
-            sender
-                .send(Message::UnregisterTarget(self.self_handle))
-                .unwrap();
-        }
-    }
-}
-
 impl ScriptTrait for Target {
     fn on_init(&mut self, context: ScriptContext) {
         let game = game_mut(context.plugin);
-        self.self_handle = context.handle;
-        self.sender = Some(game.message_sender.clone());
         game.targets.insert(context.handle);
+    }
+
+    fn on_deinit(&mut self, context: ScriptDeinitContext) {
+        assert!(game_mut(context.plugin)
+            .targets
+            .remove(&context.node_handle));
+        Log::info(format!("Target {:?} destroyed!", context.node_handle));
     }
 
     fn id(&self) -> Uuid {

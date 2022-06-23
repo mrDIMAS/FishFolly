@@ -1,6 +1,7 @@
 //! Main player (host) script.
 
 use crate::{game_mut, marker::Actor, Event, Game};
+use fyrox::script::ScriptDeinitContext;
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -120,13 +121,7 @@ impl ScriptTrait for Player {
 
     fn on_init(&mut self, context: ScriptContext) {
         let game = game_mut(context.plugin);
-
-        self.actor = Actor {
-            self_handle: context.handle,
-            sender: Some(game.message_sender.clone()),
-        };
-
-        game.actors.insert(context.handle);
+        assert!(game.actors.insert(context.handle));
 
         if self.model.is_some() {
             if let Some(absm_resource) = self.absm_resource.as_ref() {
@@ -142,6 +137,11 @@ impl ScriptTrait for Player {
         } else {
             Log::err("There is no model set for player!".to_owned());
         }
+    }
+
+    fn on_deinit(&mut self, context: ScriptDeinitContext) {
+        assert!(game_mut(context.plugin).actors.remove(&context.node_handle));
+        Log::info(format!("Player {:?} destroyed!", context.node_handle));
     }
 
     fn on_os_event(&mut self, event: &Event<()>, context: ScriptContext) {

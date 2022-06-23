@@ -1,7 +1,7 @@
 //! Game project.
 use crate::{
-    bot::Bot, camera::CameraController, message::Message, obstacle::RotatorObstacle,
-    player::Player, respawn::RespawnZone, start::StartPoint, target::Target,
+    bot::Bot, camera::CameraController, obstacle::RotatorObstacle, player::Player,
+    respawn::RespawnZone, start::StartPoint, target::Target,
 };
 use fyrox::{
     core::{
@@ -18,15 +18,11 @@ use fyrox::{
     },
     utils::log::Log,
 };
-use std::{
-    collections::HashSet,
-    sync::mpsc::{self, Receiver, Sender},
-};
+use std::collections::HashSet;
 
 pub mod bot;
 pub mod camera;
 pub mod marker;
-pub mod message;
 pub mod obstacle;
 pub mod player;
 pub mod respawn;
@@ -38,8 +34,6 @@ pub struct Game {
     pub targets: HashSet<Handle<Node>>,
     pub start_points: HashSet<Handle<Node>>,
     pub actors: HashSet<Handle<Node>>,
-    pub message_sender: Sender<Message>,
-    pub message_receiver: Receiver<Message>,
 }
 
 impl TypeUuidProvider for Game {
@@ -51,40 +45,11 @@ impl TypeUuidProvider for Game {
 
 impl Game {
     pub fn new() -> Self {
-        let (message_sender, message_receiver) = mpsc::channel();
-
         Self {
             scene: Default::default(),
             targets: Default::default(),
             start_points: Default::default(),
             actors: Default::default(),
-            message_sender,
-            message_receiver,
-        }
-    }
-
-    fn reset(&mut self) {
-        self.actors.clear();
-        self.start_points.clear();
-        self.targets.clear();
-
-        // Clear pending messages.
-        while self.message_receiver.try_recv().is_ok() {}
-    }
-
-    fn poll_messages(&mut self) {
-        while let Ok(message) = self.message_receiver.try_recv() {
-            match dbg!(message) {
-                Message::UnregisterTarget(target) => {
-                    assert!(self.targets.remove(&target));
-                }
-                Message::UnregisterActor(actor) => {
-                    assert!(self.actors.remove(&actor));
-                }
-                Message::UnregisterStartPoint(start_point) => {
-                    assert!(self.start_points.remove(&start_point));
-                }
-            }
         }
     }
 
@@ -92,7 +57,7 @@ impl Game {
         self.scene = scene;
 
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
-            scene.ambient_lighting_color = Color::opaque(200, 200, 200);
+            scene.ambient_lighting_color = Color::opaque(255, 255, 255);
 
             Log::info("Scene was set successfully!".to_owned());
         }
@@ -125,6 +90,9 @@ impl Plugin for Game {
     }
 
     fn on_enter_play_mode(&mut self, scene: Handle<Scene>, context: PluginContext) {
+        assert!(self.start_points.is_empty());
+        assert!(self.targets.is_empty());
+        assert!(self.actors.is_empty());
         self.set_scene(scene, context);
     }
 
@@ -132,15 +100,11 @@ impl Plugin for Game {
         self.set_scene(Handle::NONE, context);
     }
 
-    fn on_left_play_mode(&mut self, context: PluginContext) {
-        self.reset();
-    }
+    fn on_left_play_mode(&mut self, _context: PluginContext) {}
 
     fn on_unload(&mut self, _context: &mut PluginContext) {}
 
-    fn update(&mut self, _context: &mut PluginContext) {
-        self.poll_messages();
-    }
+    fn update(&mut self, _context: &mut PluginContext) {}
 
     fn id(&self) -> Uuid {
         Self::type_uuid()

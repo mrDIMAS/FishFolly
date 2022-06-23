@@ -120,7 +120,7 @@ impl ScriptTrait for CameraController {
             // Sync position with player.
             self.target_position = player.global_position();
 
-            if let Some(player_script) = player.script.as_ref().and_then(|s| s.cast::<Player>()) {
+            if let Some(player_script) = player.script().and_then(|s| s.cast::<Player>()) {
                 let yaw = player_script.input_controller.yaw;
                 let pitch = player_script.input_controller.pitch;
                 let player_collider = player_script.collider;
