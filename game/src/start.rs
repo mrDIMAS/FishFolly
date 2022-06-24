@@ -34,14 +34,13 @@ impl ScriptTrait for StartPoint {
     }
 
     fn on_init(&mut self, context: ScriptContext) {
-        let game = game_mut(context.plugin);
-        assert!(game.start_points.insert(context.handle));
+        assert!(game_mut(context.plugin).start_points.insert(context.handle));
 
         if let Some(resource) = self.model.as_ref() {
+            // Spawn specified actor.
             let instance = resource.instantiate_geometry(context.scene);
-
+            // Sync its position with the start point position.
             let position = context.scene.graph[context.handle].global_position();
-
             let body = context
                 .scene
                 .graph
@@ -52,6 +51,8 @@ impl ScriptTrait for StartPoint {
                 Log::warn("Cannot find Body of actor!".to_owned());
             }
         }
+
+        Log::info(format!("Start point {:?} created!", context.handle));
     }
 
     fn on_deinit(&mut self, context: ScriptDeinitContext) {

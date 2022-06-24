@@ -22,8 +22,8 @@ impl TypeUuidProvider for Target {
 
 impl ScriptTrait for Target {
     fn on_init(&mut self, context: ScriptContext) {
-        let game = game_mut(context.plugin);
-        game.targets.insert(context.handle);
+        assert!(game_mut(context.plugin).targets.insert(context.handle));
+        Log::info(format!("Target {:?} added!", context.handle));
     }
 
     fn on_deinit(&mut self, context: ScriptDeinitContext) {

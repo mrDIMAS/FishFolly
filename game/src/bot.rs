@@ -8,11 +8,11 @@ use fyrox::{
         inspect::prelude::*, pool::Handle, uuid::uuid, uuid::Uuid, visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
-    fxhash::FxHashMap,
     gui::inspector::PropertyChanged,
     handle_object_property_changed, impl_component_provider,
     resource::absm::AbsmResource,
     scene::{
+        graph::map::NodeHandleMap,
         node::{Node, TypeUuidProvider},
         rigidbody::RigidBody,
     },
@@ -65,9 +65,7 @@ impl ScriptTrait for Bot {
     }
 
     fn on_init(&mut self, context: ScriptContext) {
-        let game = game_mut(context.plugin);
-
-        game.actors.insert(context.handle);
+        assert!(game_mut(context.plugin).actors.insert(context.handle));
 
         if context.scene.graph.is_valid_handle(self.model_root) {
             if let Some(absm) = self.absm_resource.as_ref() {
@@ -78,6 +76,7 @@ impl ScriptTrait for Bot {
                     .unwrap();
             }
         }
+        Log::info(format!("Bot {:?} created!", context.handle));
     }
 
     fn on_deinit(&mut self, context: ScriptDeinitContext) {
@@ -140,11 +139,8 @@ impl ScriptTrait for Bot {
         }
     }
 
-    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
-        self.model_root = old_new_mapping
-            .get(&self.model_root)
-            .cloned()
-            .unwrap_or_default();
+    fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
+        old_new_mapping.map(&mut self.model_root);
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {

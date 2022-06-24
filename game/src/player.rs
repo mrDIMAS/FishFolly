@@ -1,7 +1,6 @@
 //! Main player (host) script.
 
 use crate::{game_mut, marker::Actor, Event, Game};
-use fyrox::script::ScriptDeinitContext;
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -14,12 +13,11 @@ use fyrox::{
     },
     engine::resource_manager::ResourceManager,
     event::{DeviceEvent, ElementState, VirtualKeyCode, WindowEvent},
-    fxhash::FxHashMap,
     gui::inspector::PropertyChanged,
     handle_object_property_changed, impl_component_provider,
     resource::absm::AbsmResource,
-    scene::{node::Node, node::TypeUuidProvider, rigidbody::RigidBody},
-    script::{ScriptContext, ScriptTrait},
+    scene::{graph::map::NodeHandleMap, node::Node, node::TypeUuidProvider, rigidbody::RigidBody},
+    script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
     utils::log::Log,
 };
 
@@ -120,8 +118,7 @@ impl ScriptTrait for Player {
     }
 
     fn on_init(&mut self, context: ScriptContext) {
-        let game = game_mut(context.plugin);
-        assert!(game.actors.insert(context.handle));
+        assert!(game_mut(context.plugin).actors.insert(context.handle));
 
         if self.model.is_some() {
             if let Some(absm_resource) = self.absm_resource.as_ref() {
@@ -137,6 +134,8 @@ impl ScriptTrait for Player {
         } else {
             Log::err("There is no model set for player!".to_owned());
         }
+
+        Log::info(format!("Player {:?} created!", context.handle));
     }
 
     fn on_deinit(&mut self, context: ScriptDeinitContext) {
@@ -233,15 +232,8 @@ impl ScriptTrait for Player {
         }
     }
 
-    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
-        self.model = old_new_mapping
-            .get(&self.model)
-            .cloned()
-            .unwrap_or_default();
-        self.collider = old_new_mapping
-            .get(&self.collider)
-            .cloned()
-            .unwrap_or_default();
+    fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
+        old_new_mapping.map(&mut self.model).map(&mut self.collider);
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {

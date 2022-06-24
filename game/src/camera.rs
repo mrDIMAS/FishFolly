@@ -11,16 +11,16 @@ use fyrox::{
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    fxhash::FxHashMap,
     gui::inspector::PropertyChanged,
     handle_object_property_changed, impl_component_provider,
     scene::{
-        graph::physics::RayCastOptions,
+        graph::{map::NodeHandleMap, physics::RayCastOptions},
         node::{Node, TypeUuidProvider},
     },
     script::{ScriptContext, ScriptTrait},
     utils::log::Log,
 };
+use std::ops::Range;
 
 #[derive(Clone, Inspect, Visit, Debug)]
 pub struct CameraController {
@@ -48,6 +48,7 @@ impl Default for CameraController {
             target_position: Default::default(),
             default_distance: 2.0,
             probe_radius: 0.2,
+            pitch_range: -90.0f32..90.0f32,
         }
     }
 }
@@ -157,19 +158,11 @@ impl ScriptTrait for CameraController {
         }
     }
 
-    fn remap_handles(&mut self, old_new_mapping: &FxHashMap<Handle<Node>, Handle<Node>>) {
-        self.player = old_new_mapping
-            .get(&self.player)
-            .cloned()
-            .unwrap_or_default();
-        self.hinge = old_new_mapping
-            .get(&self.hinge)
-            .cloned()
-            .unwrap_or_default();
-        self.camera = old_new_mapping
-            .get(&self.camera)
-            .cloned()
-            .unwrap_or_default();
+    fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
+        old_new_mapping
+            .map(&mut self.player)
+            .map(&mut self.hinge)
+            .map(&mut self.camera);
     }
 
     fn id(&self) -> Uuid {
