@@ -13,6 +13,6 @@ fn main() {
         }),
     );
 
-    editor.add_game_plugin(Game::new());
+    editor.add_game_plugin::<Game>();
     editor.run(event_loop)
 }

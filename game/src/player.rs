@@ -1,6 +1,8 @@
 //! Main player (host) script.
 
 use crate::{game_mut, marker::Actor, Event, Game};
+use fyrox::scene::collider::Collider;
+use fyrox::scene::graph::Graph;
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -107,6 +109,24 @@ impl TypeUuidProvider for Player {
     }
 }
 
+impl Player {
+    pub fn has_ground_contact(&self, graph: &Graph) -> bool {
+        if let Some(collider) = graph
+            .try_get(self.collider)
+            .and_then(|n| n.cast::<Collider>())
+        {
+            for contact in collider.contacts(&graph.physics) {
+                for manifold in contact.manifolds.iter() {
+                    if manifold.local_n1.y.abs() > 0.7 || manifold.local_n2.y.abs() > 0.7 {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+}
+
 impl ScriptTrait for Player {
     fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
         handle_object_property_changed!(self, args,
@@ -150,6 +170,8 @@ impl ScriptTrait for Player {
     fn on_update(&mut self, context: ScriptContext) {
         let ScriptContext { handle, scene, .. } = context;
 
+        let has_ground_contact = self.has_ground_contact(&scene.graph);
+
         if let Some(rigid_body) = scene.graph[handle].cast_mut::<RigidBody>() {
             let forward_vec = rigid_body.look_vector();
             let side_vec = rigid_body.side_vector();
@@ -177,7 +199,7 @@ impl ScriptTrait for Player {
             velocity.y = rigid_body.lin_vel().y;
 
             let mut jump = false;
-            if self.input_controller.jump {
+            if self.input_controller.jump && has_ground_contact {
                 velocity.y += 5.5;
                 self.input_controller.jump = false;
                 jump = true;

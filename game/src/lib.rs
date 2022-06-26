@@ -29,6 +29,7 @@ pub mod respawn;
 pub mod start;
 pub mod target;
 
+#[derive(Default)]
 pub struct Game {
     scene: Handle<Scene>,
     pub targets: HashSet<Handle<Node>>,
@@ -44,20 +45,11 @@ impl TypeUuidProvider for Game {
 }
 
 impl Game {
-    pub fn new() -> Self {
-        Self {
-            scene: Default::default(),
-            targets: Default::default(),
-            start_points: Default::default(),
-            actors: Default::default(),
-        }
-    }
-
     fn set_scene(&mut self, scene: Handle<Scene>, context: PluginContext) {
         self.scene = scene;
 
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
-            scene.ambient_lighting_color = Color::opaque(255, 255, 255);
+            scene.ambient_lighting_color = Color::opaque(200, 200, 200);
 
             Log::info("Scene was set successfully!".to_owned());
         }
@@ -76,33 +68,30 @@ impl Plugin for Game {
         script_constructors.add::<Game, RespawnZone, _>("Respawn Zone");
     }
 
-    fn on_standalone_init(&mut self, context: PluginContext) {
-        let scene = block_on(
-            block_on(SceneLoader::from_file(
-                "data/scene.rgs",
-                context.serialization_context.clone(),
-            ))
-            .unwrap()
-            .finish(context.resource_manager.clone()),
-        );
+    fn on_init(&mut self, override_scene: Handle<Scene>, context: PluginContext) {
+        Log::info("Game started!".to_owned());
 
-        self.set_scene(context.scenes.add(scene), context);
-    }
+        let scene = if override_scene.is_some() {
+            override_scene
+        } else {
+            let scene = block_on(
+                block_on(SceneLoader::from_file(
+                    "data/scene.rgs",
+                    context.serialization_context.clone(),
+                ))
+                .unwrap()
+                .finish(context.resource_manager.clone()),
+            );
 
-    fn on_enter_play_mode(&mut self, scene: Handle<Scene>, context: PluginContext) {
-        assert!(self.start_points.is_empty());
-        assert!(self.targets.is_empty());
-        assert!(self.actors.is_empty());
+            context.scenes.add(scene)
+        };
+
         self.set_scene(scene, context);
     }
 
-    fn on_leave_play_mode(&mut self, context: PluginContext) {
-        self.set_scene(Handle::NONE, context);
+    fn on_deinit(&mut self, context: PluginContext) {
+        Log::info("Game stopped!".to_owned());
     }
-
-    fn on_left_play_mode(&mut self, _context: PluginContext) {}
-
-    fn on_unload(&mut self, _context: &mut PluginContext) {}
 
     fn update(&mut self, _context: &mut PluginContext) {}
 
