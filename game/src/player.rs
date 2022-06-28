@@ -1,8 +1,6 @@
 //! Main player (host) script.
 
-use crate::{game_mut, marker::Actor, Event, Game};
-use fyrox::scene::collider::Collider;
-use fyrox::scene::graph::Graph;
+use crate::{game_mut, marker::Actor, CameraController, Event, Game};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -14,11 +12,17 @@ use fyrox::{
         visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
-    event::{DeviceEvent, ElementState, VirtualKeyCode, WindowEvent},
+    event::{ElementState, VirtualKeyCode, WindowEvent},
     gui::inspector::PropertyChanged,
     handle_object_property_changed, impl_component_provider,
     resource::absm::AbsmResource,
-    scene::{graph::map::NodeHandleMap, node::Node, node::TypeUuidProvider, rigidbody::RigidBody},
+    scene::{
+        collider::Collider,
+        graph::{map::NodeHandleMap, Graph},
+        node::Node,
+        node::TypeUuidProvider,
+        rigidbody::RigidBody,
+    },
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
     utils::log::Log,
 };
@@ -30,38 +34,26 @@ pub struct InputController {
     pub move_left: bool,
     pub move_right: bool,
     pub jump: bool,
-    pub pitch: f32,
-    pub yaw: f32,
 }
 
 impl InputController {
-    pub fn update(&mut self, event: &Event<()>, dt: f32) {
-        match event {
-            Event::WindowEvent {
-                event: WindowEvent::KeyboardInput { input, .. },
-                ..
-            } => {
-                if let Some(keycode) = input.virtual_keycode {
-                    let state = input.state == ElementState::Pressed;
-                    match keycode {
-                        VirtualKeyCode::W => self.move_forward = state,
-                        VirtualKeyCode::S => self.move_backward = state,
-                        VirtualKeyCode::A => self.move_left = state,
-                        VirtualKeyCode::D => self.move_right = state,
-                        VirtualKeyCode::Space => self.jump = state,
-                        _ => (),
-                    }
+    pub fn update(&mut self, event: &Event<()>) {
+        if let Event::WindowEvent {
+            event: WindowEvent::KeyboardInput { input, .. },
+            ..
+        } = event
+        {
+            if let Some(keycode) = input.virtual_keycode {
+                let state = input.state == ElementState::Pressed;
+                match keycode {
+                    VirtualKeyCode::W => self.move_forward = state,
+                    VirtualKeyCode::S => self.move_backward = state,
+                    VirtualKeyCode::A => self.move_left = state,
+                    VirtualKeyCode::D => self.move_right = state,
+                    VirtualKeyCode::Space => self.jump = state,
+                    _ => (),
                 }
             }
-            Event::DeviceEvent {
-                event: DeviceEvent::MouseMotion { delta },
-                ..
-            } => {
-                self.yaw -= delta.0 as f32 * dt;
-                self.pitch = (self.pitch + delta.1 as f32 * dt)
-                    .clamp(-90.0f32.to_radians(), 90.0f32.to_radians());
-            }
-            _ => {}
         }
     }
 }
@@ -76,6 +68,9 @@ pub struct Player {
     absm_resource: Option<AbsmResource>,
     #[inspect(description = "Handle to player's model.")]
     model: Handle<Node>,
+    #[inspect(description = "Handle to a node with camera controller.")]
+    #[visit(optional)]
+    camera: Handle<Node>,
     #[visit(skip)]
     #[inspect(skip)]
     absm: Handle<Machine>,
@@ -96,6 +91,7 @@ impl Default for Player {
             collider: Default::default(),
             absm_resource: None,
             model: Default::default(),
+            camera: Default::default(),
             absm: Default::default(),
             input_controller: Default::default(),
             actor: Default::default(),
@@ -133,7 +129,8 @@ impl ScriptTrait for Player {
             Self::SPEED => speed,
             Self::ABSM_RESOURCE => absm_resource,
             Self::MODEL => model,
-            Self::COLLIDER => collider
+            Self::COLLIDER => collider,
+            Self::CAMERA => camera
         )
     }
 
@@ -163,14 +160,22 @@ impl ScriptTrait for Player {
         Log::info(format!("Player {:?} destroyed!", context.node_handle));
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, context: ScriptContext) {
-        self.input_controller.update(event, context.dt);
+    fn on_os_event(&mut self, event: &Event<()>, _context: ScriptContext) {
+        self.input_controller.update(event);
     }
 
     fn on_update(&mut self, context: ScriptContext) {
         let ScriptContext { handle, scene, .. } = context;
 
         let has_ground_contact = self.has_ground_contact(&scene.graph);
+
+        let yaw = scene
+            .graph
+            .try_get(self.camera)
+            .and_then(|c| c.script())
+            .and_then(|s| s.cast::<CameraController>())
+            .map(|c| c.yaw)
+            .unwrap_or_default();
 
         if let Some(rigid_body) = scene.graph[handle].cast_mut::<RigidBody>() {
             let forward_vec = rigid_body.look_vector();
@@ -212,10 +217,7 @@ impl ScriptTrait for Player {
             if is_moving {
                 rigid_body
                     .local_transform_mut()
-                    .set_rotation(UnitQuaternion::from_axis_angle(
-                        &Vector3::y_axis(),
-                        self.input_controller.yaw,
-                    ));
+                    .set_rotation(UnitQuaternion::from_axis_angle(&Vector3::y_axis(), yaw));
 
                 // Apply additional rotation to model - it will turn in front of walking direction.
                 let angle: f32 = if self.input_controller.move_left {
@@ -255,7 +257,10 @@ impl ScriptTrait for Player {
     }
 
     fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
-        old_new_mapping.map(&mut self.model).map(&mut self.collider);
+        old_new_mapping
+            .map(&mut self.model)
+            .map(&mut self.collider)
+            .map(&mut self.camera);
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {

@@ -59,13 +59,14 @@ impl Game {
 impl Plugin for Game {
     fn on_register(&mut self, context: PluginRegistrationContext) {
         let script_constructors = &context.serialization_context.script_constructors;
-        script_constructors.add::<Game, Player, _>("Player");
-        script_constructors.add::<Game, CameraController, _>("Camera Controller");
-        script_constructors.add::<Game, Bot, _>("Bot");
-        script_constructors.add::<Game, Target, _>("Target");
-        script_constructors.add::<Game, RotatorObstacle, _>("Rotator Obstacle");
-        script_constructors.add::<Game, StartPoint, _>("Start Point");
-        script_constructors.add::<Game, RespawnZone, _>("Respawn Zone");
+        script_constructors
+            .add::<Game, Player, _>("Player")
+            .add::<Game, CameraController, _>("Camera Controller")
+            .add::<Game, Bot, _>("Bot")
+            .add::<Game, Target, _>("Target")
+            .add::<Game, RotatorObstacle, _>("Rotator Obstacle")
+            .add::<Game, StartPoint, _>("Start Point")
+            .add::<Game, RespawnZone, _>("Respawn Zone");
     }
 
     fn on_init(&mut self, override_scene: Handle<Scene>, context: PluginContext) {
@@ -89,7 +90,7 @@ impl Plugin for Game {
         self.set_scene(scene, context);
     }
 
-    fn on_deinit(&mut self, context: PluginContext) {
+    fn on_deinit(&mut self, _context: PluginContext) {
         Log::info("Game stopped!".to_owned());
     }
 

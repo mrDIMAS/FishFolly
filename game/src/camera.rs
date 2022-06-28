@@ -1,7 +1,7 @@
 //! Camera controller for the main player (host). It smoothly follows the host and has obstacle
 //! avoiding functionality.
 
-use crate::{Game, Player};
+use crate::{Event, Game};
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
@@ -11,6 +11,7 @@ use fyrox::{
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
+    event::DeviceEvent,
     gui::inspector::PropertyChanged,
     handle_object_property_changed, impl_component_provider,
     scene::{
@@ -34,9 +35,21 @@ pub struct CameraController {
     camera: Handle<Node>,
     #[inspect(description = "Distance from first blocker that in the way of camera.")]
     probe_radius: f32,
+    #[inspect(description = "Pitch range for camera")]
+    #[visit(optional)]
+    pitch_range: Range<f32>,
+    #[visit(optional)]
+    #[inspect(description = "A collider that should be ignored by ray casting.")]
+    pub collider_to_ignore: Handle<Node>,
     #[inspect(skip)]
     #[visit(skip)]
     target_position: Vector3<f32>,
+    #[inspect(skip)]
+    #[visit(skip)]
+    pub pitch: f32,
+    #[inspect(skip)]
+    #[visit(skip)]
+    pub yaw: f32,
 }
 
 impl Default for CameraController {
@@ -46,9 +59,12 @@ impl Default for CameraController {
             hinge: Default::default(),
             camera: Default::default(),
             target_position: Default::default(),
+            pitch: 0.0,
             default_distance: 2.0,
             probe_radius: 0.2,
             pitch_range: -90.0f32..90.0f32,
+            yaw: 0.0,
+            collider_to_ignore: Default::default(),
         }
     }
 }
@@ -112,8 +128,24 @@ impl ScriptTrait for CameraController {
             Self::HINGE => hinge,
             Self::CAMERA => camera,
             Self::PROBE_RADIUS => probe_radius,
-            Self::DEFAULT_DISTANCE => default_distance
+            Self::DEFAULT_DISTANCE => default_distance,
+            Self::PITCH_RANGE => pitch_range,
+            Self::COLLIDER_TO_IGNORE => collider_to_ignore
         )
+    }
+
+    fn on_os_event(&mut self, event: &Event<()>, context: ScriptContext) {
+        if let Event::DeviceEvent {
+            event: DeviceEvent::MouseMotion { delta },
+            ..
+        } = event
+        {
+            self.yaw -= delta.0 as f32 * context.dt;
+            self.pitch = (self.pitch + delta.1 as f32 * context.dt).clamp(
+                self.pitch_range.start.to_radians(),
+                self.pitch_range.end.to_radians(),
+            );
+        }
     }
 
     fn on_update(&mut self, mut context: ScriptContext) {
@@ -121,37 +153,34 @@ impl ScriptTrait for CameraController {
             // Sync position with player.
             self.target_position = player.global_position();
 
-            if let Some(player_script) = player.script().and_then(|s| s.cast::<Player>()) {
-                let yaw = player_script.input_controller.yaw;
-                let pitch = player_script.input_controller.pitch;
-                let player_collider = player_script.collider;
+            let controller = &mut context.scene.graph[context.handle];
 
-                let controller = &mut context.scene.graph[context.handle];
+            let local_transform = controller.local_transform_mut();
+            let new_position = **local_transform.position()
+                + (self.target_position - **local_transform.position()) * 0.1;
+            local_transform.set_rotation(UnitQuaternion::from_axis_angle(
+                &Vector3::y_axis(),
+                self.yaw,
+            ));
+            local_transform.set_position(new_position);
 
-                let local_transform = controller.local_transform_mut();
-                let new_position = **local_transform.position()
-                    + (self.target_position - **local_transform.position()) * 0.1;
-                local_transform
-                    .set_rotation(UnitQuaternion::from_axis_angle(&Vector3::y_axis(), yaw));
-                local_transform.set_position(new_position);
+            if let Some(hinge) = context.scene.graph.try_get_mut(self.hinge) {
+                hinge
+                    .local_transform_mut()
+                    .set_rotation(UnitQuaternion::from_axis_angle(
+                        &Vector3::x_axis(),
+                        self.pitch,
+                    ));
 
-                if let Some(hinge) = context.scene.graph.try_get_mut(self.hinge) {
-                    hinge
-                        .local_transform_mut()
-                        .set_rotation(UnitQuaternion::from_axis_angle(&Vector3::x_axis(), pitch));
-
-                    let hinge_position = hinge.global_position();
-                    if let Some(camera) = context.scene.graph.try_get(self.camera) {
-                        self.check_for_obstacles(
-                            hinge_position,
-                            camera.global_position(),
-                            &mut context,
-                            player_collider,
-                        );
-                    }
+                let hinge_position = hinge.global_position();
+                if let Some(camera) = context.scene.graph.try_get(self.camera) {
+                    self.check_for_obstacles(
+                        hinge_position,
+                        camera.global_position(),
+                        &mut context,
+                        self.collider_to_ignore,
+                    );
                 }
-            } else {
-                Log::warn("Must be player script!".to_owned())
             }
         } else {
             Log::warn("Player is not set!".to_owned());
@@ -162,7 +191,8 @@ impl ScriptTrait for CameraController {
         old_new_mapping
             .map(&mut self.player)
             .map(&mut self.hinge)
-            .map(&mut self.camera);
+            .map(&mut self.camera)
+            .map(&mut self.collider_to_ignore);
     }
 
     fn id(&self) -> Uuid {
