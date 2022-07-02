@@ -3,6 +3,7 @@ use crate::{
     bot::Bot, camera::CameraController, menu::Menu, obstacle::RotatorObstacle, player::Player,
     respawn::RespawnZone, start::StartPoint, target::Target,
 };
+use fyrox::event_loop::ControlFlow;
 use fyrox::{
     core::{
         color::Color,
@@ -98,7 +99,7 @@ impl Plugin for Game {
         Log::info("Game stopped!".to_owned());
     }
 
-    fn update(&mut self, context: &mut PluginContext) {
+    fn update(&mut self, context: &mut PluginContext, _control_flow: &mut ControlFlow) {
         if let Some(menu) = self.menu.as_mut() {
             menu.update(context);
         }
@@ -108,7 +109,12 @@ impl Plugin for Game {
         Self::type_uuid()
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, context: PluginContext) {
+    fn on_os_event(
+        &mut self,
+        event: &Event<()>,
+        context: PluginContext,
+        _control_flow: &mut ControlFlow,
+    ) {
         if let Some(menu) = self.menu.as_mut() {
             menu.handle_os_event(event, context);
         }
