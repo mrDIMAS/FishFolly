@@ -1,6 +1,6 @@
 //! Game project.
 use crate::{
-    bot::Bot, camera::CameraController, obstacle::RotatorObstacle, player::Player,
+    bot::Bot, camera::CameraController, menu::Menu, obstacle::RotatorObstacle, player::Player,
     respawn::RespawnZone, start::StartPoint, target::Target,
 };
 use fyrox::{
@@ -23,6 +23,7 @@ use std::collections::HashSet;
 pub mod bot;
 pub mod camera;
 pub mod marker;
+pub mod menu;
 pub mod obstacle;
 pub mod player;
 pub mod respawn;
@@ -32,6 +33,7 @@ pub mod target;
 #[derive(Default)]
 pub struct Game {
     scene: Handle<Scene>,
+    menu: Option<Menu>,
     pub targets: HashSet<Handle<Node>>,
     pub start_points: HashSet<Handle<Node>>,
     pub actors: HashSet<Handle<Node>>,
@@ -69,7 +71,7 @@ impl Plugin for Game {
             .add::<Game, RespawnZone, _>("Respawn Zone");
     }
 
-    fn on_init(&mut self, override_scene: Handle<Scene>, context: PluginContext) {
+    fn on_init(&mut self, override_scene: Handle<Scene>, mut context: PluginContext) {
         Log::info("Game started!".to_owned());
 
         let scene = if override_scene.is_some() {
@@ -87,6 +89,8 @@ impl Plugin for Game {
             context.scenes.add(scene)
         };
 
+        self.menu = Some(Menu::new(&mut context));
+
         self.set_scene(scene, context);
     }
 
@@ -94,13 +98,21 @@ impl Plugin for Game {
         Log::info("Game stopped!".to_owned());
     }
 
-    fn update(&mut self, _context: &mut PluginContext) {}
+    fn update(&mut self, context: &mut PluginContext) {
+        if let Some(menu) = self.menu.as_mut() {
+            menu.update(context);
+        }
+    }
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
     }
 
-    fn on_os_event(&mut self, _event: &Event<()>, _context: PluginContext) {}
+    fn on_os_event(&mut self, event: &Event<()>, context: PluginContext) {
+        if let Some(menu) = self.menu.as_mut() {
+            menu.handle_os_event(event, context);
+        }
+    }
 }
 
 pub fn game_ref(plugin: &dyn Plugin) -> &Game {
