@@ -1,6 +1,6 @@
 //! A target that bots will try to reach.
 
-use crate::{game_mut, Game};
+use crate::{game_mut, GameConstructor};
 use fyrox::{
     core::{inspect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*},
     impl_component_provider,
@@ -38,6 +38,6 @@ impl ScriptTrait for Target {
     }
 
     fn plugin_uuid(&self) -> Uuid {
-        Game::type_uuid()
+        GameConstructor::type_uuid()
     }
 }

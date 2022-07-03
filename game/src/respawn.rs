@@ -1,7 +1,7 @@
 //! A cuboid respawn zone, any actor (player or bot) that will touch respawn zone will be spawned
 //! at one of start points.
 
-use crate::{game_ref, Game, Uuid};
+use crate::{game_ref, GameConstructor, Uuid};
 use fyrox::{
     core::{
         inspect::prelude::*, math::aabb::AxisAlignedBoundingBox, uuid::uuid, visitor::prelude::*,
@@ -50,6 +50,6 @@ impl ScriptTrait for RespawnZone {
     }
 
     fn plugin_uuid(&self) -> Uuid {
-        Game::type_uuid()
+        GameConstructor::type_uuid()
     }
 }

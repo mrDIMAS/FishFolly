@@ -1,6 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{game_mut, marker::Actor, Game};
+use crate::{game_mut, marker::Actor, Game, GameConstructor};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -156,6 +156,6 @@ impl ScriptTrait for Bot {
     }
 
     fn plugin_uuid(&self) -> Uuid {
-        Game::type_uuid()
+        GameConstructor::type_uuid()
     }
 }

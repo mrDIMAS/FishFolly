@@ -1,5 +1,5 @@
 //! Executor runs the game in standalone (production) mode.
-use fish_fall::Game;
+use fish_fall::GameConstructor;
 use fyrox::{engine::executor::Executor, renderer::QualitySettings};
 
 fn main() {
@@ -11,6 +11,6 @@ fn main() {
         .renderer
         .set_quality_settings(&quality_settings)
         .unwrap();
-    executor.add_plugin(Game::default());
+    executor.add_plugin(GameConstructor);
     executor.run()
 }

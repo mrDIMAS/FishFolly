@@ -1,6 +1,6 @@
 //! Main player (host) script.
 
-use crate::{game_mut, marker::Actor, CameraController, Event, Game};
+use crate::{game_mut, marker::Actor, CameraController, Event, GameConstructor};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -276,6 +276,6 @@ impl ScriptTrait for Player {
     }
 
     fn plugin_uuid(&self) -> Uuid {
-        Game::type_uuid()
+        GameConstructor::type_uuid()
     }
 }

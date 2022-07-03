@@ -1,5 +1,5 @@
 //! Editor with your game connected to it as a plugin.
-use fish_fall::Game;
+use fish_fall::GameConstructor;
 use fyrox::event_loop::EventLoop;
 use fyroxed_base::{Editor, StartupData};
 
@@ -13,6 +13,6 @@ fn main() {
         }),
     );
 
-    editor.add_game_plugin(Game::default());
+    editor.add_game_plugin(GameConstructor);
     editor.run(event_loop)
 }

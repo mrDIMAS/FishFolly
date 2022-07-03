@@ -3,6 +3,7 @@ use crate::{
     bot::Bot, camera::CameraController, menu::Menu, obstacle::RotatorObstacle, player::Player,
     respawn::RespawnZone, start::StartPoint, target::Target,
 };
+use fyrox::plugin::PluginConstructor;
 use fyrox::{
     core::{
         color::Color,
@@ -32,16 +33,38 @@ pub mod respawn;
 pub mod start;
 pub mod target;
 
-#[derive(Default)]
 pub struct Game {
-    scene: Handle<Scene>,
-    menu: Option<Menu>,
+    menu: Menu,
     pub targets: HashSet<Handle<Node>>,
     pub start_points: HashSet<Handle<Node>>,
     pub actors: HashSet<Handle<Node>>,
 }
 
-impl TypeUuidProvider for Game {
+pub struct GameConstructor;
+
+impl PluginConstructor for GameConstructor {
+    fn register(&self, context: PluginRegistrationContext) {
+        let script_constructors = &context.serialization_context.script_constructors;
+        script_constructors
+            .add::<GameConstructor, Player, _>("Player")
+            .add::<GameConstructor, CameraController, _>("Camera Controller")
+            .add::<GameConstructor, Bot, _>("Bot")
+            .add::<GameConstructor, Target, _>("Target")
+            .add::<GameConstructor, RotatorObstacle, _>("Rotator Obstacle")
+            .add::<GameConstructor, StartPoint, _>("Start Point")
+            .add::<GameConstructor, RespawnZone, _>("Respawn Zone");
+    }
+
+    fn create_instance(
+        &self,
+        override_scene: Handle<Scene>,
+        context: PluginContext,
+    ) -> Box<dyn Plugin> {
+        Box::new(Game::new(override_scene, context))
+    }
+}
+
+impl TypeUuidProvider for GameConstructor {
     // Returns unique plugin id for serialization needs.
     fn type_uuid() -> Uuid {
         uuid!("cb358b1c-fc23-4c44-9e59-0a9671324196")
@@ -49,31 +72,7 @@ impl TypeUuidProvider for Game {
 }
 
 impl Game {
-    fn set_scene(&mut self, scene: Handle<Scene>, context: PluginContext) {
-        self.scene = scene;
-
-        if let Some(scene) = context.scenes.try_get_mut(self.scene) {
-            scene.ambient_lighting_color = Color::opaque(200, 200, 200);
-
-            Log::info("Scene was set successfully!".to_owned());
-        }
-    }
-}
-
-impl Plugin for Game {
-    fn on_register(&mut self, context: PluginRegistrationContext) {
-        let script_constructors = &context.serialization_context.script_constructors;
-        script_constructors
-            .add::<Game, Player, _>("Player")
-            .add::<Game, CameraController, _>("Camera Controller")
-            .add::<Game, Bot, _>("Bot")
-            .add::<Game, Target, _>("Target")
-            .add::<Game, RotatorObstacle, _>("Rotator Obstacle")
-            .add::<Game, StartPoint, _>("Start Point")
-            .add::<Game, RespawnZone, _>("Respawn Zone");
-    }
-
-    fn on_init(&mut self, override_scene: Handle<Scene>, mut context: PluginContext) {
+    fn new(override_scene: Handle<Scene>, mut context: PluginContext) -> Self {
         Log::info("Game started!".to_owned());
 
         let scene = if override_scene.is_some() {
@@ -91,17 +90,28 @@ impl Plugin for Game {
             context.scenes.add(scene)
         };
 
-        self.menu = Some(Menu::new(&mut context));
+        if let Some(scene) = context.scenes.try_get_mut(scene) {
+            scene.ambient_lighting_color = Color::opaque(200, 200, 200);
 
-        self.set_scene(scene, context);
+            Log::info("Scene was set successfully!".to_owned());
+        }
+
+        Self {
+            menu: Menu::new(&mut context),
+            targets: Default::default(),
+            start_points: Default::default(),
+            actors: Default::default(),
+        }
     }
+}
 
+impl Plugin for Game {
     fn on_deinit(&mut self, _context: PluginContext) {
         Log::info("Game stopped!".to_owned());
     }
 
     fn id(&self) -> Uuid {
-        Self::type_uuid()
+        GameConstructor::type_uuid()
     }
 
     fn on_os_event(
@@ -110,9 +120,7 @@ impl Plugin for Game {
         context: PluginContext,
         _control_flow: &mut ControlFlow,
     ) {
-        if let Some(menu) = self.menu.as_mut() {
-            menu.handle_os_event(event, context);
-        }
+        self.menu.handle_os_event(event, context);
     }
 
     fn on_ui_message(
@@ -121,9 +129,7 @@ impl Plugin for Game {
         message: &UiMessage,
         control_flow: &mut ControlFlow,
     ) {
-        if let Some(menu) = self.menu.as_mut() {
-            menu.handle_ui_message(context, message, control_flow);
-        }
+        self.menu.handle_ui_message(context, message, control_flow);
     }
 }
 

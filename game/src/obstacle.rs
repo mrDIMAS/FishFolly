@@ -1,6 +1,6 @@
 //! A dynamic (rotating, moving) obstacle.
 
-use crate::Game;
+use crate::GameConstructor;
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, UnitVector3, Vector3},
@@ -68,6 +68,6 @@ impl ScriptTrait for RotatorObstacle {
     }
 
     fn plugin_uuid(&self) -> Uuid {
-        Game::type_uuid()
+        GameConstructor::type_uuid()
     }
 }

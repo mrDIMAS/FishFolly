@@ -1,6 +1,6 @@
 //! A spawn point for players (bots).
 
-use crate::{game_mut, Game};
+use crate::{game_mut, GameConstructor};
 use fyrox::{
     core::{inspect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*},
     engine::resource_manager::ResourceManager,
@@ -75,6 +75,6 @@ impl ScriptTrait for StartPoint {
     }
 
     fn plugin_uuid(&self) -> Uuid {
-        Game::type_uuid()
+        GameConstructor::type_uuid()
     }
 }
