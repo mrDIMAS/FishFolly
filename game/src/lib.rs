@@ -3,7 +3,6 @@ use crate::{
     bot::Bot, camera::CameraController, menu::Menu, obstacle::RotatorObstacle, player::Player,
     respawn::RespawnZone, start::StartPoint, target::Target,
 };
-use fyrox::event_loop::ControlFlow;
 use fyrox::{
     core::{
         color::Color,
@@ -12,6 +11,8 @@ use fyrox::{
         uuid::{uuid, Uuid},
     },
     event::Event,
+    event_loop::ControlFlow,
+    gui::message::UiMessage,
     plugin::{Plugin, PluginContext, PluginRegistrationContext},
     scene::{
         node::{Node, TypeUuidProvider},
@@ -99,12 +100,6 @@ impl Plugin for Game {
         Log::info("Game stopped!".to_owned());
     }
 
-    fn update(&mut self, context: &mut PluginContext, _control_flow: &mut ControlFlow) {
-        if let Some(menu) = self.menu.as_mut() {
-            menu.update(context);
-        }
-    }
-
     fn id(&self) -> Uuid {
         Self::type_uuid()
     }
@@ -117,6 +112,17 @@ impl Plugin for Game {
     ) {
         if let Some(menu) = self.menu.as_mut() {
             menu.handle_os_event(event, context);
+        }
+    }
+
+    fn on_ui_message(
+        &mut self,
+        context: &mut PluginContext,
+        message: &UiMessage,
+        control_flow: &mut ControlFlow,
+    ) {
+        if let Some(menu) = self.menu.as_mut() {
+            menu.handle_ui_message(context, message, control_flow);
         }
     }
 }

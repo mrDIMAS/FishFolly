@@ -1,10 +1,11 @@
 use fyrox::{
     core::pool::Handle,
     event::{Event, WindowEvent},
+    event_loop::ControlFlow,
     gui::{
-        button::ButtonBuilder,
+        button::{ButtonBuilder, ButtonMessage},
         grid::{Column, GridBuilder, Row},
-        message::MessageDirection,
+        message::{MessageDirection, UiMessage},
         stack_panel::StackPanelBuilder,
         widget::{WidgetBuilder, WidgetMessage},
         Thickness, UiNode,
@@ -14,12 +15,14 @@ use fyrox::{
 
 pub struct Menu {
     root: Handle<UiNode>,
+    exit: Handle<UiNode>,
 }
 
 impl Menu {
     pub fn new(context: &mut PluginContext) -> Self {
         let ctx = &mut context.user_interface.build_ctx();
 
+        let exit;
         let root = GridBuilder::new(
             WidgetBuilder::new()
                 .with_visibility(false) // TODO
@@ -35,13 +38,14 @@ impl Menu {
                                 .with_text("Start")
                                 .build(ctx),
                             )
-                            .with_child(
-                                ButtonBuilder::new(
+                            .with_child({
+                                exit = ButtonBuilder::new(
                                     WidgetBuilder::new().with_margin(Thickness::uniform(1.0)),
                                 )
                                 .with_text("Exit")
-                                .build(ctx),
-                            ),
+                                .build(ctx);
+                                exit
+                            }),
                     )
                     .build(ctx),
                 ),
@@ -54,11 +58,20 @@ impl Menu {
         .add_column(Column::stretch())
         .build(ctx);
 
-        Self { root }
+        Self { root, exit }
     }
 
-    pub fn update(&mut self, context: &mut PluginContext) {
-        while let Some(_message) = context.user_interface.poll_message() {}
+    pub fn handle_ui_message(
+        &mut self,
+        _context: &mut PluginContext,
+        message: &UiMessage,
+        control_flow: &mut ControlFlow,
+    ) {
+        if let Some(ButtonMessage::Click) = message.data() {
+            if message.destination() == self.exit {
+                *control_flow = ControlFlow::Exit;
+            }
+        }
     }
 
     pub fn handle_os_event(&mut self, event: &Event<()>, context: PluginContext) {
