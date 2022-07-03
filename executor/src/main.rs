@@ -11,6 +11,6 @@ fn main() {
         .renderer
         .set_quality_settings(&quality_settings)
         .unwrap();
-    executor.add_plugin(GameConstructor);
+    executor.add_plugin_constructor(GameConstructor);
     executor.run()
 }
