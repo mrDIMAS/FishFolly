@@ -46,13 +46,13 @@ impl PluginConstructor for GameConstructor {
     fn register(&self, context: PluginRegistrationContext) {
         let script_constructors = &context.serialization_context.script_constructors;
         script_constructors
-            .add::<GameConstructor, Player, _>("Player")
-            .add::<GameConstructor, CameraController, _>("Camera Controller")
-            .add::<GameConstructor, Bot, _>("Bot")
-            .add::<GameConstructor, Target, _>("Target")
-            .add::<GameConstructor, RotatorObstacle, _>("Rotator Obstacle")
-            .add::<GameConstructor, StartPoint, _>("Start Point")
-            .add::<GameConstructor, RespawnZone, _>("Respawn Zone");
+            .add::<Player>("Player")
+            .add::<CameraController>("Camera Controller")
+            .add::<Bot>("Bot")
+            .add::<Target>("Target")
+            .add::<RotatorObstacle>("Rotator Obstacle")
+            .add::<StartPoint>("Start Point")
+            .add::<RespawnZone>("Respawn Zone");
     }
 
     fn create_instance(
@@ -91,7 +91,7 @@ impl Game {
         };
 
         if let Some(scene) = context.scenes.try_get_mut(scene) {
-            scene.ambient_lighting_color = Color::opaque(200, 200, 200);
+            scene.ambient_lighting_color = Color::opaque(150, 150, 150);
 
             Log::info("Scene was set successfully!".to_owned());
         }
