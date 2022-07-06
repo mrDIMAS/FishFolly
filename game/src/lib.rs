@@ -3,7 +3,6 @@ use crate::{
     bot::Bot, camera::CameraController, menu::Menu, obstacle::RotatorObstacle, player::Player,
     respawn::RespawnZone, start::StartPoint, target::Target,
 };
-use fyrox::plugin::PluginConstructor;
 use fyrox::{
     core::{
         color::Color,
@@ -14,7 +13,7 @@ use fyrox::{
     event::Event,
     event_loop::ControlFlow,
     gui::message::UiMessage,
-    plugin::{Plugin, PluginContext, PluginRegistrationContext},
+    plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
     scene::{
         node::{Node, TypeUuidProvider},
         Scene, SceneLoader,
@@ -32,6 +31,7 @@ pub mod player;
 pub mod respawn;
 pub mod start;
 pub mod target;
+pub mod utils;
 
 pub struct Game {
     menu: Menu,
@@ -80,7 +80,7 @@ impl Game {
         } else {
             let scene = block_on(
                 block_on(SceneLoader::from_file(
-                    "data/scene.rgs",
+                    "data/drake.rgs",
                     context.serialization_context.clone(),
                 ))
                 .unwrap()

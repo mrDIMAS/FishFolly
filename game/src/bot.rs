@@ -1,18 +1,20 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{game_mut, marker::Actor, Game, GameConstructor};
+use crate::{game_mut, marker::Actor, utils, Game, GameConstructor};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
-        algebra::UnitQuaternion, algebra::Vector3, futures::executor::block_on,
-        inspect::prelude::*, pool::Handle, uuid::uuid, uuid::Uuid, visitor::prelude::*,
+        algebra::Point3, algebra::UnitQuaternion, algebra::Vector3, arrayvec::ArrayVec,
+        futures::executor::block_on, inspect::prelude::*, pool::Handle, uuid::uuid, uuid::Uuid,
+        visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
     gui::inspector::PropertyChanged,
     handle_object_property_changed, impl_component_provider,
     resource::absm::AbsmResource,
     scene::{
-        graph::map::NodeHandleMap,
+        collider::{Collider, ColliderShape},
+        graph::{map::NodeHandleMap, physics::RayCastOptions, Graph},
         node::{Node, TypeUuidProvider},
         rigidbody::RigidBody,
     },
@@ -28,6 +30,10 @@ pub struct Bot {
     model_root: Handle<Node>,
     #[inspect(description = "Animation blending state machine used by bot's model.")]
     absm_resource: Option<AbsmResource>,
+    #[inspect(description = "Collider of the bot.")]
+    pub collider: Handle<Node>,
+    #[inspect(description = "Handle of an edge probe locator node")]
+    probe_locator: Handle<Node>,
     #[visit(skip)]
     #[inspect(skip)]
     absm: Handle<Machine>,
@@ -50,10 +56,44 @@ impl Default for Bot {
             speed: 1.0,
             model_root: Default::default(),
             absm_resource: None,
+            collider: Default::default(),
             absm: Default::default(),
             actor: Default::default(),
+            probe_locator: Default::default(),
         }
     }
+}
+
+fn probe_ground(begin: Vector3<f32>, max_height: f32, graph: &Graph) -> Option<Vector3<f32>> {
+    let mut buffer = ArrayVec::<_, 64>::new();
+
+    let end = Vector3::new(begin.x, begin.y - max_height, begin.z);
+
+    let dir = (end - begin)
+        .try_normalize(f32::EPSILON)
+        .unwrap_or_default()
+        .scale(max_height);
+
+    graph.physics.cast_ray(
+        RayCastOptions {
+            ray_origin: Point3::from(begin),
+            ray_direction: dir,
+            max_len: dir.norm(),
+            groups: Default::default(),
+            sort_results: true,
+        },
+        &mut buffer,
+    );
+
+    for intersection in buffer {
+        if let Some(collider) = graph[intersection.collider].cast::<Collider>() {
+            if let ColliderShape::Trimesh(_) = collider.shape() {
+                return Some(intersection.position.coords);
+            }
+        }
+    }
+
+    None
 }
 
 impl ScriptTrait for Bot {
@@ -61,7 +101,10 @@ impl ScriptTrait for Bot {
         handle_object_property_changed!(self, args,
             Self::SPEED => speed,
             Self::ABSM_RESOURCE => absm_resource,
-            Self::MODEL_ROOT => model_root)
+            Self::MODEL_ROOT => model_root,
+            Self::COLLIDER => collider,
+            Self::PROBE_LOCATOR => probe_locator
+        )
     }
 
     fn on_init(&mut self, context: ScriptContext) {
@@ -102,8 +145,18 @@ impl ScriptTrait for Bot {
             .cloned()
             .map(|t| scene.graph[t].global_position());
 
+        let ground_probe_begin =
+            if let Some(probe_locator) = scene.graph.try_get(self.probe_locator) {
+                probe_locator.global_position()
+            } else {
+                Log::warn("There is not ground probe locator specified!".to_owned());
+                Default::default()
+            };
+
         if let Some(target_pos) = target_pos {
             if let Some(rigid_body) = scene.graph[handle].cast_mut::<RigidBody>() {
+                let current_y_lin_vel = rigid_body.lin_vel().y;
+
                 let target_vec = target_pos - rigid_body.global_position();
                 let distance = target_vec.norm();
                 let dir = target_vec.try_normalize(f32::EPSILON).unwrap_or_default();
@@ -115,9 +168,24 @@ impl ScriptTrait for Bot {
                     Vector3::new(dir.x * self.speed, 0.0, dir.z * self.speed)
                 };
 
+                let jump_vel = 5.0;
+                let y_vel = if utils::has_ground_contact(self.collider, &scene.graph) {
+                    probe_ground(ground_probe_begin, 10.0, &scene.graph).map_or(jump_vel, |pos| {
+                        if pos.metric_distance(&ground_probe_begin) > 10.0 {
+                            jump_vel
+                        } else {
+                            current_y_lin_vel
+                        }
+                    })
+                } else {
+                    current_y_lin_vel
+                };
+
+                // Reborrow the node.
+                let rigid_body = scene.graph[handle].cast_mut::<RigidBody>().unwrap();
                 rigid_body.set_lin_vel(Vector3::new(
                     horizontal_velocity.x,
-                    rigid_body.lin_vel().y,
+                    y_vel,
                     horizontal_velocity.z,
                 ));
 
@@ -140,7 +208,10 @@ impl ScriptTrait for Bot {
     }
 
     fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
-        old_new_mapping.map(&mut self.model_root);
+        old_new_mapping
+            .map(&mut self.model_root)
+            .map(&mut self.collider)
+            .map(&mut self.probe_locator);
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {

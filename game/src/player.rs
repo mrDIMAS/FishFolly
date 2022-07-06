@@ -1,6 +1,6 @@
 //! Main player (host) script.
 
-use crate::{game_mut, marker::Actor, CameraController, Event, GameConstructor};
+use crate::{game_mut, marker::Actor, utils, CameraController, Event, GameConstructor};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -17,7 +17,6 @@ use fyrox::{
     handle_object_property_changed, impl_component_provider,
     resource::absm::AbsmResource,
     scene::{
-        collider::Collider,
         graph::{map::NodeHandleMap, Graph},
         node::Node,
         node::TypeUuidProvider,
@@ -107,19 +106,7 @@ impl TypeUuidProvider for Player {
 
 impl Player {
     pub fn has_ground_contact(&self, graph: &Graph) -> bool {
-        if let Some(collider) = graph
-            .try_get(self.collider)
-            .and_then(|n| n.cast::<Collider>())
-        {
-            for contact in collider.contacts(&graph.physics) {
-                for manifold in contact.manifolds.iter() {
-                    if manifold.local_n1.y.abs() > 0.7 || manifold.local_n2.y.abs() > 0.7 {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
+        utils::has_ground_contact(self.collider, graph)
     }
 }
 
