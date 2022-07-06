@@ -19,7 +19,10 @@ use fyrox::{
         rigidbody::RigidBody,
     },
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
-    utils::log::Log,
+    utils::{
+        log::Log,
+        navmesh::{NavmeshAgent, NavmeshAgentBuilder},
+    },
 };
 
 #[derive(Clone, Visit, Inspect, Debug)]
@@ -40,6 +43,9 @@ pub struct Bot {
     #[visit(skip)]
     #[inspect(skip)]
     pub actor: Actor,
+    #[visit(skip)]
+    #[inspect(skip)]
+    agent: NavmeshAgent,
 }
 
 impl_component_provider!(Bot, actor: Actor);
@@ -60,6 +66,9 @@ impl Default for Bot {
             absm: Default::default(),
             actor: Default::default(),
             probe_locator: Default::default(),
+            agent: NavmeshAgentBuilder::new()
+                .with_recalculation_threshold(0.5)
+                .build(),
         }
     }
 }
@@ -155,17 +164,22 @@ impl ScriptTrait for Bot {
 
         if let Some(target_pos) = target_pos {
             if let Some(rigid_body) = scene.graph[handle].cast_mut::<RigidBody>() {
+                let self_position = rigid_body.global_position();
                 let current_y_lin_vel = rigid_body.lin_vel().y;
 
-                let target_vec = target_pos - rigid_body.global_position();
-                let distance = target_vec.norm();
-                let dir = target_vec.try_normalize(f32::EPSILON).unwrap_or_default();
+                if let Some(navmesh) = scene.navmeshes.at_mut(0) {
+                    self.agent.set_speed(self.speed);
+                    self.agent.set_target(target_pos);
+                    self.agent.set_position(self_position);
+                    let _ = self.agent.update(context.dt, navmesh);
+                }
 
-                let reached_target = distance < 2.5;
-                let horizontal_velocity = if reached_target {
-                    Vector3::default()
+                let has_reached_destination =
+                    self.agent.target().metric_distance(&self_position) <= 1.0;
+                let horizontal_velocity = if has_reached_destination {
+                    Vector3::new(0.0, 0.0, 0.0)
                 } else {
-                    Vector3::new(dir.x * self.speed, 0.0, dir.z * self.speed)
+                    (self.agent.position() - self_position).scale(1.0 / context.dt)
                 };
 
                 let jump_vel = 5.0;
