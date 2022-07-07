@@ -1,7 +1,8 @@
 //! Game project.
 use crate::{
-    bot::Bot, camera::CameraController, cannon::Cannon, menu::Menu, obstacle::RotatorObstacle,
-    player::Player, respawn::RespawnZone, start::StartPoint, target::Target,
+    bot::Bot, camera::CameraController, cannon::Cannon, jumper::Jumper, menu::Menu,
+    obstacle::RotatorObstacle, player::Player, respawn::RespawnZone, start::StartPoint,
+    target::Target,
 };
 use fyrox::{
     core::{
@@ -25,6 +26,7 @@ use std::collections::HashSet;
 pub mod bot;
 pub mod camera;
 pub mod cannon;
+pub mod jumper;
 pub mod marker;
 pub mod menu;
 pub mod obstacle;
@@ -54,7 +56,8 @@ impl PluginConstructor for GameConstructor {
             .add::<RotatorObstacle>("Rotator Obstacle")
             .add::<StartPoint>("Start Point")
             .add::<RespawnZone>("Respawn Zone")
-            .add::<Cannon>("Cannon");
+            .add::<Cannon>("Cannon")
+            .add::<Jumper>("Jumper");
     }
 
     fn create_instance(
