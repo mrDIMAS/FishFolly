@@ -182,10 +182,12 @@ impl ScriptTrait for Bot {
                     (self.agent.position() - self_position).scale(1.0 / context.dt)
                 };
 
+                let mut jump = false;
                 let jump_vel = 5.0;
                 let y_vel = if utils::has_ground_contact(self.collider, &scene.graph) {
                     probe_ground(ground_probe_begin, 10.0, &scene.graph).map_or(jump_vel, |pos| {
                         if pos.metric_distance(&ground_probe_begin) > 10.0 {
+                            jump = true;
                             jump_vel
                         } else {
                             current_y_lin_vel
@@ -215,7 +217,8 @@ impl ScriptTrait for Bot {
                 }
 
                 if let Some(absm) = scene.animation_machines.try_get_mut(self.absm) {
-                    absm.set_parameter("Run", Parameter::Rule(is_running));
+                    absm.set_parameter("Run", Parameter::Rule(is_running))
+                        .set_parameter("Jump", Parameter::Rule(jump));
                 }
             }
         }
