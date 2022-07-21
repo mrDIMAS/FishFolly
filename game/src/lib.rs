@@ -1,8 +1,8 @@
 //! Game project.
 use crate::{
     bot::Bot, camera::CameraController, cannon::Cannon, jumper::Jumper, menu::Menu,
-    obstacle::RotatorObstacle, player::Player, respawn::RespawnZone, start::StartPoint,
-    target::Target,
+    obstacle::RotatorObstacle, player::Player, ragdoll::link::BoneLink, ragdoll::Ragdoll,
+    respawn::RespawnZone, start::StartPoint, target::Target,
 };
 use fyrox::{
     core::{
@@ -31,6 +31,7 @@ pub mod marker;
 pub mod menu;
 pub mod obstacle;
 pub mod player;
+pub mod ragdoll;
 pub mod respawn;
 pub mod start;
 pub mod target;
@@ -38,6 +39,7 @@ pub mod utils;
 
 pub struct Game {
     menu: Menu,
+    scene: Handle<Scene>,
     pub targets: HashSet<Handle<Node>>,
     pub start_points: HashSet<Handle<Node>>,
     pub actors: HashSet<Handle<Node>>,
@@ -57,7 +59,9 @@ impl PluginConstructor for GameConstructor {
             .add::<StartPoint>("Start Point")
             .add::<RespawnZone>("Respawn Zone")
             .add::<Cannon>("Cannon")
-            .add::<Jumper>("Jumper");
+            .add::<Jumper>("Jumper")
+            .add::<Ragdoll>("Ragdoll")
+            .add::<BoneLink>("Bone Link");
     }
 
     fn create_instance(
@@ -106,6 +110,7 @@ impl Game {
             targets: Default::default(),
             start_points: Default::default(),
             actors: Default::default(),
+            scene,
         }
     }
 }
@@ -126,6 +131,16 @@ impl Plugin for Game {
         _control_flow: &mut ControlFlow,
     ) {
         self.menu.handle_os_event(event, context);
+    }
+
+    fn update(&mut self, context: &mut PluginContext, _control_flow: &mut ControlFlow) {
+        if false {
+            if let Some(scene) = context.scenes.try_get_mut(self.scene) {
+                scene.drawing_context.clear_lines();
+
+                scene.graph.physics.draw(&mut scene.drawing_context);
+            }
+        }
     }
 
     fn on_ui_message(

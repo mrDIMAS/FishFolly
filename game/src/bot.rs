@@ -1,6 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{game_mut, marker::Actor, utils, Game, GameConstructor};
+use crate::{game_mut, marker::Actor, utils, Game, GameConstructor, Ragdoll};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -37,6 +37,14 @@ pub struct Bot {
     pub collider: Handle<Node>,
     #[inspect(description = "Handle of an edge probe locator node")]
     probe_locator: Handle<Node>,
+    #[inspect(description = "A handle of the ragdoll")]
+    #[visit(optional)]
+    ragdoll: Handle<Node>,
+    #[inspect(
+        description = "Amount of time that the bot will be lying on the ground with active ragdoll."
+    )]
+    #[visit(optional)]
+    stand_up_timeout: f32,
     #[visit(skip)]
     #[inspect(skip)]
     absm: Handle<Machine>,
@@ -46,6 +54,9 @@ pub struct Bot {
     #[visit(skip)]
     #[inspect(skip)]
     agent: NavmeshAgent,
+    #[visit(skip)]
+    #[inspect(skip)]
+    stand_up_timer: f32,
 }
 
 impl_component_provider!(Bot, actor: Actor);
@@ -69,6 +80,9 @@ impl Default for Bot {
             agent: NavmeshAgentBuilder::new()
                 .with_recalculation_threshold(0.5)
                 .build(),
+            ragdoll: Default::default(),
+            stand_up_timeout: 2.0,
+            stand_up_timer: 0.0,
         }
     }
 }
@@ -105,6 +119,16 @@ fn probe_ground(begin: Vector3<f32>, max_height: f32, graph: &Graph) -> Option<V
     None
 }
 
+fn set_ragdoll_enabled(ragdoll_holder: Handle<Node>, graph: &mut Graph, enabled: bool) {
+    if let Some(ragdoll) = graph
+        .try_get_mut(ragdoll_holder)
+        .and_then(|n| n.script_mut())
+        .and_then(|s| s.cast_mut::<Ragdoll>())
+    {
+        ragdoll.enabled = enabled;
+    }
+}
+
 impl ScriptTrait for Bot {
     fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
         handle_object_property_changed!(self, args,
@@ -112,7 +136,9 @@ impl ScriptTrait for Bot {
             Self::ABSM_RESOURCE => absm_resource,
             Self::MODEL_ROOT => model_root,
             Self::COLLIDER => collider,
-            Self::PROBE_LOCATOR => probe_locator
+            Self::PROBE_LOCATOR => probe_locator,
+            Self::RAGDOLL => ragdoll,
+            Self::STAND_UP_TIMEOUT => stand_up_timeout
         )
     }
 
@@ -141,6 +167,7 @@ impl ScriptTrait for Bot {
             scene,
             handle,
             plugin,
+            dt,
             ..
         } = context;
 
@@ -179,23 +206,40 @@ impl ScriptTrait for Bot {
                 let horizontal_velocity = if has_reached_destination {
                     Vector3::new(0.0, 0.0, 0.0)
                 } else {
-                    (self.agent.position() - self_position).scale(1.0 / context.dt)
+                    let mut vel = (self.agent.position() - self_position).scale(1.0 / context.dt);
+                    vel.y = 0.0;
+                    vel
                 };
 
                 let mut jump = false;
                 let jump_vel = 5.0;
                 let y_vel = if utils::has_ground_contact(self.collider, &scene.graph) {
-                    probe_ground(ground_probe_begin, 10.0, &scene.graph).map_or(jump_vel, |pos| {
-                        if pos.metric_distance(&ground_probe_begin) > 10.0 {
+                    if let Some(probed_position) =
+                        probe_ground(ground_probe_begin, 10.0, &scene.graph)
+                    {
+                        if probed_position.metric_distance(&ground_probe_begin) > 8.0 {
                             jump = true;
                             jump_vel
                         } else {
                             current_y_lin_vel
                         }
-                    })
+                    } else {
+                        jump = true;
+                        jump_vel
+                    }
                 } else {
                     current_y_lin_vel
                 };
+
+                // TEST - activate ragdoll on jumping
+                self.stand_up_timer -= dt;
+                if jump && self.stand_up_timer <= 0.0 {
+                    set_ragdoll_enabled(self.ragdoll, &mut scene.graph, true);
+                    self.stand_up_timer = self.stand_up_timeout;
+                }
+                if self.stand_up_timer <= 0.0 {
+                    set_ragdoll_enabled(self.ragdoll, &mut scene.graph, false);
+                }
 
                 // Reborrow the node.
                 let rigid_body = scene.graph[handle].cast_mut::<RigidBody>().unwrap();
@@ -205,7 +249,7 @@ impl ScriptTrait for Bot {
                     horizontal_velocity.z,
                 ));
 
-                let is_running = horizontal_velocity.norm() > 0.1;
+                let is_running = self.stand_up_timer <= 0.0 && horizontal_velocity.norm() > 0.1;
 
                 if is_running {
                     rigid_body
@@ -228,7 +272,8 @@ impl ScriptTrait for Bot {
         old_new_mapping
             .map(&mut self.model_root)
             .map(&mut self.collider)
-            .map(&mut self.probe_locator);
+            .map(&mut self.probe_locator)
+            .map(&mut self.ragdoll);
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {

@@ -36,7 +36,7 @@ pub struct InputController {
 }
 
 impl InputController {
-    pub fn update(&mut self, event: &Event<()>) {
+    pub fn on_os_event(&mut self, event: &Event<()>) {
         if let Event::WindowEvent {
             event: WindowEvent::KeyboardInput { input, .. },
             ..
@@ -148,7 +148,7 @@ impl ScriptTrait for Player {
     }
 
     fn on_os_event(&mut self, event: &Event<()>, _context: ScriptContext) {
-        self.input_controller.update(event);
+        self.input_controller.on_os_event(event);
     }
 
     fn on_update(&mut self, context: ScriptContext) {
