@@ -5,12 +5,11 @@ use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
         algebra::Point3, algebra::UnitQuaternion, algebra::Vector3, arrayvec::ArrayVec,
-        futures::executor::block_on, inspect::prelude::*, pool::Handle, uuid::uuid, uuid::Uuid,
-        visitor::prelude::*,
+        futures::executor::block_on, inspect::prelude::*, pool::Handle, reflect::Reflect,
+        uuid::uuid, uuid::Uuid, visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
-    gui::inspector::PropertyChanged,
-    handle_object_property_changed, impl_component_provider,
+    impl_component_provider,
     resource::absm::AbsmResource,
     scene::{
         collider::{Collider, ColliderShape},
@@ -25,7 +24,7 @@ use fyrox::{
     },
 };
 
-#[derive(Clone, Visit, Inspect, Debug)]
+#[derive(Clone, Visit, Inspect, Reflect, Debug)]
 pub struct Bot {
     #[inspect(description = "Speed of the bot.")]
     speed: f32,
@@ -47,15 +46,19 @@ pub struct Bot {
     stand_up_timeout: f32,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     absm: Handle<Machine>,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     pub actor: Actor,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     agent: NavmeshAgent,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     stand_up_timer: f32,
 }
 
@@ -130,18 +133,6 @@ fn set_ragdoll_enabled(ragdoll_holder: Handle<Node>, graph: &mut Graph, enabled:
 }
 
 impl ScriptTrait for Bot {
-    fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args,
-            Self::SPEED => speed,
-            Self::ABSM_RESOURCE => absm_resource,
-            Self::MODEL_ROOT => model_root,
-            Self::COLLIDER => collider,
-            Self::PROBE_LOCATOR => probe_locator,
-            Self::RAGDOLL => ragdoll,
-            Self::STAND_UP_TIMEOUT => stand_up_timeout
-        )
-    }
-
     fn on_init(&mut self, context: ScriptContext) {
         assert!(game_mut(context.plugin).actors.insert(context.handle));
 

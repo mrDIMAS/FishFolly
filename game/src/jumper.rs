@@ -5,17 +5,17 @@ use fyrox::{
     core::{
         algebra::Vector3,
         inspect::prelude::*,
+        reflect::Reflect,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    gui::inspector::PropertyChanged,
-    handle_object_property_changed, impl_component_provider,
+    impl_component_provider,
     scene::{collider::Collider, node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
 };
 use std::collections::HashSet;
 
-#[derive(Clone, Default, Debug, Visit, Inspect)]
+#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
 pub struct Jumper {
     push_force: f32,
 }
@@ -29,10 +29,6 @@ impl TypeUuidProvider for Jumper {
 }
 
 impl ScriptTrait for Jumper {
-    fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args, Self::PUSH_FORCE => push_force)
-    }
-
     fn on_update(&mut self, context: ScriptContext) {
         let game_ref = game_ref(context.plugin);
         if let Some(collider) = context.scene.graph[context.handle].cast::<Collider>() {

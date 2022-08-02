@@ -5,16 +5,16 @@ use fyrox::{
     core::{
         inspect::prelude::*,
         pool::Handle,
+        reflect::Reflect,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    gui::inspector::PropertyChanged,
-    handle_object_property_changed, impl_component_provider,
+    impl_component_provider,
     scene::{graph::map::NodeHandleMap, node::Node, node::TypeUuidProvider},
     script::ScriptTrait,
 };
 
-#[derive(Clone, Default, Debug, Visit, Inspect)]
+#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
 pub struct BoneLink {
     pub bone: Handle<Node>,
 }
@@ -28,10 +28,6 @@ impl TypeUuidProvider for BoneLink {
 }
 
 impl ScriptTrait for BoneLink {
-    fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args, Self::BONE=> bone)
-    }
-
     fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
         old_new_mapping.map(&mut self.bone);
     }

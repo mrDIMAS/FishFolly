@@ -8,13 +8,13 @@ use fyrox::{
         futures::executor::block_on,
         inspect::prelude::*,
         pool::Handle,
+        reflect::Reflect,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
     event::{ElementState, VirtualKeyCode, WindowEvent},
-    gui::inspector::PropertyChanged,
-    handle_object_property_changed, impl_component_provider,
+    impl_component_provider,
     resource::absm::AbsmResource,
     scene::{
         graph::{map::NodeHandleMap, Graph},
@@ -57,7 +57,7 @@ impl InputController {
     }
 }
 
-#[derive(Clone, Inspect, Visit, Debug)]
+#[derive(Clone, Inspect, Visit, Debug, Reflect)]
 pub struct Player {
     #[inspect(description = "Speed of the player.")]
     speed: f32,
@@ -72,12 +72,15 @@ pub struct Player {
     camera: Handle<Node>,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     absm: Handle<Machine>,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     pub input_controller: InputController,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     pub actor: Actor,
 }
 
@@ -111,16 +114,6 @@ impl Player {
 }
 
 impl ScriptTrait for Player {
-    fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args,
-            Self::SPEED => speed,
-            Self::ABSM_RESOURCE => absm_resource,
-            Self::MODEL => model,
-            Self::COLLIDER => collider,
-            Self::CAMERA => camera
-        )
-    }
-
     fn on_init(&mut self, context: ScriptContext) {
         assert!(game_mut(context.plugin).actors.insert(context.handle));
 

@@ -6,11 +6,11 @@ use fyrox::{
         inspect::prelude::*,
         math::Matrix4Ext,
         pool::Handle,
+        reflect::Reflect,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    gui::inspector::PropertyChanged,
-    handle_object_property_changed, impl_component_provider,
+    impl_component_provider,
     scene::{
         graph::map::NodeHandleMap,
         node::{Node, TypeUuidProvider},
@@ -21,7 +21,7 @@ use fyrox::{
 
 pub mod link;
 
-#[derive(Clone, Default, Debug, Visit, Inspect)]
+#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
 pub struct Ragdoll {
     pub enabled: bool,
     #[inspect(
@@ -34,9 +34,11 @@ pub struct Ragdoll {
     root_body: Handle<Node>,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     bodies: Vec<Handle<Node>>,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     prev_enabled: bool,
 }
 
@@ -49,14 +51,6 @@ impl TypeUuidProvider for Ragdoll {
 }
 
 impl ScriptTrait for Ragdoll {
-    fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args,
-            Self::ENABLED => enabled,
-            Self::CAPSULE => capsule,
-            Self::ROOT_BODY => root_body
-        )
-    }
-
     fn on_init(&mut self, context: ScriptContext) {
         // Find all descendant rigid bodies.
         for handle in context.scene.graph.traverse_handle_iter(context.handle) {

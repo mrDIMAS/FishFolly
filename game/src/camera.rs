@@ -8,12 +8,12 @@ use fyrox::{
         arrayvec::ArrayVec,
         inspect::prelude::*,
         pool::Handle,
+        reflect::Reflect,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
     event::DeviceEvent,
-    gui::inspector::PropertyChanged,
-    handle_object_property_changed, impl_component_provider,
+    impl_component_provider,
     scene::{
         graph::{map::NodeHandleMap, physics::RayCastOptions},
         node::{Node, TypeUuidProvider},
@@ -23,7 +23,7 @@ use fyrox::{
 };
 use std::ops::Range;
 
-#[derive(Clone, Inspect, Visit, Debug)]
+#[derive(Clone, Inspect, Visit, Debug, Reflect)]
 pub struct CameraController {
     #[inspect(description = "Handle of a node that has Player script.")]
     player: Handle<Node>,
@@ -43,12 +43,15 @@ pub struct CameraController {
     pub collider_to_ignore: Handle<Node>,
     #[inspect(skip)]
     #[visit(skip)]
+    #[reflect(hidden)]
     target_position: Vector3<f32>,
     #[inspect(skip)]
     #[visit(skip)]
+    #[reflect(hidden)]
     pub pitch: f32,
     #[inspect(skip)]
     #[visit(skip)]
+    #[reflect(hidden)]
     pub yaw: f32,
 }
 
@@ -122,18 +125,6 @@ impl TypeUuidProvider for CameraController {
 impl_component_provider!(CameraController);
 
 impl ScriptTrait for CameraController {
-    fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args,
-            Self::PLAYER => player,
-            Self::HINGE => hinge,
-            Self::CAMERA => camera,
-            Self::PROBE_RADIUS => probe_radius,
-            Self::DEFAULT_DISTANCE => default_distance,
-            Self::PITCH_RANGE => pitch_range,
-            Self::COLLIDER_TO_IGNORE => collider_to_ignore
-        )
-    }
-
     fn on_os_event(&mut self, event: &Event<()>, context: ScriptContext) {
         if let Event::DeviceEvent {
             event: DeviceEvent::MouseMotion { delta },

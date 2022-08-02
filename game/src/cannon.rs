@@ -4,19 +4,19 @@ use crate::GameConstructor;
 use fyrox::{
     core::{
         inspect::prelude::*,
+        reflect::Reflect,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
-    gui::inspector::PropertyChanged,
-    handle_object_property_changed, impl_component_provider,
+    impl_component_provider,
     resource::model::Model,
     scene::{node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
     utils::log::Log,
 };
 
-#[derive(Clone, Debug, Visit, Inspect)]
+#[derive(Clone, Debug, Visit, Inspect, Reflect)]
 pub struct Cannon {
     ball_prefab: Option<Model>,
     shooting_timeout: f32,
@@ -24,6 +24,7 @@ pub struct Cannon {
     shooting_force: f32,
     #[visit(skip)]
     #[inspect(skip)]
+    #[reflect(hidden)]
     timer: f32,
 }
 
@@ -47,14 +48,6 @@ impl TypeUuidProvider for Cannon {
 }
 
 impl ScriptTrait for Cannon {
-    fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args,
-            Self::BALL_PREFAB => ball_prefab,
-            Self::SHOOTING_TIMEOUT => shooting_timeout,
-            Self::SHOOTING_FORCE => shooting_force
-        )
-    }
-
     fn on_update(&mut self, context: ScriptContext) {
         self.timer += context.dt;
         if self.timer >= self.shooting_timeout {

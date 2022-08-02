@@ -2,17 +2,16 @@
 
 use crate::{game_mut, GameConstructor};
 use fyrox::{
-    core::{inspect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*},
+    core::{inspect::prelude::*, reflect::Reflect, uuid::uuid, uuid::Uuid, visitor::prelude::*},
     engine::resource_manager::ResourceManager,
-    gui::inspector::PropertyChanged,
-    handle_object_property_changed, impl_component_provider,
+    impl_component_provider,
     resource::model::Model,
     scene::node::TypeUuidProvider,
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
     utils::log::Log,
 };
 
-#[derive(Clone, Default, Debug, Visit, Inspect)]
+#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
 pub struct StartPoint {
     #[inspect(
         description = "A handle of a player resource. The resource will be instantiated to the scene."
@@ -29,10 +28,6 @@ impl TypeUuidProvider for StartPoint {
 }
 
 impl ScriptTrait for StartPoint {
-    fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args, Self::MODEL => model)
-    }
-
     fn on_init(&mut self, context: ScriptContext) {
         assert!(game_mut(context.plugin).start_points.insert(context.handle));
 

@@ -5,18 +5,18 @@ use fyrox::{
     core::{
         algebra::{UnitQuaternion, UnitVector3, Vector3},
         inspect::prelude::*,
+        reflect::Reflect,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    gui::inspector::PropertyChanged,
-    handle_object_property_changed, impl_component_provider,
+    impl_component_provider,
     scene::{node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
 };
 
 /// TODO: Ideally any animation for obstacles should be done in the editor, but there is no
 /// animation editor yet.
-#[derive(Clone, Debug, Visit, Inspect)]
+#[derive(Clone, Debug, Visit, Inspect, Reflect)]
 pub struct RotatorObstacle {
     angle: f32,
     axis: Vector3<f32>,
@@ -42,14 +42,6 @@ impl TypeUuidProvider for RotatorObstacle {
 }
 
 impl ScriptTrait for RotatorObstacle {
-    fn on_property_changed(&mut self, args: &PropertyChanged) -> bool {
-        handle_object_property_changed!(self, args,
-            Self::ANGLE => angle,
-            Self::AXIS => axis,
-            Self::SPEED => speed
-        )
-    }
-
     fn on_update(&mut self, context: ScriptContext) {
         self.angle += self.speed * context.dt;
 

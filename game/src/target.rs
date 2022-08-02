@@ -2,14 +2,14 @@
 
 use crate::{game_mut, GameConstructor};
 use fyrox::{
-    core::{inspect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*},
+    core::{inspect::prelude::*, reflect::Reflect, uuid::uuid, uuid::Uuid, visitor::prelude::*},
     impl_component_provider,
     scene::node::TypeUuidProvider,
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
     utils::log::Log,
 };
 
-#[derive(Clone, Default, Debug, Visit, Inspect)]
+#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
 pub struct Target {}
 
 impl_component_provider!(Target);
