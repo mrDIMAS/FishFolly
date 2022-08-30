@@ -13,7 +13,7 @@ use fyrox::{
         visitor::prelude::*,
     },
     event::DeviceEvent,
-    impl_component_provider,
+    impl_component_provider, impl_directly_inheritable_entity_trait,
     scene::{
         graph::{map::NodeHandleMap, physics::RayCastOptions},
         node::{Node, TypeUuidProvider},
@@ -123,6 +123,7 @@ impl TypeUuidProvider for CameraController {
 }
 
 impl_component_provider!(CameraController);
+impl_directly_inheritable_entity_trait!(CameraController;);
 
 impl ScriptTrait for CameraController {
     fn on_os_event(&mut self, event: &Event<()>, context: ScriptContext) {

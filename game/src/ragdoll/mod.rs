@@ -10,7 +10,7 @@ use fyrox::{
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    impl_component_provider,
+    impl_component_provider, impl_directly_inheritable_entity_trait,
     scene::{
         graph::map::NodeHandleMap,
         node::{Node, TypeUuidProvider},
@@ -43,6 +43,7 @@ pub struct Ragdoll {
 }
 
 impl_component_provider!(Ragdoll);
+impl_directly_inheritable_entity_trait!(Ragdoll;);
 
 impl TypeUuidProvider for Ragdoll {
     fn type_uuid() -> Uuid {

@@ -9,7 +9,7 @@ use fyrox::{
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    impl_component_provider,
+    impl_component_provider, impl_directly_inheritable_entity_trait,
     scene::{collider::Collider, node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
 };
@@ -21,6 +21,7 @@ pub struct Jumper {
 }
 
 impl_component_provider!(Jumper);
+impl_directly_inheritable_entity_trait!(Jumper;);
 
 impl TypeUuidProvider for Jumper {
     fn type_uuid() -> Uuid {

@@ -7,7 +7,7 @@ use fyrox::{
         inspect::prelude::*, math::aabb::AxisAlignedBoundingBox, reflect::Reflect, uuid::uuid,
         visitor::prelude::*,
     },
-    impl_component_provider,
+    impl_component_provider, impl_directly_inheritable_entity_trait,
     scene::node::TypeUuidProvider,
     script::{ScriptContext, ScriptTrait},
 };
@@ -16,6 +16,7 @@ use fyrox::{
 pub struct RespawnZone {}
 
 impl_component_provider!(RespawnZone);
+impl_directly_inheritable_entity_trait!(RespawnZone;);
 
 impl TypeUuidProvider for RespawnZone {
     fn type_uuid() -> Uuid {

@@ -9,7 +9,7 @@ use fyrox::{
         visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
-    impl_component_provider,
+    impl_component_provider, impl_directly_inheritable_entity_trait,
     resource::model::Model,
     scene::{node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
@@ -29,6 +29,7 @@ pub struct Cannon {
 }
 
 impl_component_provider!(Cannon);
+impl_directly_inheritable_entity_trait!(Cannon;);
 
 impl Default for Cannon {
     fn default() -> Self {

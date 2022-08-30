@@ -9,7 +9,7 @@ use fyrox::{
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    impl_component_provider,
+    impl_component_provider, impl_directly_inheritable_entity_trait,
     scene::{graph::map::NodeHandleMap, node::Node, node::TypeUuidProvider},
     script::ScriptTrait,
 };
@@ -20,6 +20,7 @@ pub struct BoneLink {
 }
 
 impl_component_provider!(BoneLink);
+impl_directly_inheritable_entity_trait!(BoneLink;);
 
 impl TypeUuidProvider for BoneLink {
     fn type_uuid() -> Uuid {

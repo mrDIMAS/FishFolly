@@ -4,7 +4,7 @@ use crate::{game_mut, GameConstructor};
 use fyrox::{
     core::{inspect::prelude::*, reflect::Reflect, uuid::uuid, uuid::Uuid, visitor::prelude::*},
     engine::resource_manager::ResourceManager,
-    impl_component_provider,
+    impl_component_provider, impl_directly_inheritable_entity_trait,
     resource::model::Model,
     scene::node::TypeUuidProvider,
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
@@ -20,6 +20,7 @@ pub struct StartPoint {
 }
 
 impl_component_provider!(StartPoint);
+impl_directly_inheritable_entity_trait!(StartPoint;);
 
 impl TypeUuidProvider for StartPoint {
     fn type_uuid() -> Uuid {
