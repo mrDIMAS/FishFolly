@@ -3,7 +3,7 @@
 use crate::{game_mut, GameConstructor};
 use fyrox::{
     core::{inspect::prelude::*, reflect::Reflect, uuid::uuid, uuid::Uuid, visitor::prelude::*},
-    impl_component_provider, impl_directly_inheritable_entity_trait,
+    impl_component_provider,
     scene::node::TypeUuidProvider,
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
     utils::log::Log,
@@ -13,7 +13,6 @@ use fyrox::{
 pub struct Target {}
 
 impl_component_provider!(Target);
-impl_directly_inheritable_entity_trait!(Target;);
 
 impl TypeUuidProvider for Target {
     fn type_uuid() -> Uuid {

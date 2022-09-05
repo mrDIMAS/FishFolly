@@ -9,7 +9,7 @@ use fyrox::{
         uuid::uuid, uuid::Uuid, visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
-    impl_component_provider, impl_directly_inheritable_entity_trait,
+    impl_component_provider,
     resource::absm::AbsmResource,
     scene::{
         collider::{Collider, ColliderShape},
@@ -63,7 +63,6 @@ pub struct Bot {
 }
 
 impl_component_provider!(Bot, actor: Actor);
-impl_directly_inheritable_entity_trait!(Bot;);
 
 impl TypeUuidProvider for Bot {
     fn type_uuid() -> Uuid {

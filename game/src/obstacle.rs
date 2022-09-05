@@ -9,7 +9,7 @@ use fyrox::{
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    impl_component_provider, impl_directly_inheritable_entity_trait,
+    impl_component_provider,
     scene::{node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
 };
@@ -24,7 +24,6 @@ pub struct RotatorObstacle {
 }
 
 impl_component_provider!(RotatorObstacle);
-impl_directly_inheritable_entity_trait!(RotatorObstacle;);
 
 impl Default for RotatorObstacle {
     fn default() -> Self {

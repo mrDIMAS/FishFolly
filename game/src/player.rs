@@ -14,7 +14,7 @@ use fyrox::{
     },
     engine::resource_manager::ResourceManager,
     event::{ElementState, VirtualKeyCode, WindowEvent},
-    impl_component_provider, impl_directly_inheritable_entity_trait,
+    impl_component_provider,
     resource::absm::AbsmResource,
     scene::{
         graph::{map::NodeHandleMap, Graph},
@@ -85,7 +85,6 @@ pub struct Player {
 }
 
 impl_component_provider!(Player, actor: Actor);
-impl_directly_inheritable_entity_trait!(Player;);
 
 impl Default for Player {
     fn default() -> Self {
