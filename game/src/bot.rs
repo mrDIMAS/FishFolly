@@ -1,6 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{game_mut, marker::Actor, utils, Game, GameConstructor, Ragdoll};
+use crate::{game_mut, game_ref, marker::Actor, utils, Ragdoll};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -134,7 +134,7 @@ fn set_ragdoll_enabled(ragdoll_holder: Handle<Node>, graph: &mut Graph, enabled:
 
 impl ScriptTrait for Bot {
     fn on_init(&mut self, context: ScriptContext) {
-        assert!(game_mut(context.plugin).actors.insert(context.handle));
+        assert!(game_mut(context.plugins).actors.insert(context.handle));
 
         if context.scene.graph.is_valid_handle(self.model_root) {
             if let Some(absm) = self.absm_resource.as_ref() {
@@ -149,7 +149,9 @@ impl ScriptTrait for Bot {
     }
 
     fn on_deinit(&mut self, context: ScriptDeinitContext) {
-        assert!(game_mut(context.plugin).actors.remove(&context.node_handle));
+        assert!(game_mut(context.plugins)
+            .actors
+            .remove(&context.node_handle));
         Log::info(format!("Bot {:?} destroyed!", context.node_handle));
     }
 
@@ -157,15 +159,15 @@ impl ScriptTrait for Bot {
         let ScriptContext {
             scene,
             handle,
-            plugin,
+            plugins,
             dt,
             ..
         } = context;
 
-        let plugin = plugin.cast::<Game>().unwrap();
+        let game = game_ref(plugins);
 
         // Dead-simple AI - run straight to target.
-        let target_pos = plugin
+        let target_pos = game
             .targets
             .iter()
             .next()
@@ -277,9 +279,5 @@ impl ScriptTrait for Bot {
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
-    }
-
-    fn plugin_uuid(&self) -> Uuid {
-        GameConstructor::type_uuid()
     }
 }

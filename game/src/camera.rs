@@ -1,7 +1,7 @@
 //! Camera controller for the main player (host). It smoothly follows the host and has obstacle
 //! avoiding functionality.
 
-use crate::{Event, GameConstructor};
+use crate::Event;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
@@ -188,9 +188,5 @@ impl ScriptTrait for CameraController {
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
-    }
-
-    fn plugin_uuid(&self) -> Uuid {
-        GameConstructor::type_uuid()
     }
 }

@@ -1,6 +1,6 @@
 //! A spawn point for players (bots).
 
-use crate::{game_mut, GameConstructor};
+use crate::game_mut;
 use fyrox::{
     core::{inspect::prelude::*, reflect::Reflect, uuid::uuid, uuid::Uuid, visitor::prelude::*},
     engine::resource_manager::ResourceManager,
@@ -29,7 +29,9 @@ impl TypeUuidProvider for StartPoint {
 
 impl ScriptTrait for StartPoint {
     fn on_init(&mut self, context: ScriptContext) {
-        assert!(game_mut(context.plugin).start_points.insert(context.handle));
+        assert!(game_mut(context.plugins)
+            .start_points
+            .insert(context.handle));
 
         if let Some(resource) = self.model.as_ref() {
             // Spawn specified actor.
@@ -51,7 +53,7 @@ impl ScriptTrait for StartPoint {
     }
 
     fn on_deinit(&mut self, context: ScriptDeinitContext) {
-        assert!(game_mut(context.plugin)
+        assert!(game_mut(context.plugins)
             .start_points
             .remove(&context.node_handle));
         Log::info(format!("Start point {:?} destroyed!", context.node_handle));
@@ -67,9 +69,5 @@ impl ScriptTrait for StartPoint {
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
-    }
-
-    fn plugin_uuid(&self) -> Uuid {
-        GameConstructor::type_uuid()
     }
 }

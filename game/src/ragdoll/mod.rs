@@ -1,5 +1,5 @@
 //! A ragdoll that is used for characters that fall.
-use crate::{ragdoll::link::BoneLink, GameConstructor};
+use crate::ragdoll::link::BoneLink;
 use fyrox::{
     core::{
         algebra::{Matrix4, UnitQuaternion, Vector3},
@@ -156,9 +156,5 @@ impl ScriptTrait for Ragdoll {
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
-    }
-
-    fn plugin_uuid(&self) -> Uuid {
-        GameConstructor::type_uuid()
     }
 }

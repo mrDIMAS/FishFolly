@@ -1,6 +1,6 @@
 //! Main player (host) script.
 
-use crate::{game_mut, marker::Actor, utils, CameraController, Event, GameConstructor};
+use crate::{game_mut, marker::Actor, utils, CameraController, Event};
 use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
@@ -115,7 +115,7 @@ impl Player {
 
 impl ScriptTrait for Player {
     fn on_init(&mut self, context: ScriptContext) {
-        assert!(game_mut(context.plugin).actors.insert(context.handle));
+        assert!(game_mut(context.plugins).actors.insert(context.handle));
 
         if self.model.is_some() {
             if let Some(absm_resource) = self.absm_resource.as_ref() {
@@ -136,7 +136,9 @@ impl ScriptTrait for Player {
     }
 
     fn on_deinit(&mut self, context: ScriptDeinitContext) {
-        assert!(game_mut(context.plugin).actors.remove(&context.node_handle));
+        assert!(game_mut(context.plugins)
+            .actors
+            .remove(&context.node_handle));
         Log::info(format!("Player {:?} destroyed!", context.node_handle));
     }
 
@@ -253,9 +255,5 @@ impl ScriptTrait for Player {
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
-    }
-
-    fn plugin_uuid(&self) -> Uuid {
-        GameConstructor::type_uuid()
     }
 }

@@ -1,6 +1,5 @@
 //! A link to a bone that will be controlled by ragdoll.
 
-use crate::GameConstructor;
 use fyrox::{
     core::{
         inspect::prelude::*,
@@ -34,9 +33,5 @@ impl ScriptTrait for BoneLink {
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
-    }
-
-    fn plugin_uuid(&self) -> Uuid {
-        GameConstructor::type_uuid()
     }
 }

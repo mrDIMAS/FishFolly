@@ -1,6 +1,6 @@
 //! Jumper is platform that pushes actors (players or bots) up.
 
-use crate::{game_ref, Bot, GameConstructor, Player};
+use crate::{game_ref, Bot, Player};
 use fyrox::{
     core::{
         algebra::Vector3,
@@ -30,7 +30,7 @@ impl TypeUuidProvider for Jumper {
 
 impl ScriptTrait for Jumper {
     fn on_update(&mut self, context: ScriptContext) {
-        let game_ref = game_ref(context.plugin);
+        let game_ref = game_ref(context.plugins);
         if let Some(collider) = context.scene.graph[context.handle].cast::<Collider>() {
             let mut contacted_colliders = HashSet::new();
 
@@ -70,9 +70,5 @@ impl ScriptTrait for Jumper {
     }
     fn id(&self) -> Uuid {
         Self::type_uuid()
-    }
-
-    fn plugin_uuid(&self) -> Uuid {
-        GameConstructor::type_uuid()
     }
 }

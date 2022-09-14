@@ -5,20 +5,12 @@ use crate::{
     respawn::RespawnZone, start::StartPoint, target::Target,
 };
 use fyrox::{
-    core::{
-        color::Color,
-        futures::executor::block_on,
-        pool::Handle,
-        uuid::{uuid, Uuid},
-    },
+    core::{color::Color, futures::executor::block_on, pool::Handle},
     event::Event,
     event_loop::ControlFlow,
     gui::message::UiMessage,
     plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
-    scene::{
-        node::{Node, TypeUuidProvider},
-        Scene, SceneLoader,
-    },
+    scene::{node::Node, Scene, SceneLoader},
     utils::log::Log,
 };
 use std::collections::HashSet;
@@ -73,13 +65,6 @@ impl PluginConstructor for GameConstructor {
     }
 }
 
-impl TypeUuidProvider for GameConstructor {
-    // Returns unique plugin id for serialization needs.
-    fn type_uuid() -> Uuid {
-        uuid!("cb358b1c-fc23-4c44-9e59-0a9671324196")
-    }
-}
-
 impl Game {
     fn new(override_scene: Handle<Scene>, mut context: PluginContext) -> Self {
         Log::info("Game started!".to_owned());
@@ -120,10 +105,6 @@ impl Plugin for Game {
         Log::info("Game stopped!".to_owned());
     }
 
-    fn id(&self) -> Uuid {
-        GameConstructor::type_uuid()
-    }
-
     fn on_os_event(
         &mut self,
         event: &Event<()>,
@@ -153,10 +134,10 @@ impl Plugin for Game {
     }
 }
 
-pub fn game_ref(plugin: &dyn Plugin) -> &Game {
-    plugin.cast::<Game>().unwrap()
+pub fn game_ref(plugins: &[Box<dyn Plugin>]) -> &Game {
+    plugins.first().unwrap().cast::<Game>().unwrap()
 }
 
-pub fn game_mut(plugin: &mut dyn Plugin) -> &mut Game {
-    plugin.cast_mut::<Game>().unwrap()
+pub fn game_mut(plugins: &mut [Box<dyn Plugin>]) -> &mut Game {
+    plugins.first_mut().unwrap().cast_mut::<Game>().unwrap()
 }

@@ -1,6 +1,5 @@
 //! Cannon shoots large balls that push players (or bots) off the platforms.
 
-use crate::GameConstructor;
 use fyrox::{
     core::{
         inspect::prelude::*,
@@ -90,9 +89,5 @@ impl ScriptTrait for Cannon {
 
     fn id(&self) -> Uuid {
         Self::type_uuid()
-    }
-
-    fn plugin_uuid(&self) -> Uuid {
-        GameConstructor::type_uuid()
     }
 }
