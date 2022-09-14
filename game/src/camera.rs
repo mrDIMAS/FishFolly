@@ -125,26 +125,26 @@ impl TypeUuidProvider for CameraController {
 impl_component_provider!(CameraController);
 
 impl ScriptTrait for CameraController {
-    fn on_os_event(&mut self, event: &Event<()>, context: ScriptContext) {
+    fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {
         if let Event::DeviceEvent {
             event: DeviceEvent::MouseMotion { delta },
             ..
         } = event
         {
-            self.yaw -= delta.0 as f32 * context.dt;
-            self.pitch = (self.pitch + delta.1 as f32 * context.dt).clamp(
+            self.yaw -= delta.0 as f32 * ctx.dt;
+            self.pitch = (self.pitch + delta.1 as f32 * ctx.dt).clamp(
                 self.pitch_range.start.to_radians(),
                 self.pitch_range.end.to_radians(),
             );
         }
     }
 
-    fn on_update(&mut self, mut context: ScriptContext) {
-        if let Some(player) = context.scene.graph.try_get(self.player) {
+    fn on_update(&mut self, mut ctx: &mut ScriptContext) {
+        if let Some(player) = ctx.scene.graph.try_get(self.player) {
             // Sync position with player.
             self.target_position = player.global_position();
 
-            let controller = &mut context.scene.graph[context.handle];
+            let controller = &mut ctx.scene.graph[ctx.handle];
 
             let local_transform = controller.local_transform_mut();
             let new_position = **local_transform.position()
@@ -155,7 +155,7 @@ impl ScriptTrait for CameraController {
             ));
             local_transform.set_position(new_position);
 
-            if let Some(hinge) = context.scene.graph.try_get_mut(self.hinge) {
+            if let Some(hinge) = ctx.scene.graph.try_get_mut(self.hinge) {
                 hinge
                     .local_transform_mut()
                     .set_rotation(UnitQuaternion::from_axis_angle(
@@ -164,11 +164,11 @@ impl ScriptTrait for CameraController {
                     ));
 
                 let hinge_position = hinge.global_position();
-                if let Some(camera) = context.scene.graph.try_get(self.camera) {
+                if let Some(camera) = ctx.scene.graph.try_get(self.camera) {
                     self.check_for_obstacles(
                         hinge_position,
                         camera.global_position(),
-                        &mut context,
+                        &mut ctx,
                         self.collider_to_ignore,
                     );
                 }

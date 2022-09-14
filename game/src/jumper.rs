@@ -29,14 +29,14 @@ impl TypeUuidProvider for Jumper {
 }
 
 impl ScriptTrait for Jumper {
-    fn on_update(&mut self, context: ScriptContext) {
-        let game_ref = game_ref(context.plugins);
-        if let Some(collider) = context.scene.graph[context.handle].cast::<Collider>() {
+    fn on_update(&mut self, ctx: &mut ScriptContext) {
+        let game_ref = game_ref(ctx.plugins);
+        if let Some(collider) = ctx.scene.graph[ctx.handle].cast::<Collider>() {
             let mut contacted_colliders = HashSet::new();
 
-            for contact in collider.contacts(&context.scene.graph.physics) {
+            for contact in collider.contacts(&ctx.scene.graph.physics) {
                 for actor in game_ref.actors.iter() {
-                    let actor_script = context.scene.graph[*actor].script();
+                    let actor_script = ctx.scene.graph[*actor].script();
 
                     if let Some(actor_collider) = actor_script
                         .and_then(|s| s.query_component_ref::<Player>().map(|p| p.collider))
@@ -55,8 +55,8 @@ impl ScriptTrait for Jumper {
             }
 
             for collider in contacted_colliders {
-                let parent = context.scene.graph[collider].parent();
-                if let Some(rigid_body) = context
+                let parent = ctx.scene.graph[collider].parent();
+                if let Some(rigid_body) = ctx
                     .scene
                     .graph
                     .try_get_mut(parent)

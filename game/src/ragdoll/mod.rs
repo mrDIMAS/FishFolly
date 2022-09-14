@@ -51,22 +51,22 @@ impl TypeUuidProvider for Ragdoll {
 }
 
 impl ScriptTrait for Ragdoll {
-    fn on_init(&mut self, context: ScriptContext) {
+    fn on_init(&mut self, ctx: &mut ScriptContext) {
         // Find all descendant rigid bodies.
-        for handle in context.scene.graph.traverse_handle_iter(context.handle) {
-            if context.scene.graph[handle].is_rigid_body() {
+        for handle in ctx.scene.graph.traverse_handle_iter(ctx.handle) {
+            if ctx.scene.graph[handle].is_rigid_body() {
                 self.bodies.push(handle);
             }
         }
         self.prev_enabled = self.enabled;
     }
 
-    fn on_update(&mut self, context: ScriptContext) {
+    fn on_update(&mut self, ctx: &mut ScriptContext) {
         // Get linear and angular velocities of the capsule and transfer it onto rag doll bodies when it is just activated.
         let mut new_lin_vel = None;
         let mut new_ang_vel = None;
         if self.enabled && !self.prev_enabled {
-            if let Some(capsule) = context
+            if let Some(capsule) = ctx
                 .scene
                 .graph
                 .try_get_mut(self.capsule)
@@ -79,7 +79,7 @@ impl ScriptTrait for Ragdoll {
         self.prev_enabled = self.enabled;
 
         for body_handle in self.bodies.iter() {
-            if let Some(body) = context
+            if let Some(body) = ctx
                 .scene
                 .graph
                 .try_get_mut(*body_handle)
@@ -100,14 +100,14 @@ impl ScriptTrait for Ragdoll {
                         let body_transform = body.global_transform();
 
                         // Sync transform of the bone with respective body.
-                        let bone_parent = context.scene.graph[bone_handle].parent();
-                        let transform: Matrix4<f32> = context.scene.graph[bone_parent]
+                        let bone_parent = ctx.scene.graph[bone_handle].parent();
+                        let transform: Matrix4<f32> = ctx.scene.graph[bone_parent]
                             .global_transform()
                             .try_inverse()
                             .unwrap_or_else(Matrix4::identity)
                             * body_transform;
 
-                        context.scene.graph[bone_handle]
+                        ctx.scene.graph[bone_handle]
                             .local_transform_mut()
                             .set_position(Vector3::new(transform[12], transform[13], transform[14]))
                             .set_rotation(UnitQuaternion::from_matrix(&transform.basis()));
@@ -117,11 +117,11 @@ impl ScriptTrait for Ragdoll {
                         body.set_ang_vel(Default::default());
 
                         // Sync transform of the body with respective bone.
-                        if let Some(bone) = context.scene.graph.try_get(bone_handle) {
+                        if let Some(bone) = ctx.scene.graph.try_get(bone_handle) {
                             let position = bone.global_position();
                             let rotation =
                                 UnitQuaternion::from_matrix(&bone.global_transform().basis());
-                            context.scene.graph[*body_handle]
+                            ctx.scene.graph[*body_handle]
                                 .local_transform_mut()
                                 .set_position(position)
                                 .set_rotation(rotation);
@@ -132,9 +132,9 @@ impl ScriptTrait for Ragdoll {
         }
 
         if self.enabled {
-            if let Some(root_body) = context.scene.graph.try_get(self.root_body) {
+            if let Some(root_body) = ctx.scene.graph.try_get(self.root_body) {
                 let position = root_body.global_position();
-                if let Some(capsule) = context
+                if let Some(capsule) = ctx
                     .scene
                     .graph
                     .try_get_mut(self.capsule)

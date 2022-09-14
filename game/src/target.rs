@@ -21,16 +21,14 @@ impl TypeUuidProvider for Target {
 }
 
 impl ScriptTrait for Target {
-    fn on_init(&mut self, context: ScriptContext) {
-        assert!(game_mut(context.plugins).targets.insert(context.handle));
-        Log::info(format!("Target {:?} added!", context.handle));
+    fn on_init(&mut self, ctx: &mut ScriptContext) {
+        assert!(game_mut(ctx.plugins).targets.insert(ctx.handle));
+        Log::info(format!("Target {:?} added!", ctx.handle));
     }
 
-    fn on_deinit(&mut self, context: ScriptDeinitContext) {
-        assert!(game_mut(context.plugins)
-            .targets
-            .remove(&context.node_handle));
-        Log::info(format!("Target {:?} destroyed!", context.node_handle));
+    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
+        assert!(game_mut(ctx.plugins).targets.remove(&ctx.node_handle));
+        Log::info(format!("Target {:?} destroyed!", ctx.node_handle));
     }
 
     fn id(&self) -> Uuid {

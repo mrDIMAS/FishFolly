@@ -27,19 +27,19 @@ impl TypeUuidProvider for RespawnZone {
 }
 
 impl ScriptTrait for RespawnZone {
-    fn on_update(&mut self, context: ScriptContext) {
-        let game_ref = game_ref(context.plugins);
+    fn on_update(&mut self, ctx: &mut ScriptContext) {
+        let game_ref = game_ref(ctx.plugins);
         let self_bounds = AxisAlignedBoundingBox::unit()
-            .transform(&context.scene.graph[context.handle].global_transform());
+            .transform(&ctx.scene.graph[ctx.handle].global_transform());
 
         let start_points = game_ref
             .start_points
             .iter()
-            .map(|p| context.scene.graph[*p].global_position())
+            .map(|p| ctx.scene.graph[*p].global_position())
             .collect::<Vec<_>>();
 
         for actor in game_ref.actors.iter() {
-            if let Some(node) = context.scene.graph.try_get_mut(*actor) {
+            if let Some(node) = ctx.scene.graph.try_get_mut(*actor) {
                 if self_bounds.is_contains_point(node.global_position()) {
                     if let Some(start_point) = start_points.first() {
                         node.local_transform_mut().set_position(*start_point);

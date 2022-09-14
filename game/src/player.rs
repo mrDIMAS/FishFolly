@@ -114,16 +114,16 @@ impl Player {
 }
 
 impl ScriptTrait for Player {
-    fn on_init(&mut self, context: ScriptContext) {
-        assert!(game_mut(context.plugins).actors.insert(context.handle));
+    fn on_init(&mut self, ctx: &mut ScriptContext) {
+        assert!(game_mut(ctx.plugins).actors.insert(ctx.handle));
 
         if self.model.is_some() {
             if let Some(absm_resource) = self.absm_resource.as_ref() {
                 let animations =
-                    block_on(absm_resource.load_animations(context.resource_manager.clone()));
+                    block_on(absm_resource.load_animations(ctx.resource_manager.clone()));
 
                 self.absm = absm_resource
-                    .instantiate(self.model, context.scene, animations)
+                    .instantiate(self.model, ctx.scene, animations)
                     .unwrap();
             } else {
                 Log::err("There is no resource specified for player ABSM!".to_owned());
@@ -132,26 +132,23 @@ impl ScriptTrait for Player {
             Log::err("There is no model set for player!".to_owned());
         }
 
-        Log::info(format!("Player {:?} created!", context.handle));
+        Log::info(format!("Player {:?} created!", ctx.handle));
     }
 
-    fn on_deinit(&mut self, context: ScriptDeinitContext) {
-        assert!(game_mut(context.plugins)
-            .actors
-            .remove(&context.node_handle));
-        Log::info(format!("Player {:?} destroyed!", context.node_handle));
+    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
+        assert!(game_mut(ctx.plugins).actors.remove(&ctx.node_handle));
+        Log::info(format!("Player {:?} destroyed!", ctx.node_handle));
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, _context: ScriptContext) {
+    fn on_os_event(&mut self, event: &Event<()>, _context: &mut ScriptContext) {
         self.input_controller.on_os_event(event);
     }
 
-    fn on_update(&mut self, context: ScriptContext) {
-        let ScriptContext { handle, scene, .. } = context;
+    fn on_update(&mut self, ctx: &mut ScriptContext) {
+        let has_ground_contact = self.has_ground_contact(&ctx.scene.graph);
 
-        let has_ground_contact = self.has_ground_contact(&scene.graph);
-
-        let yaw = scene
+        let yaw = ctx
+            .scene
             .graph
             .try_get(self.camera)
             .and_then(|c| c.script())
@@ -159,7 +156,7 @@ impl ScriptTrait for Player {
             .map(|c| c.yaw)
             .unwrap_or_default();
 
-        if let Some(rigid_body) = scene.graph[handle].cast_mut::<RigidBody>() {
+        if let Some(rigid_body) = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>() {
             let forward_vec = rigid_body.look_vector();
             let side_vec = rigid_body.side_vector();
 
@@ -224,15 +221,15 @@ impl ScriptTrait for Player {
                     0.0
                 };
 
-                scene.graph[self.model].local_transform_mut().set_rotation(
-                    UnitQuaternion::from_axis_angle(
+                ctx.scene.graph[self.model]
+                    .local_transform_mut()
+                    .set_rotation(UnitQuaternion::from_axis_angle(
                         &Vector3::y_axis(),
                         (angle + 180.0).to_radians(),
-                    ),
-                );
+                    ));
             }
 
-            scene.animation_machines[self.absm]
+            ctx.scene.animation_machines[self.absm]
                 .set_parameter("Run", Parameter::Rule(is_moving))
                 .set_parameter("Jump", Parameter::Rule(jump));
         }

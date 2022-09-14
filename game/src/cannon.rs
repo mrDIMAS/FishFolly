@@ -47,26 +47,26 @@ impl TypeUuidProvider for Cannon {
 }
 
 impl ScriptTrait for Cannon {
-    fn on_update(&mut self, context: ScriptContext) {
-        self.timer += context.dt;
+    fn on_update(&mut self, ctx: &mut ScriptContext) {
+        self.timer += ctx.dt;
         if self.timer >= self.shooting_timeout {
             self.timer = 0.0;
 
-            let self_node = &context.scene.graph[context.handle];
+            let self_node = &ctx.scene.graph[ctx.handle];
             let self_position = self_node.global_position();
             let shooting_dir = self_node
                 .look_vector()
                 .try_normalize(f32::EPSILON)
                 .unwrap_or_default();
             if let Some(ball_prefab) = self.ball_prefab.as_ref() {
-                let ball_instance = ball_prefab.instantiate_geometry(context.scene);
-                context.scene.graph[ball_instance].set_lifetime(Some(5.0));
+                let ball_instance = ball_prefab.instantiate_geometry(ctx.scene);
+                ctx.scene.graph[ball_instance].set_lifetime(Some(5.0));
 
-                let body = context
+                let body = ctx
                     .scene
                     .graph
                     .find(ball_instance, &mut |node| node.tag() == "Body");
-                if let Some(body) = context.scene.graph.try_get_mut(body) {
+                if let Some(body) = ctx.scene.graph.try_get_mut(body) {
                     body.local_transform_mut().set_position(self_position);
 
                     if let Some(rigid_body) = body.cast_mut::<RigidBody>() {

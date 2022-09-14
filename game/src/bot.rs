@@ -133,38 +133,28 @@ fn set_ragdoll_enabled(ragdoll_holder: Handle<Node>, graph: &mut Graph, enabled:
 }
 
 impl ScriptTrait for Bot {
-    fn on_init(&mut self, context: ScriptContext) {
-        assert!(game_mut(context.plugins).actors.insert(context.handle));
+    fn on_init(&mut self, ctx: &mut ScriptContext) {
+        assert!(game_mut(ctx.plugins).actors.insert(ctx.handle));
 
-        if context.scene.graph.is_valid_handle(self.model_root) {
+        if ctx.scene.graph.is_valid_handle(self.model_root) {
             if let Some(absm) = self.absm_resource.as_ref() {
-                let animations = block_on(absm.load_animations(context.resource_manager.clone()));
+                let animations = block_on(absm.load_animations(ctx.resource_manager.clone()));
 
                 self.absm = absm
-                    .instantiate(self.model_root, context.scene, animations)
+                    .instantiate(self.model_root, ctx.scene, animations)
                     .unwrap();
             }
         }
-        Log::info(format!("Bot {:?} created!", context.handle));
+        Log::info(format!("Bot {:?} created!", ctx.handle));
     }
 
-    fn on_deinit(&mut self, context: ScriptDeinitContext) {
-        assert!(game_mut(context.plugins)
-            .actors
-            .remove(&context.node_handle));
-        Log::info(format!("Bot {:?} destroyed!", context.node_handle));
+    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
+        assert!(game_mut(ctx.plugins).actors.remove(&ctx.node_handle));
+        Log::info(format!("Bot {:?} destroyed!", ctx.node_handle));
     }
 
-    fn on_update(&mut self, context: ScriptContext) {
-        let ScriptContext {
-            scene,
-            handle,
-            plugins,
-            dt,
-            ..
-        } = context;
-
-        let game = game_ref(plugins);
+    fn on_update(&mut self, ctx: &mut ScriptContext) {
+        let game = game_ref(ctx.plugins);
 
         // Dead-simple AI - run straight to target.
         let target_pos = game
@@ -172,10 +162,10 @@ impl ScriptTrait for Bot {
             .iter()
             .next()
             .cloned()
-            .map(|t| scene.graph[t].global_position());
+            .map(|t| ctx.scene.graph[t].global_position());
 
         let ground_probe_begin =
-            if let Some(probe_locator) = scene.graph.try_get(self.probe_locator) {
+            if let Some(probe_locator) = ctx.scene.graph.try_get(self.probe_locator) {
                 probe_locator.global_position()
             } else {
                 Log::warn("There is not ground probe locator specified!".to_owned());
@@ -183,15 +173,15 @@ impl ScriptTrait for Bot {
             };
 
         if let Some(target_pos) = target_pos {
-            if let Some(rigid_body) = scene.graph[handle].cast_mut::<RigidBody>() {
+            if let Some(rigid_body) = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>() {
                 let self_position = rigid_body.global_position();
                 let current_y_lin_vel = rigid_body.lin_vel().y;
 
-                if let Some(navmesh) = scene.navmeshes.at_mut(0) {
+                if let Some(navmesh) = ctx.scene.navmeshes.at_mut(0) {
                     self.agent.set_speed(self.speed);
                     self.agent.set_target(target_pos);
                     self.agent.set_position(self_position);
-                    let _ = self.agent.update(context.dt, navmesh);
+                    let _ = self.agent.update(ctx.dt, navmesh);
                 }
 
                 let has_reached_destination =
@@ -199,16 +189,16 @@ impl ScriptTrait for Bot {
                 let horizontal_velocity = if has_reached_destination {
                     Vector3::new(0.0, 0.0, 0.0)
                 } else {
-                    let mut vel = (self.agent.position() - self_position).scale(1.0 / context.dt);
+                    let mut vel = (self.agent.position() - self_position).scale(1.0 / ctx.dt);
                     vel.y = 0.0;
                     vel
                 };
 
                 let mut jump = false;
                 let jump_vel = 5.0;
-                let y_vel = if utils::has_ground_contact(self.collider, &scene.graph) {
+                let y_vel = if utils::has_ground_contact(self.collider, &ctx.scene.graph) {
                     if let Some(probed_position) =
-                        probe_ground(ground_probe_begin, 10.0, &scene.graph)
+                        probe_ground(ground_probe_begin, 10.0, &ctx.scene.graph)
                     {
                         if probed_position.metric_distance(&ground_probe_begin) > 8.0 {
                             jump = true;
@@ -225,17 +215,17 @@ impl ScriptTrait for Bot {
                 };
 
                 // TEST - activate ragdoll on jumping
-                self.stand_up_timer -= dt;
+                self.stand_up_timer -= ctx.dt;
                 if jump && self.stand_up_timer <= 0.0 {
-                    set_ragdoll_enabled(self.ragdoll, &mut scene.graph, true);
+                    set_ragdoll_enabled(self.ragdoll, &mut ctx.scene.graph, true);
                     self.stand_up_timer = self.stand_up_timeout;
                 }
                 if self.stand_up_timer <= 0.0 {
-                    set_ragdoll_enabled(self.ragdoll, &mut scene.graph, false);
+                    set_ragdoll_enabled(self.ragdoll, &mut ctx.scene.graph, false);
                 }
 
                 // Reborrow the node.
-                let rigid_body = scene.graph[handle].cast_mut::<RigidBody>().unwrap();
+                let rigid_body = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>().unwrap();
                 rigid_body.set_lin_vel(Vector3::new(
                     horizontal_velocity.x,
                     y_vel,
@@ -253,7 +243,7 @@ impl ScriptTrait for Bot {
                         ));
                 }
 
-                if let Some(absm) = scene.animation_machines.try_get_mut(self.absm) {
+                if let Some(absm) = ctx.scene.animation_machines.try_get_mut(self.absm) {
                     absm.set_parameter("Run", Parameter::Rule(is_running))
                         .set_parameter("Jump", Parameter::Rule(jump));
                 }

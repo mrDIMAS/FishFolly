@@ -28,35 +28,31 @@ impl TypeUuidProvider for StartPoint {
 }
 
 impl ScriptTrait for StartPoint {
-    fn on_init(&mut self, context: ScriptContext) {
-        assert!(game_mut(context.plugins)
-            .start_points
-            .insert(context.handle));
+    fn on_init(&mut self, ctx: &mut ScriptContext) {
+        assert!(game_mut(ctx.plugins).start_points.insert(ctx.handle));
 
         if let Some(resource) = self.model.as_ref() {
             // Spawn specified actor.
-            let instance = resource.instantiate_geometry(context.scene);
+            let instance = resource.instantiate_geometry(ctx.scene);
             // Sync its position with the start point position.
-            let position = context.scene.graph[context.handle].global_position();
-            let body = context
+            let position = ctx.scene.graph[ctx.handle].global_position();
+            let body = ctx
                 .scene
                 .graph
                 .find(instance, &mut |node| node.tag() == "Body");
-            if let Some(body) = context.scene.graph.try_get_mut(body) {
+            if let Some(body) = ctx.scene.graph.try_get_mut(body) {
                 body.local_transform_mut().set_position(position);
             } else {
                 Log::warn("Cannot find Body of actor!".to_owned());
             }
         }
 
-        Log::info(format!("Start point {:?} created!", context.handle));
+        Log::info(format!("Start point {:?} created!", ctx.handle));
     }
 
-    fn on_deinit(&mut self, context: ScriptDeinitContext) {
-        assert!(game_mut(context.plugins)
-            .start_points
-            .remove(&context.node_handle));
-        Log::info(format!("Start point {:?} destroyed!", context.node_handle));
+    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
+        assert!(game_mut(ctx.plugins).start_points.remove(&ctx.node_handle));
+        Log::info(format!("Start point {:?} destroyed!", ctx.node_handle));
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {

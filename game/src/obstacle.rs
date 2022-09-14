@@ -41,10 +41,10 @@ impl TypeUuidProvider for RotatorObstacle {
 }
 
 impl ScriptTrait for RotatorObstacle {
-    fn on_update(&mut self, context: ScriptContext) {
-        self.angle += self.speed * context.dt;
+    fn on_update(&mut self, ctx: &mut ScriptContext) {
+        self.angle += self.speed * ctx.dt;
 
-        if let Some(rigid_body) = context.scene.graph[context.handle].cast_mut::<RigidBody>() {
+        if let Some(rigid_body) = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>() {
             rigid_body
                 .local_transform_mut()
                 .set_rotation(UnitQuaternion::from_axis_angle(
