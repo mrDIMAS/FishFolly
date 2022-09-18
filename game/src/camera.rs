@@ -15,7 +15,7 @@ use fyrox::{
     event::DeviceEvent,
     impl_component_provider,
     scene::{
-        graph::{map::NodeHandleMap, physics::RayCastOptions},
+        graph::physics::RayCastOptions,
         node::{Node, TypeUuidProvider},
     },
     script::{ScriptContext, ScriptTrait},
@@ -176,14 +176,6 @@ impl ScriptTrait for CameraController {
         } else {
             Log::warn("Player is not set!".to_owned());
         }
-    }
-
-    fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
-        old_new_mapping
-            .map(&mut self.player)
-            .map(&mut self.hinge)
-            .map(&mut self.camera)
-            .map(&mut self.collider_to_ignore);
     }
 
     fn id(&self) -> Uuid {

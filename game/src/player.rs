@@ -16,12 +16,7 @@ use fyrox::{
     event::{ElementState, VirtualKeyCode, WindowEvent},
     impl_component_provider,
     resource::absm::AbsmResource,
-    scene::{
-        graph::{map::NodeHandleMap, Graph},
-        node::Node,
-        node::TypeUuidProvider,
-        rigidbody::RigidBody,
-    },
+    scene::{graph::Graph, node::Node, node::TypeUuidProvider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
     utils::log::Log,
 };
@@ -233,13 +228,6 @@ impl ScriptTrait for Player {
                 .set_parameter("Run", Parameter::Rule(is_moving))
                 .set_parameter("Jump", Parameter::Rule(jump));
         }
-    }
-
-    fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
-        old_new_mapping
-            .map(&mut self.model)
-            .map(&mut self.collider)
-            .map(&mut self.camera);
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {

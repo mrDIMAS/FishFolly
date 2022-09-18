@@ -13,7 +13,7 @@ use fyrox::{
     resource::absm::AbsmResource,
     scene::{
         collider::{Collider, ColliderShape},
-        graph::{map::NodeHandleMap, physics::RayCastOptions, Graph},
+        graph::{physics::RayCastOptions, Graph},
         node::{Node, TypeUuidProvider},
         rigidbody::RigidBody,
     },
@@ -249,14 +249,6 @@ impl ScriptTrait for Bot {
                 }
             }
         }
-    }
-
-    fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
-        old_new_mapping
-            .map(&mut self.model_root)
-            .map(&mut self.collider)
-            .map(&mut self.probe_locator)
-            .map(&mut self.ragdoll);
     }
 
     fn restore_resources(&mut self, resource_manager: ResourceManager) {

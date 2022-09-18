@@ -12,7 +12,6 @@ use fyrox::{
     },
     impl_component_provider,
     scene::{
-        graph::map::NodeHandleMap,
         node::{Node, TypeUuidProvider},
         rigidbody::{RigidBody, RigidBodyType},
     },
@@ -146,12 +145,6 @@ impl ScriptTrait for Ragdoll {
                 }
             }
         }
-    }
-
-    fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
-        old_new_mapping
-            .map(&mut self.capsule)
-            .map(&mut self.root_body);
     }
 
     fn id(&self) -> Uuid {

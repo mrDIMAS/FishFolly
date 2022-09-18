@@ -9,7 +9,7 @@ use fyrox::{
         visitor::prelude::*,
     },
     impl_component_provider,
-    scene::{graph::map::NodeHandleMap, node::Node, node::TypeUuidProvider},
+    scene::{node::Node, node::TypeUuidProvider},
     script::ScriptTrait,
 };
 
@@ -27,10 +27,6 @@ impl TypeUuidProvider for BoneLink {
 }
 
 impl ScriptTrait for BoneLink {
-    fn remap_handles(&mut self, old_new_mapping: &NodeHandleMap) {
-        old_new_mapping.map(&mut self.bone);
-    }
-
     fn id(&self) -> Uuid {
         Self::type_uuid()
     }
