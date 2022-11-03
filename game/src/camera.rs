@@ -138,7 +138,7 @@ impl ScriptTrait for CameraController {
         }
     }
 
-    fn on_update(&mut self, mut ctx: &mut ScriptContext) {
+    fn on_update(&mut self, ctx: &mut ScriptContext) {
         if let Some(player) = ctx.scene.graph.try_get(self.player) {
             // Sync position with player.
             self.target_position = player.global_position();
@@ -167,13 +167,13 @@ impl ScriptTrait for CameraController {
                     self.check_for_obstacles(
                         hinge_position,
                         camera.global_position(),
-                        &mut ctx,
+                        ctx,
                         self.collider_to_ignore,
                     );
                 }
             }
         } else {
-            Log::warn("Player is not set!".to_owned());
+            Log::warn("Player is not set!");
         }
     }
 

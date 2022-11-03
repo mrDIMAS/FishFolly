@@ -71,7 +71,7 @@ impl ScriptTrait for Cannon {
                         rigid_body.set_lin_vel(shooting_dir.scale(self.shooting_force));
                     }
                 } else {
-                    Log::warn("Cannot find Body of ball!".to_owned());
+                    Log::warn("Cannot find Body of ball!");
                 }
             }
         }

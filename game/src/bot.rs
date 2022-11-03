@@ -164,7 +164,7 @@ impl ScriptTrait for Bot {
             if let Some(probe_locator) = ctx.scene.graph.try_get(self.probe_locator) {
                 probe_locator.global_position()
             } else {
-                Log::warn("There is not ground probe locator specified!".to_owned());
+                Log::warn("There is not ground probe locator specified!");
                 Default::default()
             };
 

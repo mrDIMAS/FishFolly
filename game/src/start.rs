@@ -43,7 +43,7 @@ impl ScriptTrait for StartPoint {
             if let Some(body) = ctx.scene.graph.try_get_mut(body) {
                 body.local_transform_mut().set_position(position);
             } else {
-                Log::warn("Cannot find Body of actor!".to_owned());
+                Log::warn("Cannot find Body of actor!");
             }
         }
 

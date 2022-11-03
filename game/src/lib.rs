@@ -67,7 +67,7 @@ impl PluginConstructor for GameConstructor {
 
 impl Game {
     fn new(override_scene: Handle<Scene>, mut context: PluginContext) -> Self {
-        Log::info("Game started!".to_owned());
+        Log::info("Game started!");
 
         let scene = if override_scene.is_some() {
             override_scene
@@ -87,7 +87,7 @@ impl Game {
         if let Some(scene) = context.scenes.try_get_mut(scene) {
             scene.ambient_lighting_color = Color::opaque(150, 150, 150);
 
-            Log::info("Scene was set successfully!".to_owned());
+            Log::info("Scene was set successfully!");
         }
 
         Self {
@@ -102,7 +102,7 @@ impl Game {
 
 impl Plugin for Game {
     fn on_deinit(&mut self, _context: PluginContext) {
-        Log::info("Game stopped!".to_owned());
+        Log::info("Game stopped!");
     }
 
     fn on_os_event(

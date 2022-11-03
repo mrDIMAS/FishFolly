@@ -117,10 +117,10 @@ impl ScriptTrait for Player {
                     .instantiate(self.model, ctx.scene, animations)
                     .unwrap();
             } else {
-                Log::err("There is no resource specified for player ABSM!".to_owned());
+                Log::err("There is no resource specified for player ABSM!");
             }
         } else {
-            Log::err("There is no model set for player!".to_owned());
+            Log::err("There is no model set for player!");
         }
 
         Log::info(format!("Player {:?} created!", ctx.handle));

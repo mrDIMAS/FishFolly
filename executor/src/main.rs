@@ -5,8 +5,10 @@ use fyrox::{engine::executor::Executor, renderer::QualitySettings};
 fn main() {
     let mut executor = Executor::new();
     executor.get_window().set_title("Fish Folly");
-    let mut quality_settings = QualitySettings::default();
-    quality_settings.use_ssao = false;
+    let quality_settings = QualitySettings {
+        use_ssao: false,
+        ..Default::default()
+    };
     executor
         .renderer
         .set_quality_settings(&quality_settings)
