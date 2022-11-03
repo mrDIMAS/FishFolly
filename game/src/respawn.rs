@@ -4,9 +4,8 @@
 use crate::game_ref;
 use fyrox::{
     core::{
-        inspect::prelude::*,
         math::aabb::AxisAlignedBoundingBox,
-        reflect::Reflect,
+        reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
@@ -15,7 +14,7 @@ use fyrox::{
     script::{ScriptContext, ScriptTrait},
 };
 
-#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
+#[derive(Clone, Default, Debug, Visit, Reflect)]
 pub struct RespawnZone {}
 
 impl_component_provider!(RespawnZone);

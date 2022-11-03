@@ -2,7 +2,7 @@
 
 use crate::game_mut;
 use fyrox::{
-    core::{inspect::prelude::*, reflect::Reflect, uuid::uuid, uuid::Uuid, visitor::prelude::*},
+    core::{reflect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*},
     engine::resource_manager::ResourceManager,
     impl_component_provider,
     resource::model::Model,
@@ -11,9 +11,9 @@ use fyrox::{
     utils::log::Log,
 };
 
-#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
+#[derive(Clone, Default, Debug, Visit, Reflect)]
 pub struct StartPoint {
-    #[inspect(
+    #[reflect(
         description = "A handle of a player resource. The resource will be instantiated to the scene."
     )]
     model: Option<Model>,

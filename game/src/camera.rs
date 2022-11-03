@@ -6,9 +6,8 @@ use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
         arrayvec::ArrayVec,
-        inspect::prelude::*,
         pool::Handle,
-        reflect::Reflect,
+        reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
@@ -23,33 +22,33 @@ use fyrox::{
 };
 use std::ops::Range;
 
-#[derive(Clone, Inspect, Visit, Debug, Reflect)]
+#[derive(Clone, Visit, Debug, Reflect)]
 pub struct CameraController {
-    #[inspect(description = "Handle of a node that has Player script.")]
+    #[reflect(description = "Handle of a node that has Player script.")]
     player: Handle<Node>,
-    #[inspect(description = "Default distance from the hinge to the camera.")]
+    #[reflect(description = "Default distance from the hinge to the camera.")]
     default_distance: f32,
-    #[inspect(description = "Handle of camera hinge.")]
+    #[reflect(description = "Handle of camera hinge.")]
     hinge: Handle<Node>,
-    #[inspect(description = "Handle of Camera node.")]
+    #[reflect(description = "Handle of Camera node.")]
     camera: Handle<Node>,
-    #[inspect(description = "Distance from first blocker that in the way of camera.")]
+    #[reflect(description = "Distance from first blocker that in the way of camera.")]
     probe_radius: f32,
-    #[inspect(description = "Pitch range for camera")]
+    #[reflect(description = "Pitch range for camera")]
     #[visit(optional)]
     pitch_range: Range<f32>,
     #[visit(optional)]
-    #[inspect(description = "A collider that should be ignored by ray casting.")]
+    #[reflect(description = "A collider that should be ignored by ray casting.")]
     pub collider_to_ignore: Handle<Node>,
-    #[inspect(skip)]
+
     #[visit(skip)]
     #[reflect(hidden)]
     target_position: Vector3<f32>,
-    #[inspect(skip)]
+
     #[visit(skip)]
     #[reflect(hidden)]
     pub pitch: f32,
-    #[inspect(skip)]
+
     #[visit(skip)]
     #[reflect(hidden)]
     pub yaw: f32,

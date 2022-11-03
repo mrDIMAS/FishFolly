@@ -3,10 +3,9 @@ use crate::ragdoll::link::BoneLink;
 use fyrox::{
     core::{
         algebra::{Matrix4, UnitQuaternion, Vector3},
-        inspect::prelude::*,
         math::Matrix4Ext,
         pool::Handle,
-        reflect::Reflect,
+        reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
@@ -20,23 +19,21 @@ use fyrox::{
 
 pub mod link;
 
-#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
+#[derive(Clone, Default, Debug, Visit, Reflect)]
 pub struct Ragdoll {
     pub enabled: bool,
-    #[inspect(
+    #[reflect(
         description = "A handle to main actor capsule which position will be synced with root body of the ragdoll."
     )]
     #[visit(optional)]
     capsule: Handle<Node>,
-    #[inspect(description = "A handle to a root body of the ragdoll.")]
+    #[reflect(description = "A handle to a root body of the ragdoll.")]
     #[visit(optional)]
     root_body: Handle<Node>,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     bodies: Vec<Handle<Node>>,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     prev_enabled: bool,
 }

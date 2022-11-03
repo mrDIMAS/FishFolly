@@ -2,9 +2,8 @@
 
 use fyrox::{
     core::{
-        inspect::prelude::*,
         pool::Handle,
-        reflect::Reflect,
+        reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
@@ -13,7 +12,7 @@ use fyrox::{
     script::ScriptTrait,
 };
 
-#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
+#[derive(Clone, Default, Debug, Visit, Reflect)]
 pub struct BoneLink {
     pub bone: Handle<Node>,
 }

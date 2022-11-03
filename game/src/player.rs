@@ -6,9 +6,8 @@ use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
         futures::executor::block_on,
-        inspect::prelude::*,
         pool::Handle,
-        reflect::Reflect,
+        reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
@@ -52,29 +51,26 @@ impl InputController {
     }
 }
 
-#[derive(Clone, Inspect, Visit, Debug, Reflect)]
+#[derive(Clone, Visit, Debug, Reflect)]
 pub struct Player {
-    #[inspect(description = "Speed of the player.")]
+    #[reflect(description = "Speed of the player.")]
     speed: f32,
-    #[inspect(description = "Handle to player's collider.")]
+    #[reflect(description = "Handle to player's collider.")]
     pub collider: Handle<Node>,
-    #[inspect(description = "Animation blending state machine used by player's model.")]
+    #[reflect(description = "Animation blending state machine used by player's model.")]
     absm_resource: Option<AbsmResource>,
-    #[inspect(description = "Handle to player's model.")]
+    #[reflect(description = "Handle to player's model.")]
     model: Handle<Node>,
-    #[inspect(description = "Handle to a node with camera controller.")]
+    #[reflect(description = "Handle to a node with camera controller.")]
     #[visit(optional)]
     camera: Handle<Node>,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     absm: Handle<Machine>,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     pub input_controller: InputController,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     pub actor: Actor,
 }

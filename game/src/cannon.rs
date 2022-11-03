@@ -2,8 +2,7 @@
 
 use fyrox::{
     core::{
-        inspect::prelude::*,
-        reflect::Reflect,
+        reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
@@ -15,14 +14,13 @@ use fyrox::{
     utils::log::Log,
 };
 
-#[derive(Clone, Debug, Visit, Inspect, Reflect)]
+#[derive(Clone, Debug, Visit, Reflect)]
 pub struct Cannon {
     ball_prefab: Option<Model>,
     shooting_timeout: f32,
     #[visit(optional)]
     shooting_force: f32,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     timer: f32,
 }

@@ -4,8 +4,7 @@ use crate::{game_ref, Bot, Player};
 use fyrox::{
     core::{
         algebra::Vector3,
-        inspect::prelude::*,
-        reflect::Reflect,
+        reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
@@ -15,7 +14,7 @@ use fyrox::{
 };
 use std::collections::HashSet;
 
-#[derive(Clone, Default, Debug, Visit, Inspect, Reflect)]
+#[derive(Clone, Default, Debug, Visit, Reflect)]
 pub struct Jumper {
     push_force: f32,
 }

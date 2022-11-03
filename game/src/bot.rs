@@ -5,8 +5,8 @@ use fyrox::{
     animation::machine::{Machine, Parameter},
     core::{
         algebra::Point3, algebra::UnitQuaternion, algebra::Vector3, arrayvec::ArrayVec,
-        futures::executor::block_on, inspect::prelude::*, pool::Handle, reflect::Reflect,
-        uuid::uuid, uuid::Uuid, visitor::prelude::*,
+        futures::executor::block_on, pool::Handle, reflect::prelude::*, uuid::uuid, uuid::Uuid,
+        visitor::prelude::*,
     },
     engine::resource_manager::ResourceManager,
     impl_component_provider,
@@ -24,40 +24,36 @@ use fyrox::{
     },
 };
 
-#[derive(Clone, Visit, Inspect, Reflect, Debug)]
+#[derive(Clone, Visit, Reflect, Debug)]
 pub struct Bot {
-    #[inspect(description = "Speed of the bot.")]
+    #[reflect(description = "Speed of the bot.")]
     speed: f32,
-    #[inspect(description = "Handle of a model of the bot.")]
+    #[reflect(description = "Handle of a model of the bot.")]
     model_root: Handle<Node>,
-    #[inspect(description = "Animation blending state machine used by bot's model.")]
+    #[reflect(description = "Animation blending state machine used by bot's model.")]
     absm_resource: Option<AbsmResource>,
-    #[inspect(description = "Collider of the bot.")]
+    #[reflect(description = "Collider of the bot.")]
     pub collider: Handle<Node>,
-    #[inspect(description = "Handle of an edge probe locator node")]
+    #[reflect(description = "Handle of an edge probe locator node")]
     probe_locator: Handle<Node>,
-    #[inspect(description = "A handle of the ragdoll")]
+    #[reflect(description = "A handle of the ragdoll")]
     #[visit(optional)]
     ragdoll: Handle<Node>,
-    #[inspect(
+    #[reflect(
         description = "Amount of time that the bot will be lying on the ground with active ragdoll."
     )]
     #[visit(optional)]
     stand_up_timeout: f32,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     absm: Handle<Machine>,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     pub actor: Actor,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     agent: NavmeshAgent,
     #[visit(skip)]
-    #[inspect(skip)]
     #[reflect(hidden)]
     stand_up_timer: f32,
 }

@@ -3,8 +3,7 @@
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, UnitVector3, Vector3},
-        inspect::prelude::*,
-        reflect::Reflect,
+        reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
@@ -15,7 +14,7 @@ use fyrox::{
 
 /// TODO: Ideally any animation for obstacles should be done in the editor, but there is no
 /// animation editor yet.
-#[derive(Clone, Debug, Visit, Inspect, Reflect)]
+#[derive(Clone, Debug, Visit, Reflect)]
 pub struct RotatorObstacle {
     angle: f32,
     axis: Vector3<f32>,
