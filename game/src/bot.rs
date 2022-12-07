@@ -2,16 +2,14 @@
 
 use crate::{game_mut, game_ref, marker::Actor, utils, Ragdoll};
 use fyrox::{
-    animation::machine::{Machine, Parameter},
+    animation::machine::Parameter,
     core::{
         algebra::Point3, algebra::UnitQuaternion, algebra::Vector3, arrayvec::ArrayVec,
-        futures::executor::block_on, pool::Handle, reflect::prelude::*, uuid::uuid, uuid::Uuid,
-        visitor::prelude::*,
+        pool::Handle, reflect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*,
     },
-    engine::resource_manager::ResourceManager,
     impl_component_provider,
-    resource::absm::AbsmResource,
     scene::{
+        animation::absm::AnimationBlendingStateMachine,
         collider::{Collider, ColliderShape},
         graph::{physics::RayCastOptions, Graph},
         node::{Node, TypeUuidProvider},
@@ -28,14 +26,12 @@ use fyrox::{
 pub struct Bot {
     #[reflect(description = "Speed of the bot.")]
     speed: f32,
-    #[reflect(description = "Handle of a model of the bot.")]
-    model_root: Handle<Node>,
-    #[reflect(description = "Animation blending state machine used by bot's model.")]
-    absm_resource: Option<AbsmResource>,
     #[reflect(description = "Collider of the bot.")]
     pub collider: Handle<Node>,
     #[reflect(description = "Handle of an edge probe locator node")]
     probe_locator: Handle<Node>,
+    #[reflect(description = "Handle of animation state machine.")]
+    absm: Handle<Node>,
     #[reflect(description = "A handle of the ragdoll")]
     #[visit(optional)]
     ragdoll: Handle<Node>,
@@ -44,9 +40,6 @@ pub struct Bot {
     )]
     #[visit(optional)]
     stand_up_timeout: f32,
-    #[visit(skip)]
-    #[reflect(hidden)]
-    absm: Handle<Machine>,
     #[visit(skip)]
     #[reflect(hidden)]
     pub actor: Actor,
@@ -70,10 +63,7 @@ impl Default for Bot {
     fn default() -> Self {
         Self {
             speed: 1.0,
-            model_root: Default::default(),
-            absm_resource: None,
             collider: Default::default(),
-            absm: Default::default(),
             actor: Default::default(),
             probe_locator: Default::default(),
             agent: NavmeshAgentBuilder::new()
@@ -82,6 +72,7 @@ impl Default for Bot {
             ragdoll: Default::default(),
             stand_up_timeout: 2.0,
             stand_up_timer: 0.0,
+            absm: Default::default(),
         }
     }
 }
@@ -131,16 +122,6 @@ fn set_ragdoll_enabled(ragdoll_holder: Handle<Node>, graph: &mut Graph, enabled:
 impl ScriptTrait for Bot {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
         assert!(game_mut(ctx.plugins).actors.insert(ctx.handle));
-
-        if ctx.scene.graph.is_valid_handle(self.model_root) {
-            if let Some(absm) = self.absm_resource.as_ref() {
-                let animations = block_on(absm.load_animations(ctx.resource_manager.clone()));
-
-                self.absm = absm
-                    .instantiate(self.model_root, ctx.scene, animations)
-                    .unwrap();
-            }
-        }
         Log::info(format!("Bot {:?} created!", ctx.handle));
     }
 
@@ -239,20 +220,19 @@ impl ScriptTrait for Bot {
                         ));
                 }
 
-                if let Some(absm) = ctx.scene.animation_machines.try_get_mut(self.absm) {
-                    absm.set_parameter("Run", Parameter::Rule(is_running))
+                if let Some(absm) = ctx
+                    .scene
+                    .graph
+                    .try_get_mut(self.absm)
+                    .and_then(|n| n.query_component_mut::<AnimationBlendingStateMachine>())
+                {
+                    absm.machine_mut()
+                        .get_mut_silent()
+                        .set_parameter("Run", Parameter::Rule(is_running))
                         .set_parameter("Jump", Parameter::Rule(jump));
                 }
             }
         }
-    }
-
-    fn restore_resources(&mut self, resource_manager: ResourceManager) {
-        let mut state = resource_manager.state();
-        let containers = state.containers_mut();
-        containers
-            .absm
-            .try_restore_optional_resource(&mut self.absm_resource);
     }
 
     fn id(&self) -> Uuid {

@@ -57,7 +57,7 @@ impl ScriptTrait for Cannon {
                 .try_normalize(f32::EPSILON)
                 .unwrap_or_default();
             if let Some(ball_prefab) = self.ball_prefab.as_ref() {
-                let ball_instance = ball_prefab.instantiate_geometry(ctx.scene);
+                let ball_instance = ball_prefab.instantiate(ctx.scene);
                 ctx.scene.graph[ball_instance].set_lifetime(Some(5.0));
 
                 let body = ctx

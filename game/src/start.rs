@@ -33,7 +33,7 @@ impl ScriptTrait for StartPoint {
 
         if let Some(resource) = self.model.as_ref() {
             // Spawn specified actor.
-            let instance = resource.instantiate_geometry(ctx.scene);
+            let instance = resource.instantiate(ctx.scene);
             // Sync its position with the start point position.
             let position = ctx.scene.graph[ctx.handle].global_position();
             let body = ctx

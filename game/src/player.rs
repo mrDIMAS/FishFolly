@@ -2,20 +2,22 @@
 
 use crate::{game_mut, marker::Actor, utils, CameraController, Event};
 use fyrox::{
-    animation::machine::{Machine, Parameter},
+    animation::machine::Parameter,
     core::{
         algebra::{UnitQuaternion, Vector3},
-        futures::executor::block_on,
         pool::Handle,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    engine::resource_manager::ResourceManager,
     event::{ElementState, VirtualKeyCode, WindowEvent},
     impl_component_provider,
-    resource::absm::AbsmResource,
-    scene::{graph::Graph, node::Node, node::TypeUuidProvider, rigidbody::RigidBody},
+    scene::{
+        animation::absm::AnimationBlendingStateMachine,
+        graph::Graph,
+        node::{Node, TypeUuidProvider},
+        rigidbody::RigidBody,
+    },
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
     utils::log::Log,
 };
@@ -57,16 +59,13 @@ pub struct Player {
     speed: f32,
     #[reflect(description = "Handle to player's collider.")]
     pub collider: Handle<Node>,
-    #[reflect(description = "Animation blending state machine used by player's model.")]
-    absm_resource: Option<AbsmResource>,
     #[reflect(description = "Handle to player's model.")]
     model: Handle<Node>,
+    #[reflect(description = "Handle to player's animation state machine.")]
+    absm: Handle<Node>,
     #[reflect(description = "Handle to a node with camera controller.")]
     #[visit(optional)]
     camera: Handle<Node>,
-    #[visit(skip)]
-    #[reflect(hidden)]
-    absm: Handle<Machine>,
     #[visit(skip)]
     #[reflect(hidden)]
     pub input_controller: InputController,
@@ -82,10 +81,9 @@ impl Default for Player {
         Self {
             speed: 1.0,
             collider: Default::default(),
-            absm_resource: None,
             model: Default::default(),
-            camera: Default::default(),
             absm: Default::default(),
+            camera: Default::default(),
             input_controller: Default::default(),
             actor: Default::default(),
         }
@@ -107,21 +105,6 @@ impl Player {
 impl ScriptTrait for Player {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
         assert!(game_mut(ctx.plugins).actors.insert(ctx.handle));
-
-        if self.model.is_some() {
-            if let Some(absm_resource) = self.absm_resource.as_ref() {
-                let animations =
-                    block_on(absm_resource.load_animations(ctx.resource_manager.clone()));
-
-                self.absm = absm_resource
-                    .instantiate(self.model, ctx.scene, animations)
-                    .unwrap();
-            } else {
-                Log::err("There is no resource specified for player ABSM!");
-            }
-        } else {
-            Log::err("There is no model set for player!");
-        }
 
         Log::info(format!("Player {:?} created!", ctx.handle));
     }
@@ -220,18 +203,18 @@ impl ScriptTrait for Player {
                     ));
             }
 
-            ctx.scene.animation_machines[self.absm]
-                .set_parameter("Run", Parameter::Rule(is_moving))
-                .set_parameter("Jump", Parameter::Rule(jump));
+            if let Some(absm) = ctx
+                .scene
+                .graph
+                .try_get_mut(self.absm)
+                .and_then(|n| n.query_component_mut::<AnimationBlendingStateMachine>())
+            {
+                absm.machine_mut()
+                    .get_mut_silent()
+                    .set_parameter("Run", Parameter::Rule(is_moving))
+                    .set_parameter("Jump", Parameter::Rule(jump));
+            }
         }
-    }
-
-    fn restore_resources(&mut self, resource_manager: ResourceManager) {
-        let mut state = resource_manager.state();
-        let containers = state.containers_mut();
-        containers
-            .absm
-            .try_restore_optional_resource(&mut self.absm_resource);
     }
 
     fn id(&self) -> Uuid {

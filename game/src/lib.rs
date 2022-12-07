@@ -5,12 +5,12 @@ use crate::{
     respawn::RespawnZone, start::StartPoint, target::Target,
 };
 use fyrox::{
-    core::{color::Color, futures::executor::block_on, pool::Handle},
+    core::pool::Handle,
     event::Event,
     event_loop::ControlFlow,
     gui::message::UiMessage,
     plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
-    scene::{node::Node, Scene, SceneLoader},
+    scene::{loader::AsyncSceneLoader, node::Node, Scene},
     utils::log::Log,
 };
 use std::collections::HashSet;
@@ -35,6 +35,7 @@ pub struct Game {
     pub targets: HashSet<Handle<Node>>,
     pub start_points: HashSet<Handle<Node>>,
     pub actors: HashSet<Handle<Node>>,
+    loader: Option<AsyncSceneLoader>,
 }
 
 pub struct GameConstructor;
@@ -69,26 +70,17 @@ impl Game {
     fn new(override_scene: Handle<Scene>, mut context: PluginContext) -> Self {
         Log::info("Game started!");
 
+        let mut loader = None;
         let scene = if override_scene.is_some() {
             override_scene
         } else {
-            let scene = block_on(
-                block_on(SceneLoader::from_file(
-                    "data/drake.rgs",
-                    context.serialization_context.clone(),
-                ))
-                .unwrap()
-                .finish(context.resource_manager.clone()),
-            );
-
-            context.scenes.add(scene)
+            loader = Some(AsyncSceneLoader::begin_loading(
+                "data/drake.rgs".into(),
+                context.serialization_context.clone(),
+                context.resource_manager.clone(),
+            ));
+            Default::default()
         };
-
-        if let Some(scene) = context.scenes.try_get_mut(scene) {
-            scene.ambient_lighting_color = Color::opaque(150, 150, 150);
-
-            Log::info("Scene was set successfully!");
-        }
 
         Self {
             menu: Menu::new(&mut context),
@@ -96,6 +88,7 @@ impl Game {
             start_points: Default::default(),
             actors: Default::default(),
             scene,
+            loader,
         }
     }
 }
@@ -115,6 +108,17 @@ impl Plugin for Game {
     }
 
     fn update(&mut self, context: &mut PluginContext, _control_flow: &mut ControlFlow) {
+        if let Some(loader) = self.loader.as_ref() {
+            if let Some(result) = loader.fetch_result() {
+                match result {
+                    Ok(scene) => {
+                        self.scene = context.scenes.add(scene);
+                    }
+                    Err(err) => Log::err(err),
+                }
+            }
+        }
+
         if false {
             if let Some(scene) = context.scenes.try_get_mut(self.scene) {
                 scene.drawing_context.clear_lines();
