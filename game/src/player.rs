@@ -210,7 +210,7 @@ impl ScriptTrait for Player {
                 .and_then(|n| n.query_component_mut::<AnimationBlendingStateMachine>())
             {
                 absm.machine_mut()
-                    .get_mut_silent()
+                    .get_value_mut_silent()
                     .set_parameter("Run", Parameter::Rule(is_moving))
                     .set_parameter("Jump", Parameter::Rule(jump));
             }

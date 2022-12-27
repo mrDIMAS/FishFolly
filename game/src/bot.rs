@@ -227,7 +227,7 @@ impl ScriptTrait for Bot {
                     .and_then(|n| n.query_component_mut::<AnimationBlendingStateMachine>())
                 {
                     absm.machine_mut()
-                        .get_mut_silent()
+                        .get_value_mut_silent()
                         .set_parameter("Run", Parameter::Rule(is_running))
                         .set_parameter("Jump", Parameter::Rule(jump));
                 }
