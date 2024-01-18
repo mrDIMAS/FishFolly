@@ -155,6 +155,8 @@ impl ScriptTrait for Bot {
                 Default::default()
             };
 
+        let mut velocity = Default::default();
+
         if let Some(target_pos) = target_pos {
             if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>()
             {
@@ -198,15 +200,12 @@ impl ScriptTrait for Bot {
                     current_y_lin_vel
                 };
 
+                velocity = Vector3::new(horizontal_velocity.x, y_vel, horizontal_velocity.z);
+
                 // Reborrow the node.
                 let rigid_body = ctx.scene.graph[self.actor.rigid_body]
                     .cast_mut::<RigidBody>()
                     .unwrap();
-                rigid_body.set_lin_vel(Vector3::new(
-                    horizontal_velocity.x,
-                    y_vel,
-                    horizontal_velocity.z,
-                ));
 
                 let is_running =
                     self.actor.stand_up_timer <= 0.0 && horizontal_velocity.norm() > 0.1;
@@ -233,6 +232,10 @@ impl ScriptTrait for Bot {
                 }
             }
         }
+
+        let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
+        self.actor
+            .do_move(velocity, &mut ctx.scene.graph, has_ground_contact);
     }
 
     fn on_message(

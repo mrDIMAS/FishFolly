@@ -1,8 +1,6 @@
 //! Main player (host) script.
 
-use crate::actor::ActorMessage;
-use crate::{actor::Actor, CameraController, Event, Game};
-use fyrox::script::{ScriptMessageContext, ScriptMessagePayload};
+use crate::{actor::Actor, actor::ActorMessage, CameraController, Event, Game};
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -15,7 +13,9 @@ use fyrox::{
     event::{ElementState, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
     scene::{animation::absm::prelude::*, node::Node, rigidbody::RigidBody},
-    script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
+    script::{
+        ScriptContext, ScriptDeinitContext, ScriptMessageContext, ScriptMessagePayload, ScriptTrait,
+    },
 };
 
 #[derive(Clone, Default, Debug)]
@@ -120,11 +120,11 @@ impl ScriptTrait for Player {
             .map(|c| c.yaw)
             .unwrap_or_default();
 
+        let mut velocity = Vector3::default();
+
         if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>() {
             let forward_vec = rigid_body.look_vector();
             let side_vec = rigid_body.side_vector();
-
-            let mut velocity = Vector3::default();
 
             if self.input_controller.move_forward {
                 velocity += forward_vec;
@@ -151,8 +151,6 @@ impl ScriptTrait for Player {
                 self.input_controller.jump = false;
                 self.actor.jump = true;
             }
-
-            rigid_body.set_lin_vel(velocity);
 
             let is_moving = velocity.x != 0.0 || velocity.z != 0.0;
 
@@ -204,6 +202,9 @@ impl ScriptTrait for Player {
                     .set_parameter("Jump", Parameter::Rule(self.actor.jump));
             }
         }
+
+        self.actor
+            .do_move(velocity, &mut ctx.scene.graph, has_ground_contact);
     }
 
     fn on_message(

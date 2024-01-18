@@ -3,7 +3,7 @@
 use crate::{utils, Game};
 use fyrox::{
     core::{algebra::Vector3, pool::Handle, reflect::prelude::*, visitor::prelude::*},
-    scene::{graph::Graph, node::Node, ragdoll::Ragdoll},
+    scene::{graph::Graph, node::Node, ragdoll::Ragdoll, rigidbody::RigidBody},
     script::{ScriptContext, ScriptMessageContext, ScriptMessagePayload},
 };
 
@@ -48,8 +48,25 @@ impl Default for Actor {
 }
 
 impl Actor {
+    fn is_ragdoll_has_ground_contact(&self, graph: &Graph) -> bool {
+        let mut result = false;
+        if let Some(ragdoll) = graph.try_get_of_type::<Ragdoll>(self.ragdoll) {
+            ragdoll.root_limb().iterate_recursive(&mut |limb| {
+                if let Some(rigid_body) = graph.try_get_of_type::<RigidBody>(limb.physical_bone) {
+                    for child in rigid_body.children() {
+                        if utils::has_ground_contact(*child, graph) {
+                            result = true;
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+        result
+    }
+
     pub fn has_ground_contact(&self, graph: &Graph) -> bool {
-        utils::has_ground_contact(self.collider, graph)
+        utils::has_ground_contact(self.collider, graph) || self.is_ragdoll_has_ground_contact(graph)
     }
 
     pub fn set_ragdoll_enabled(&mut self, graph: &mut Graph, enabled: bool) {
@@ -76,6 +93,57 @@ impl Actor {
                     rigid_body.local_transform_mut().set_position(*position);
                 }
             }
+        }
+    }
+
+    pub fn for_each_rigid_body<F>(&mut self, graph: &mut Graph, mut func: F)
+    where
+        F: FnMut(&mut RigidBody),
+    {
+        let mut mbc = graph.begin_multi_borrow::<32>();
+        if let Some(rigid_body) = mbc
+            .try_get(self.rigid_body)
+            .and_then(|n| n.query_component_mut::<RigidBody>())
+        {
+            func(rigid_body)
+        }
+        if let Some(ragdoll) = mbc
+            .try_get(self.ragdoll)
+            .and_then(|n| n.query_component_ref::<Ragdoll>())
+        {
+            ragdoll.root_limb().iterate_recursive(&mut |limb| {
+                if let Some(rigid_body) = mbc
+                    .try_get(limb.physical_bone)
+                    .and_then(|n| n.query_component_mut::<RigidBody>())
+                {
+                    func(rigid_body)
+                }
+            });
+        }
+    }
+
+    pub fn set_velocity(&mut self, velocity: Vector3<f32>, graph: &mut Graph, xz_plane_only: bool) {
+        self.for_each_rigid_body(graph, &mut |rigid_body: &mut RigidBody| {
+            let y_vel = rigid_body.lin_vel().y;
+            rigid_body.set_lin_vel(if xz_plane_only {
+                Vector3::new(velocity.x, y_vel, velocity.z)
+            } else {
+                velocity
+            });
+        });
+    }
+
+    pub fn add_force(&mut self, force: Vector3<f32>, graph: &mut Graph) {
+        self.for_each_rigid_body(graph, &mut |rigid_body: &mut RigidBody| {
+            rigid_body.apply_force(force);
+        });
+    }
+
+    pub fn do_move(&mut self, velocity: Vector3<f32>, graph: &mut Graph, has_ground_contact: bool) {
+        if has_ground_contact {
+            self.set_velocity(velocity, graph, !self.jump);
+        } else {
+            self.add_force(velocity.scale(0.75), graph);
         }
     }
 

@@ -150,7 +150,7 @@ impl ScriptTrait for CameraController {
                 &Vector3::y_axis(),
                 self.yaw,
             ));
-            local_transform.set_position(dbg!(new_position));
+            local_transform.set_position(new_position);
 
             if let Some(hinge) = ctx.scene.graph.try_get_mut(self.hinge) {
                 hinge
