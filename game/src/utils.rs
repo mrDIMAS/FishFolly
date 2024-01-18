@@ -1,7 +1,6 @@
-use fyrox::scene::rigidbody::RigidBody;
 use fyrox::{
     core::pool::Handle,
-    scene::{collider::Collider, graph::Graph, node::Node},
+    scene::{collider::Collider, graph::Graph, node::Node, rigidbody::RigidBody},
 };
 
 pub fn has_ground_contact(collider: Handle<Node>, graph: &Graph) -> bool {

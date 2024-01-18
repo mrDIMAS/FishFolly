@@ -1,31 +1,23 @@
 //! Cannon shoots large balls that push players (or bots) off the platforms.
 
 use fyrox::{
-    core::{
-        impl_component_provider,
-        log::Log,
-        reflect::prelude::*,
-        type_traits::prelude::*,
-        uuid::{uuid, Uuid},
-        visitor::prelude::*,
-    },
+    core::{log::Log, reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*},
     resource::model::{ModelResource, ModelResourceExtension},
     scene::rigidbody::RigidBody,
     script::{ScriptContext, ScriptTrait},
 };
 
-#[derive(Clone, Debug, Visit, Reflect)]
+#[derive(Clone, Debug, Visit, Reflect, TypeUuidProvider, ComponentProvider)]
+#[type_uuid(id = "becf5c5f-c745-40ee-85c9-491656fd222e")]
+#[visit(optional)]
 pub struct Cannon {
     ball_prefab: Option<ModelResource>,
     shooting_timeout: f32,
-    #[visit(optional)]
     shooting_force: f32,
     #[visit(skip)]
     #[reflect(hidden)]
     timer: f32,
 }
-
-impl_component_provider!(Cannon);
 
 impl Default for Cannon {
     fn default() -> Self {
@@ -35,12 +27,6 @@ impl Default for Cannon {
             timer: 0.0,
             shooting_force: 100.0,
         }
-    }
-}
-
-impl TypeUuidProvider for Cannon {
-    fn type_uuid() -> Uuid {
-        uuid!("becf5c5f-c745-40ee-85c9-491656fd222e")
     }
 }
 

@@ -4,28 +4,21 @@ use crate::{Bot, Game, Player};
 use fyrox::{
     core::{
         algebra::Vector3,
-        impl_component_provider,
         reflect::prelude::*,
+        type_traits::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
-        TypeUuidProvider,
     },
     scene::{collider::Collider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
 };
 use std::collections::HashSet;
 
-#[derive(Clone, Default, Debug, Visit, Reflect)]
+#[derive(Clone, Default, Debug, Visit, Reflect, TypeUuidProvider, ComponentProvider)]
+#[type_uuid(id = "be8a29af-c10a-4518-a78b-955c8f48a8cd")]
+#[visit(optional)]
 pub struct Jumper {
     push_force: f32,
-}
-
-impl_component_provider!(Jumper);
-
-impl TypeUuidProvider for Jumper {
-    fn type_uuid() -> Uuid {
-        uuid!("be8a29af-c10a-4518-a78b-955c8f48a8cd")
-    }
 }
 
 impl ScriptTrait for Jumper {

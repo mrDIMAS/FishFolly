@@ -2,28 +2,19 @@
 
 use crate::Game;
 use fyrox::{
-    core::{
-        impl_component_provider, log::Log, reflect::prelude::*, uuid::uuid, uuid::Uuid,
-        visitor::prelude::*, TypeUuidProvider,
-    },
+    core::{log::Log, reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*},
     resource::model::{ModelResource, ModelResourceExtension},
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
 };
 
-#[derive(Clone, Default, Debug, Visit, Reflect)]
+#[derive(Clone, Default, Debug, Visit, Reflect, TypeUuidProvider, ComponentProvider)]
+#[type_uuid(id = "103ac5c1-f4e4-45d2-a9f1-0da98d74d64c")]
+#[visit(optional)]
 pub struct StartPoint {
     #[reflect(
         description = "A handle of a player resource. The resource will be instantiated to the scene."
     )]
     model: Option<ModelResource>,
-}
-
-impl_component_provider!(StartPoint);
-
-impl TypeUuidProvider for StartPoint {
-    fn type_uuid() -> Uuid {
-        uuid!("103ac5c1-f4e4-45d2-a9f1-0da98d74d64c")
-    }
 }
 
 impl ScriptTrait for StartPoint {

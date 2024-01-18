@@ -4,26 +4,16 @@
 use crate::Game;
 use fyrox::{
     core::{
-        impl_component_provider,
-        math::aabb::AxisAlignedBoundingBox,
-        reflect::prelude::*,
-        uuid::{uuid, Uuid},
+        math::aabb::AxisAlignedBoundingBox, reflect::prelude::*, type_traits::prelude::*,
         visitor::prelude::*,
-        TypeUuidProvider,
     },
     script::{ScriptContext, ScriptTrait},
 };
 
-#[derive(Clone, Default, Debug, Visit, Reflect)]
+#[derive(Clone, Default, Debug, Visit, Reflect, TypeUuidProvider, ComponentProvider)]
+#[type_uuid(id = "5b39b359-0eae-4f06-958e-2facf58ce3a5")]
+#[visit(optional)]
 pub struct RespawnZone {}
-
-impl_component_provider!(RespawnZone);
-
-impl TypeUuidProvider for RespawnZone {
-    fn type_uuid() -> Uuid {
-        uuid!("5b39b359-0eae-4f06-958e-2facf58ce3a5")
-    }
-}
 
 impl ScriptTrait for RespawnZone {
     fn on_update(&mut self, ctx: &mut ScriptContext) {

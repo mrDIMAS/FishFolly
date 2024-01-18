@@ -6,12 +6,11 @@ use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
         arrayvec::ArrayVec,
-        impl_component_provider,
         pool::Handle,
         reflect::prelude::*,
+        type_traits::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
-        TypeUuidProvider,
     },
     event::DeviceEvent,
     scene::{graph::physics::RayCastOptions, node::Node},
@@ -19,7 +18,9 @@ use fyrox::{
 };
 use std::ops::Range;
 
-#[derive(Clone, Visit, Debug, Reflect)]
+#[derive(Clone, Visit, Debug, Reflect, TypeUuidProvider, ComponentProvider)]
+#[type_uuid(id = "0c45d21f-878e-4aa5-b4e1-097aaa44f314")]
+#[visit(optional)]
 pub struct CameraController {
     #[reflect(description = "Handle of a node that has Player script.")]
     player: Handle<Node>,
@@ -32,15 +33,9 @@ pub struct CameraController {
     #[reflect(description = "Distance from first blocker that in the way of camera.")]
     probe_radius: f32,
     #[reflect(description = "Pitch range for camera")]
-    #[visit(optional)]
     pitch_range: Range<f32>,
-    #[visit(optional)]
     #[reflect(description = "A collider that should be ignored by ray casting.")]
     pub collider_to_ignore: Handle<Node>,
-
-    #[visit(skip)]
-    #[reflect(hidden)]
-    target_position: Vector3<f32>,
 
     #[visit(skip)]
     #[reflect(hidden)]
@@ -57,7 +52,6 @@ impl Default for CameraController {
             player: Default::default(),
             hinge: Default::default(),
             camera: Default::default(),
-            target_position: Default::default(),
             pitch: 0.0,
             default_distance: 2.0,
             probe_radius: 0.2,
@@ -111,14 +105,6 @@ impl CameraController {
             .set_position(Vector3::new(0.0, 0.0, -distance + self.probe_radius));
     }
 }
-
-impl TypeUuidProvider for CameraController {
-    fn type_uuid() -> Uuid {
-        uuid!("0c45d21f-878e-4aa5-b4e1-097aaa44f314")
-    }
-}
-
-impl_component_provider!(CameraController);
 
 impl ScriptTrait for CameraController {
     fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {

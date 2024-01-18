@@ -3,11 +3,9 @@
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, UnitVector3, Vector3},
-        impl_component_provider,
         reflect::prelude::*,
-        uuid::{uuid, Uuid},
+        type_traits::prelude::*,
         visitor::prelude::*,
-        TypeUuidProvider,
     },
     scene::rigidbody::RigidBody,
     script::{ScriptContext, ScriptTrait},
@@ -15,14 +13,13 @@ use fyrox::{
 
 /// TODO: Ideally any animation for obstacles should be done in the editor, but there is no
 /// animation editor yet.
-#[derive(Clone, Debug, Visit, Reflect)]
+#[derive(Clone, Debug, Visit, Reflect, TypeUuidProvider, ComponentProvider)]
+#[type_uuid(id = "54ce703d-a56c-4534-a8a8-33ee1c6dd0a2")]
 pub struct RotatorObstacle {
     angle: f32,
     axis: Vector3<f32>,
     speed: f32,
 }
-
-impl_component_provider!(RotatorObstacle);
 
 impl Default for RotatorObstacle {
     fn default() -> Self {
@@ -31,12 +28,6 @@ impl Default for RotatorObstacle {
             axis: Default::default(),
             speed: 2.0,
         }
-    }
-}
-
-impl TypeUuidProvider for RotatorObstacle {
-    fn type_uuid() -> Uuid {
-        uuid!("54ce703d-a56c-4534-a8a8-33ee1c6dd0a2")
     }
 }
 

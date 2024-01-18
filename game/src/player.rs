@@ -4,13 +4,11 @@ use crate::{marker::Actor, utils, CameraController, Event, Game};
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
-        impl_component_provider,
         log::Log,
         pool::Handle,
         reflect::prelude::*,
-        uuid::{uuid, Uuid},
+        type_traits::prelude::*,
         visitor::prelude::*,
-        TypeUuidProvider,
     },
     event::{ElementState, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
@@ -49,7 +47,8 @@ impl InputController {
     }
 }
 
-#[derive(Clone, Visit, Debug, Reflect)]
+#[derive(Clone, Visit, Debug, Reflect, TypeUuidProvider, ComponentProvider)]
+#[type_uuid(id = "deb77c1d-668d-4716-a8f7-04ed09b0b9f6")]
 #[visit(optional)]
 pub struct Player {
     #[reflect(description = "Speed of the player.")]
@@ -63,17 +62,15 @@ pub struct Player {
     #[reflect(description = "Handle to player's animation state machine.")]
     absm: Handle<Node>,
     #[reflect(description = "Handle to a node with camera controller.")]
-    #[visit(optional)]
     camera: Handle<Node>,
     #[visit(skip)]
     #[reflect(hidden)]
     pub input_controller: InputController,
     #[visit(skip)]
     #[reflect(hidden)]
+    #[component(include)]
     pub actor: Actor,
 }
-
-impl_component_provider!(Player, actor: Actor);
 
 impl Default for Player {
     fn default() -> Self {
@@ -87,12 +84,6 @@ impl Default for Player {
             input_controller: Default::default(),
             actor: Default::default(),
         }
-    }
-}
-
-impl TypeUuidProvider for Player {
-    fn type_uuid() -> Uuid {
-        uuid!("deb77c1d-668d-4716-a8f7-04ed09b0b9f6")
     }
 }
 

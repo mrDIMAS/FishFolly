@@ -2,23 +2,14 @@
 
 use crate::Game;
 use fyrox::{
-    core::{
-        impl_component_provider, log::Log, reflect::prelude::*, type_traits::prelude::*,
-        uuid::uuid, uuid::Uuid, visitor::prelude::*,
-    },
+    core::{log::Log, reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*},
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
 };
 
-#[derive(Clone, Default, Debug, Visit, Reflect)]
+#[derive(Clone, Default, Debug, Visit, Reflect, ComponentProvider, TypeUuidProvider)]
+#[type_uuid(id = "dcf159d1-6bd9-4e19-8a2a-c838a1ab8f0d")]
+#[visit(optional)]
 pub struct Target {}
-
-impl_component_provider!(Target);
-
-impl TypeUuidProvider for Target {
-    fn type_uuid() -> Uuid {
-        uuid!("dcf159d1-6bd9-4e19-8a2a-c838a1ab8f0d")
-    }
-}
 
 impl ScriptTrait for Target {
     fn on_init(&mut self, ctx: &mut ScriptContext) {

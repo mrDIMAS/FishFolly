@@ -1,18 +1,15 @@
 //! A simple bot that tries to react Target points on a level.
 
 use crate::{marker::Actor, utils, Game};
-use fyrox::scene::ragdoll::Ragdoll;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
         arrayvec::ArrayVec,
-        impl_component_provider,
         log::Log,
         parking_lot::RwLock,
         pool::Handle,
         reflect::prelude::*,
         type_traits::prelude::*,
-        uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
     scene::{
@@ -21,6 +18,7 @@ use fyrox::{
         graph::{physics::RayCastOptions, Graph},
         navmesh::NavigationalMesh,
         node::Node,
+        ragdoll::Ragdoll,
         rigidbody::RigidBody,
     },
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
@@ -28,7 +26,9 @@ use fyrox::{
 };
 use std::sync::Arc;
 
-#[derive(Clone, Visit, Reflect, Debug)]
+#[derive(Clone, Visit, Reflect, Debug, TypeUuidProvider, ComponentProvider)]
+#[type_uuid(id = "85980387-81c0-4115-a74b-f9875084f464")]
+#[visit(optional)]
 pub struct Bot {
     #[reflect(description = "Speed of the bot.")]
     speed: f32,
@@ -39,15 +39,14 @@ pub struct Bot {
     #[reflect(description = "Handle of animation state machine.")]
     absm: Handle<Node>,
     #[reflect(description = "A handle of the ragdoll")]
-    #[visit(optional)]
     ragdoll: Handle<Node>,
     #[reflect(
         description = "Amount of time that the bot will be lying on the ground with active ragdoll."
     )]
-    #[visit(optional)]
     stand_up_timeout: f32,
     #[visit(skip)]
     #[reflect(hidden)]
+    #[component(include)]
     pub actor: Actor,
     #[visit(skip)]
     #[reflect(hidden)]
@@ -58,14 +57,6 @@ pub struct Bot {
     #[visit(skip)]
     #[reflect(hidden)]
     navmesh: Option<Arc<RwLock<Navmesh>>>,
-}
-
-impl_component_provider!(Bot, actor: Actor);
-
-impl TypeUuidProvider for Bot {
-    fn type_uuid() -> Uuid {
-        uuid!("85980387-81c0-4115-a74b-f9875084f464")
-    }
 }
 
 impl Default for Bot {
@@ -171,7 +162,6 @@ impl ScriptTrait for Bot {
                 let current_y_lin_vel = rigid_body.lin_vel().y;
 
                 if let Some(navmesh) = self.navmesh.as_ref() {
-                    dbg!();
                     let navmesh = navmesh.read();
                     self.agent.set_speed(self.speed);
                     self.agent.set_target(target_pos);
