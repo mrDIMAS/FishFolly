@@ -1,6 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{actor::Actor, utils, Game};
+use crate::{actor::Actor, actor::ActorMessage, utils, Game};
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
@@ -22,7 +22,9 @@ use fyrox::{
         node::Node,
         rigidbody::RigidBody,
     },
-    script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
+    script::{
+        ScriptContext, ScriptDeinitContext, ScriptMessageContext, ScriptMessagePayload, ScriptTrait,
+    },
     utils::navmesh::{Navmesh, NavmeshAgent, NavmeshAgentBuilder},
 };
 use std::sync::Arc;
@@ -104,6 +106,11 @@ impl ScriptTrait for Bot {
             .find_from_root(&mut |n| n.is_navigational_mesh())
             .and_then(|(_, n)| n.cast::<NavigationalMesh>())
             .map(|n| n.navmesh());
+    }
+
+    fn on_start(&mut self, ctx: &mut ScriptContext) {
+        ctx.message_dispatcher
+            .subscribe_to::<ActorMessage>(ctx.handle);
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
@@ -226,5 +233,13 @@ impl ScriptTrait for Bot {
                 }
             }
         }
+    }
+
+    fn on_message(
+        &mut self,
+        message: &mut dyn ScriptMessagePayload,
+        ctx: &mut ScriptMessageContext,
+    ) {
+        self.actor.on_message(message, ctx);
     }
 }

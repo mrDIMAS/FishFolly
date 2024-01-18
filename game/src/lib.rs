@@ -107,23 +107,25 @@ impl Plugin for Game {
     fn on_os_event(&mut self, event: &Event<()>, context: PluginContext) {
         self.menu.handle_os_event(event, context);
 
-        if let Event::WindowEvent { event, .. } = event {
-            if let WindowEvent::KeyboardInput { event, .. } = event {
-                if let PhysicalKey::Code(key_code) = event.physical_key {
-                    if event.state == ElementState::Pressed {
-                        match key_code {
-                            KeyCode::F1 => {
-                                self.debug_settings.show_physics = !self.debug_settings.show_physics
-                            }
-                            KeyCode::F2 => {
-                                self.debug_settings.show_paths = !self.debug_settings.show_paths
-                            }
-                            KeyCode::F3 => {
-                                self.debug_settings.disable_ragdoll =
-                                    !self.debug_settings.disable_ragdoll
-                            }
-                            _ => (),
+        if let Event::WindowEvent {
+            event: WindowEvent::KeyboardInput { event, .. },
+            ..
+        } = event
+        {
+            if let PhysicalKey::Code(key_code) = event.physical_key {
+                if event.state == ElementState::Pressed {
+                    match key_code {
+                        KeyCode::F1 => {
+                            self.debug_settings.show_physics = !self.debug_settings.show_physics
                         }
+                        KeyCode::F2 => {
+                            self.debug_settings.show_paths = !self.debug_settings.show_paths
+                        }
+                        KeyCode::F3 => {
+                            self.debug_settings.disable_ragdoll =
+                                !self.debug_settings.disable_ragdoll
+                        }
+                        _ => (),
                     }
                 }
             }

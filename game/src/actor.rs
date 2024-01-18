@@ -1,11 +1,16 @@
 //! Object marker components.
 
-use crate::Game;
+use crate::{utils, Game};
 use fyrox::{
-    core::{pool::Handle, reflect::prelude::*, visitor::prelude::*},
+    core::{algebra::Vector3, pool::Handle, reflect::prelude::*, visitor::prelude::*},
     scene::{graph::Graph, node::Node, ragdoll::Ragdoll},
-    script::ScriptContext,
+    script::{ScriptContext, ScriptMessageContext, ScriptMessagePayload},
 };
+
+#[derive(Debug)]
+pub enum ActorMessage {
+    RespawnAt(Vector3<f32>),
+}
 
 /// A marker that indicates that an object is an actor (player or bot).
 #[derive(Clone, Debug, Visit, Reflect)]
@@ -43,20 +48,46 @@ impl Default for Actor {
 }
 
 impl Actor {
-    pub fn set_ragdoll_enabled(&self, graph: &mut Graph, enabled: bool) {
+    pub fn has_ground_contact(&self, graph: &Graph) -> bool {
+        utils::has_ground_contact(self.collider, graph)
+    }
+
+    pub fn set_ragdoll_enabled(&mut self, graph: &mut Graph, enabled: bool) {
         if let Some(ragdoll) = graph.try_get_mut_of_type::<Ragdoll>(self.ragdoll) {
             ragdoll.set_active(enabled);
+        }
+        self.stand_up_timer = 0.0;
+    }
+
+    pub fn on_message(
+        &mut self,
+        message: &mut dyn ScriptMessagePayload,
+        ctx: &mut ScriptMessageContext,
+    ) {
+        let Some(message) = message.downcast_ref::<ActorMessage>() else {
+            return;
+        };
+
+        match message {
+            ActorMessage::RespawnAt(position) => {
+                self.set_ragdoll_enabled(&mut ctx.scene.graph, false);
+
+                if let Some(rigid_body) = ctx.scene.graph.try_get_mut(self.rigid_body) {
+                    rigid_body.local_transform_mut().set_position(*position);
+                }
+            }
         }
     }
 
     pub fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
+        let has_ground_contact = self.has_ground_contact(&ctx.scene.graph);
         self.stand_up_timer -= ctx.dt;
         if !game.debug_settings.disable_ragdoll && self.jump && self.stand_up_timer <= 0.0 {
             self.set_ragdoll_enabled(&mut ctx.scene.graph, true);
             self.stand_up_timer = self.stand_up_timeout;
         }
-        if self.stand_up_timer <= 0.0 {
+        if self.stand_up_timer <= 0.0 && has_ground_contact {
             self.set_ragdoll_enabled(&mut ctx.scene.graph, false);
         }
         self.jump = false;

@@ -1,6 +1,8 @@
 //! Main player (host) script.
 
-use crate::{actor::Actor, utils, CameraController, Event, Game};
+use crate::actor::ActorMessage;
+use crate::{actor::Actor, CameraController, Event, Game};
+use fyrox::script::{ScriptMessageContext, ScriptMessagePayload};
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -12,7 +14,7 @@ use fyrox::{
     },
     event::{ElementState, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
-    scene::{animation::absm::prelude::*, graph::Graph, node::Node, rigidbody::RigidBody},
+    scene::{animation::absm::prelude::*, node::Node, rigidbody::RigidBody},
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
 };
 
@@ -79,17 +81,16 @@ impl Default for Player {
     }
 }
 
-impl Player {
-    pub fn has_ground_contact(&self, graph: &Graph) -> bool {
-        utils::has_ground_contact(self.actor.collider, graph)
-    }
-}
-
 impl ScriptTrait for Player {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
         assert!(ctx.plugins.get_mut::<Game>().actors.insert(ctx.handle));
 
         Log::info(format!("Player {:?} created!", ctx.handle));
+    }
+
+    fn on_start(&mut self, ctx: &mut ScriptContext) {
+        ctx.message_dispatcher
+            .subscribe_to::<ActorMessage>(ctx.handle);
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
@@ -108,7 +109,7 @@ impl ScriptTrait for Player {
     fn on_update(&mut self, ctx: &mut ScriptContext) {
         self.actor.on_update(ctx);
 
-        let has_ground_contact = self.has_ground_contact(&ctx.scene.graph);
+        let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
 
         let yaw = ctx
             .scene
@@ -203,5 +204,13 @@ impl ScriptTrait for Player {
                     .set_parameter("Jump", Parameter::Rule(self.actor.jump));
             }
         }
+    }
+
+    fn on_message(
+        &mut self,
+        message: &mut dyn ScriptMessagePayload,
+        ctx: &mut ScriptMessageContext,
+    ) {
+        self.actor.on_message(message, ctx);
     }
 }
