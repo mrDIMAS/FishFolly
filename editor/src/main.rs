@@ -1,5 +1,5 @@
 //! Editor with your game connected to it as a plugin.
-use fish_fall::{marker::Actor, GameConstructor};
+use fish_fall::{actor::Actor, GameConstructor};
 use fyrox::{
     event_loop::EventLoop,
     gui::inspector::editors::inspectable::InspectablePropertyEditorDefinition,

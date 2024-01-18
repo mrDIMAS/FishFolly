@@ -32,10 +32,11 @@ impl ScriptTrait for Jumper {
                     let actor_script = ctx.scene.graph[*actor].script();
 
                     if let Some(actor_collider) = actor_script
-                        .and_then(|s| s.query_component_ref::<Player>().map(|p| p.collider))
+                        .and_then(|s| s.query_component_ref::<Player>().map(|p| p.actor.collider))
                         .or_else(|| {
-                            actor_script
-                                .and_then(|s| s.query_component_ref::<Bot>().map(|b| b.collider))
+                            actor_script.and_then(|s| {
+                                s.query_component_ref::<Bot>().map(|b| b.actor.collider)
+                            })
                         })
                     {
                         if contact.collider1 == actor_collider

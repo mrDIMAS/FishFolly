@@ -14,11 +14,11 @@ use fyrox::{
 };
 use std::collections::HashSet;
 
+pub mod actor;
 pub mod bot;
 pub mod camera;
 pub mod cannon;
 pub mod jumper;
-pub mod marker;
 pub mod menu;
 pub mod obstacle;
 pub mod player;

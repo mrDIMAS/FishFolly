@@ -22,6 +22,8 @@ pub struct Actor {
     #[visit(skip)]
     #[reflect(hidden)]
     pub jump: bool,
+    #[reflect(description = "Handle to player's collider.")]
+    pub collider: Handle<Node>,
 }
 
 impl Default for Actor {
@@ -31,6 +33,7 @@ impl Default for Actor {
             stand_up_timeout: 2.0,
             ragdoll: Default::default(),
             jump: false,
+            collider: Default::default(),
         }
     }
 }

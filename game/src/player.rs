@@ -1,6 +1,6 @@
 //! Main player (host) script.
 
-use crate::{marker::Actor, utils, CameraController, Event, Game};
+use crate::{actor::Actor, utils, CameraController, Event, Game};
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -53,8 +53,6 @@ impl InputController {
 pub struct Player {
     #[reflect(description = "Speed of the player.")]
     speed: f32,
-    #[reflect(description = "Handle to player's collider.")]
-    pub collider: Handle<Node>,
     #[reflect(description = "Handle to player's model pivot.")]
     model_pivot: Handle<Node>,
     #[reflect(description = "Handle to player's model.")]
@@ -74,7 +72,6 @@ impl Default for Player {
     fn default() -> Self {
         Self {
             speed: 1.0,
-            collider: Default::default(),
             model_pivot: Default::default(),
             model: Default::default(),
             absm: Default::default(),
@@ -87,7 +84,7 @@ impl Default for Player {
 
 impl Player {
     pub fn has_ground_contact(&self, graph: &Graph) -> bool {
-        utils::has_ground_contact(self.collider, graph)
+        utils::has_ground_contact(self.actor.collider, graph)
     }
 }
 
@@ -193,7 +190,7 @@ impl ScriptTrait for Player {
                     .local_transform_mut()
                     .set_rotation(UnitQuaternion::from_axis_angle(
                         &Vector3::y_axis(),
-                        (angle + 180.0).to_radians(),
+                        angle.to_radians(),
                     ));
             }
 

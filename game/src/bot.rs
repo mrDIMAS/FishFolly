@@ -1,6 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{marker::Actor, utils, Game};
+use crate::{actor::Actor, utils, Game};
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
@@ -31,8 +31,6 @@ use std::sync::Arc;
 pub struct Bot {
     #[reflect(description = "Speed of the bot.")]
     speed: f32,
-    #[reflect(description = "Collider of the bot.")]
-    pub collider: Handle<Node>,
     #[reflect(description = "Handle of an edge probe locator node")]
     probe_locator: Handle<Node>,
     #[reflect(description = "Handle of animation state machine.")]
@@ -51,7 +49,6 @@ impl Default for Bot {
     fn default() -> Self {
         Self {
             speed: 1.0,
-            collider: Default::default(),
             actor: Default::default(),
             probe_locator: Default::default(),
             agent: NavmeshAgentBuilder::new()
@@ -161,7 +158,7 @@ impl ScriptTrait for Bot {
                 };
 
                 let jump_vel = 5.0;
-                let y_vel = if utils::has_ground_contact(self.collider, &ctx.scene.graph) {
+                let y_vel = if utils::has_ground_contact(self.actor.collider, &ctx.scene.graph) {
                     if let Some(probed_position) =
                         probe_ground(ground_probe_begin, 10.0, &ctx.scene.graph)
                     {
