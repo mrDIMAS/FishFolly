@@ -1,6 +1,7 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{marker::Actor, utils, Game, Ragdoll};
+use crate::{marker::Actor, utils, Game};
+use fyrox::scene::ragdoll::Ragdoll;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
@@ -119,12 +120,8 @@ fn probe_ground(begin: Vector3<f32>, max_height: f32, graph: &Graph) -> Option<V
 }
 
 fn set_ragdoll_enabled(ragdoll_holder: Handle<Node>, graph: &mut Graph, enabled: bool) {
-    if let Some(ragdoll) = graph
-        .try_get_mut(ragdoll_holder)
-        .and_then(|n| n.script_mut())
-        .and_then(|s| s.cast_mut::<Ragdoll>())
-    {
-        ragdoll.enabled = enabled;
+    if let Some(ragdoll) = graph.try_get_mut_of_type::<Ragdoll>(ragdoll_holder) {
+        ragdoll.set_active(enabled);
     }
 }
 
@@ -174,6 +171,7 @@ impl ScriptTrait for Bot {
                 let current_y_lin_vel = rigid_body.lin_vel().y;
 
                 if let Some(navmesh) = self.navmesh.as_ref() {
+                    dbg!();
                     let navmesh = navmesh.read();
                     self.agent.set_speed(self.speed);
                     self.agent.set_target(target_pos);

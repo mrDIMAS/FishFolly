@@ -7,7 +7,6 @@ use fyrox::{
         algebra::{Point3, UnitQuaternion, Vector3},
         arrayvec::ArrayVec,
         impl_component_provider,
-        log::Log,
         pool::Handle,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
@@ -137,41 +136,33 @@ impl ScriptTrait for CameraController {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        if let Some(player) = ctx.scene.graph.try_get(self.player) {
-            // Sync position with player.
-            self.target_position = player.global_position();
+        // Sync position with player.
+        let controller = &mut ctx.scene.graph[ctx.handle];
 
-            let controller = &mut ctx.scene.graph[ctx.handle];
+        let local_transform = controller.local_transform_mut();
 
-            let local_transform = controller.local_transform_mut();
-            let new_position = **local_transform.position()
-                + (self.target_position - **local_transform.position()) * 0.1;
-            local_transform.set_rotation(UnitQuaternion::from_axis_angle(
-                &Vector3::y_axis(),
-                self.yaw,
-            ));
-            local_transform.set_position(new_position);
+        local_transform.set_rotation(UnitQuaternion::from_axis_angle(
+            &Vector3::y_axis(),
+            self.yaw,
+        ));
 
-            if let Some(hinge) = ctx.scene.graph.try_get_mut(self.hinge) {
-                hinge
-                    .local_transform_mut()
-                    .set_rotation(UnitQuaternion::from_axis_angle(
-                        &Vector3::x_axis(),
-                        self.pitch,
-                    ));
+        if let Some(hinge) = ctx.scene.graph.try_get_mut(self.hinge) {
+            hinge
+                .local_transform_mut()
+                .set_rotation(UnitQuaternion::from_axis_angle(
+                    &Vector3::x_axis(),
+                    self.pitch,
+                ));
 
-                let hinge_position = hinge.global_position();
-                if let Some(camera) = ctx.scene.graph.try_get(self.camera) {
-                    self.check_for_obstacles(
-                        hinge_position,
-                        camera.global_position(),
-                        ctx,
-                        self.collider_to_ignore,
-                    );
-                }
+            let hinge_position = hinge.global_position();
+            if let Some(camera) = ctx.scene.graph.try_get(self.camera) {
+                self.check_for_obstacles(
+                    hinge_position,
+                    camera.global_position(),
+                    ctx,
+                    self.collider_to_ignore,
+                );
             }
-        } else {
-            Log::warn("Player is not set!");
         }
     }
 }

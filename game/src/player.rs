@@ -50,11 +50,14 @@ impl InputController {
 }
 
 #[derive(Clone, Visit, Debug, Reflect)]
+#[visit(optional)]
 pub struct Player {
     #[reflect(description = "Speed of the player.")]
     speed: f32,
     #[reflect(description = "Handle to player's collider.")]
     pub collider: Handle<Node>,
+    #[reflect(description = "Handle to player's model pivot.")]
+    model_pivot: Handle<Node>,
     #[reflect(description = "Handle to player's model.")]
     model: Handle<Node>,
     #[reflect(description = "Handle to player's animation state machine.")]
@@ -77,6 +80,7 @@ impl Default for Player {
         Self {
             speed: 1.0,
             collider: Default::default(),
+            model_pivot: Default::default(),
             model: Default::default(),
             absm: Default::default(),
             camera: Default::default(),
@@ -130,10 +134,10 @@ impl ScriptTrait for Player {
             .map(|c| c.yaw)
             .unwrap_or_default();
 
-        if let Some(rigid_body) = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>() {
-            let forward_vec = rigid_body.look_vector();
-            let side_vec = rigid_body.side_vector();
+        let forward_vec = ctx.scene.graph[self.model_pivot].look_vector();
+        let side_vec = ctx.scene.graph[self.model_pivot].side_vector();
 
+        if let Some(rigid_body) = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>() {
             let mut velocity = Vector3::default();
 
             if self.input_controller.move_forward {
@@ -168,7 +172,7 @@ impl ScriptTrait for Player {
             let is_moving = velocity.x != 0.0 || velocity.z != 0.0;
 
             if is_moving {
-                rigid_body
+                ctx.scene.graph[self.model_pivot]
                     .local_transform_mut()
                     .set_rotation(UnitQuaternion::from_axis_angle(&Vector3::y_axis(), yaw));
 

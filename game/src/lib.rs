@@ -1,8 +1,8 @@
 //! Game project.
 use crate::{
     bot::Bot, camera::CameraController, cannon::Cannon, jumper::Jumper, menu::Menu,
-    obstacle::RotatorObstacle, player::Player, ragdoll::link::BoneLink, ragdoll::Ragdoll,
-    respawn::RespawnZone, start::StartPoint, target::Target,
+    obstacle::RotatorObstacle, player::Player, respawn::RespawnZone, start::StartPoint,
+    target::Target,
 };
 use fyrox::renderer::QualitySettings;
 use fyrox::{
@@ -22,7 +22,6 @@ pub mod marker;
 pub mod menu;
 pub mod obstacle;
 pub mod player;
-pub mod ragdoll;
 pub mod respawn;
 pub mod start;
 pub mod target;
@@ -50,9 +49,7 @@ impl PluginConstructor for GameConstructor {
             .add::<StartPoint>("Start Point")
             .add::<RespawnZone>("Respawn Zone")
             .add::<Cannon>("Cannon")
-            .add::<Jumper>("Jumper")
-            .add::<Ragdoll>("Ragdoll")
-            .add::<BoneLink>("Bone Link");
+            .add::<Jumper>("Jumper");
     }
 
     fn create_instance(

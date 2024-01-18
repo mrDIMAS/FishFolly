@@ -35,21 +35,9 @@ impl ScriptTrait for StartPoint {
             .insert(ctx.handle));
 
         if let Some(resource) = self.model.as_ref() {
-            // Spawn specified actor.
-            let instance = resource.instantiate(ctx.scene);
-            // Sync its position with the start point position.
             let position = ctx.scene.graph[ctx.handle].global_position();
-            let body = ctx
-                .scene
-                .graph
-                .find(instance, &mut |node| node.tag() == "Body")
-                .map(|(h, _)| h)
-                .unwrap_or_default();
-            if let Some(body) = ctx.scene.graph.try_get_mut(body) {
-                body.local_transform_mut().set_position(position);
-            } else {
-                Log::warn("Cannot find Body of actor!");
-            }
+            // Spawn specified actor.
+            resource.instantiate_at(ctx.scene, position, Default::default());
         }
 
         Log::info(format!("Start point {:?} created!", ctx.handle));
