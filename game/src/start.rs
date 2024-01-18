@@ -1,5 +1,6 @@
 //! A spawn point for players (bots).
 
+use crate::actor::Actor;
 use crate::Game;
 use fyrox::{
     core::{log::Log, reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*},
@@ -28,7 +29,13 @@ impl ScriptTrait for StartPoint {
         if let Some(resource) = self.model.as_ref() {
             let position = ctx.scene.graph[ctx.handle].global_position();
             // Spawn specified actor.
-            resource.instantiate_at(ctx.scene, position, Default::default());
+            let root = resource.instantiate(ctx.scene);
+            if let Some(actor) = ctx.scene.graph.try_get_script_component_of::<Actor>(root) {
+                let rigid_body = actor.rigid_body;
+                if let Some(rigid_body) = ctx.scene.graph.try_get_mut(rigid_body) {
+                    rigid_body.local_transform_mut().set_position(position);
+                }
+            }
         }
 
         Log::info(format!("Start point {:?} created!", ctx.handle));

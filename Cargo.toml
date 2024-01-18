@@ -7,5 +7,7 @@ opt-level = 3
 
 [workspace.dependencies.fyrox]
 git = "https://github.com/FyroxEngine/Fyrox"
+# path = "../fyrox"
 [workspace.dependencies.fyroxed_base]
+# path = "../fyrox/editor"
 git = "https://github.com/FyroxEngine/Fyrox"

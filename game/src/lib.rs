@@ -32,6 +32,7 @@ pub mod utils;
 pub struct DebugSettings {
     pub show_paths: bool,
     pub show_physics: bool,
+    pub disable_ragdoll: bool,
 }
 
 pub struct Game {
@@ -116,6 +117,10 @@ impl Plugin for Game {
                             }
                             KeyCode::F2 => {
                                 self.debug_settings.show_paths = !self.debug_settings.show_paths
+                            }
+                            KeyCode::F3 => {
+                                self.debug_settings.disable_ragdoll =
+                                    !self.debug_settings.disable_ragdoll
                             }
                             _ => (),
                         }

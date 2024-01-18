@@ -23,7 +23,7 @@ use std::ops::Range;
 #[visit(optional)]
 pub struct CameraController {
     #[reflect(description = "Handle of a node that has Player script.")]
-    player: Handle<Node>,
+    anchor: Handle<Node>,
     #[reflect(description = "Default distance from the hinge to the camera.")]
     default_distance: f32,
     #[reflect(description = "Handle of camera hinge.")]
@@ -39,6 +39,10 @@ pub struct CameraController {
 
     #[visit(skip)]
     #[reflect(hidden)]
+    target_position: Vector3<f32>,
+
+    #[visit(skip)]
+    #[reflect(hidden)]
     pub pitch: f32,
 
     #[visit(skip)]
@@ -49,7 +53,7 @@ pub struct CameraController {
 impl Default for CameraController {
     fn default() -> Self {
         Self {
-            player: Default::default(),
+            anchor: Default::default(),
             hinge: Default::default(),
             camera: Default::default(),
             pitch: 0.0,
@@ -58,6 +62,7 @@ impl Default for CameraController {
             pitch_range: -90.0f32..90.0f32,
             yaw: 0.0,
             collider_to_ignore: Default::default(),
+            target_position: Default::default(),
         }
     }
 }
@@ -133,32 +138,37 @@ impl ScriptTrait for CameraController {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        // Sync position with player.
-        let controller = &mut ctx.scene.graph[ctx.handle];
+        if let Some(anchor) = ctx.scene.graph.try_get(self.anchor) {
+            self.target_position = anchor.global_position();
 
-        let local_transform = controller.local_transform_mut();
+            let controller = &mut ctx.scene.graph[ctx.handle];
 
-        local_transform.set_rotation(UnitQuaternion::from_axis_angle(
-            &Vector3::y_axis(),
-            self.yaw,
-        ));
+            let local_transform = controller.local_transform_mut();
+            let new_position = **local_transform.position()
+                + (self.target_position - **local_transform.position()) * 0.1;
+            local_transform.set_rotation(UnitQuaternion::from_axis_angle(
+                &Vector3::y_axis(),
+                self.yaw,
+            ));
+            local_transform.set_position(dbg!(new_position));
 
-        if let Some(hinge) = ctx.scene.graph.try_get_mut(self.hinge) {
-            hinge
-                .local_transform_mut()
-                .set_rotation(UnitQuaternion::from_axis_angle(
-                    &Vector3::x_axis(),
-                    self.pitch,
-                ));
+            if let Some(hinge) = ctx.scene.graph.try_get_mut(self.hinge) {
+                hinge
+                    .local_transform_mut()
+                    .set_rotation(UnitQuaternion::from_axis_angle(
+                        &Vector3::x_axis(),
+                        self.pitch,
+                    ));
 
-            let hinge_position = hinge.global_position();
-            if let Some(camera) = ctx.scene.graph.try_get(self.camera) {
-                self.check_for_obstacles(
-                    hinge_position,
-                    camera.global_position(),
-                    ctx,
-                    self.collider_to_ignore,
-                );
+                let hinge_position = hinge.global_position();
+                if let Some(camera) = ctx.scene.graph.try_get(self.camera) {
+                    self.check_for_obstacles(
+                        hinge_position,
+                        camera.global_position(),
+                        ctx,
+                        self.collider_to_ignore,
+                    );
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 //! A cuboid respawn zone, any actor (player or bot) that will touch respawn zone will be spawned
 //! at one of start points.
 
+use crate::actor::Actor;
 use crate::Game;
 use fyrox::{
     core::{
@@ -27,11 +28,19 @@ impl ScriptTrait for RespawnZone {
             .map(|p| ctx.scene.graph[*p].global_position())
             .collect::<Vec<_>>();
 
-        for actor in game_ref.actors.iter() {
-            if let Some(node) = ctx.scene.graph.try_get_mut(*actor) {
-                if self_bounds.is_contains_point(node.global_position()) {
-                    if let Some(start_point) = start_points.first() {
-                        node.local_transform_mut().set_position(*start_point);
+        for actor_handle in game_ref.actors.iter() {
+            if let Some(actor_script) = ctx
+                .scene
+                .graph
+                .try_get_script_component_of::<Actor>(*actor_handle)
+            {
+                let rigid_body = actor_script.rigid_body;
+
+                if let Some(rigid_body) = ctx.scene.graph.try_get_mut(rigid_body) {
+                    if self_bounds.is_contains_point(rigid_body.global_position()) {
+                        if let Some(start_point) = start_points.first() {
+                            rigid_body.local_transform_mut().set_position(*start_point);
+                        }
                     }
                 }
             }

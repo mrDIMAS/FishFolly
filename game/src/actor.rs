@@ -1,5 +1,6 @@
 //! Object marker components.
 
+use crate::Game;
 use fyrox::{
     core::{pool::Handle, reflect::prelude::*, visitor::prelude::*},
     scene::{graph::Graph, node::Node, ragdoll::Ragdoll},
@@ -22,8 +23,10 @@ pub struct Actor {
     #[visit(skip)]
     #[reflect(hidden)]
     pub jump: bool,
-    #[reflect(description = "Handle to player's collider.")]
+    #[reflect(description = "Handle to actor's collider.")]
     pub collider: Handle<Node>,
+    #[reflect(description = "Handle to actor's rigid body.")]
+    pub rigid_body: Handle<Node>,
 }
 
 impl Default for Actor {
@@ -34,6 +37,7 @@ impl Default for Actor {
             ragdoll: Default::default(),
             jump: false,
             collider: Default::default(),
+            rigid_body: Default::default(),
         }
     }
 }
@@ -46,8 +50,9 @@ impl Actor {
     }
 
     pub fn on_update(&mut self, ctx: &mut ScriptContext) {
+        let game = ctx.plugins.get::<Game>();
         self.stand_up_timer -= ctx.dt;
-        if self.jump && self.stand_up_timer <= 0.0 {
+        if !game.debug_settings.disable_ragdoll && self.jump && self.stand_up_timer <= 0.0 {
             self.set_ragdoll_enabled(&mut ctx.scene.graph, true);
             self.stand_up_timer = self.stand_up_timeout;
         }

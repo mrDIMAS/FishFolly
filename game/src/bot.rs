@@ -149,7 +149,8 @@ impl ScriptTrait for Bot {
             };
 
         if let Some(target_pos) = target_pos {
-            if let Some(rigid_body) = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>() {
+            if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>()
+            {
                 let self_position = rigid_body.global_position();
                 let current_y_lin_vel = rigid_body.lin_vel().y;
 
@@ -191,7 +192,9 @@ impl ScriptTrait for Bot {
                 };
 
                 // Reborrow the node.
-                let rigid_body = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>().unwrap();
+                let rigid_body = ctx.scene.graph[self.actor.rigid_body]
+                    .cast_mut::<RigidBody>()
+                    .unwrap();
                 rigid_body.set_lin_vel(Vector3::new(
                     horizontal_velocity.x,
                     y_vel,
