@@ -1,12 +1,11 @@
 //! A simple bot that tries to react Target points on a level.
 
 use crate::{actor::Actor, utils, Game};
-use fyrox::core::color::Color;
-use fyrox::scene::debug::Line;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
         arrayvec::ArrayVec,
+        color::Color,
         log::Log,
         parking_lot::RwLock,
         pool::Handle,
@@ -17,6 +16,7 @@ use fyrox::{
     scene::{
         animation::absm::prelude::*,
         collider::{Collider, ColliderShape},
+        debug::Line,
         graph::{physics::RayCastOptions, Graph},
         navmesh::NavigationalMesh,
         node::Node,
@@ -128,14 +128,16 @@ impl ScriptTrait for Bot {
             .cloned()
             .map(|t| ctx.scene.graph[t].global_position());
 
-        for pts in self.agent.path().windows(2) {
-            let a = pts[0];
-            let b = pts[1];
-            ctx.scene.drawing_context.add_line(Line {
-                begin: a,
-                end: b,
-                color: Color::RED,
-            })
+        if game.debug_settings.show_paths {
+            for pts in self.agent.path().windows(2) {
+                let a = pts[0];
+                let b = pts[1];
+                ctx.scene.drawing_context.add_line(Line {
+                    begin: a,
+                    end: b,
+                    color: Color::RED,
+                })
+            }
         }
 
         let ground_probe_begin =

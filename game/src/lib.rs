@@ -6,8 +6,9 @@ use crate::{
 };
 use fyrox::{
     core::{log::Log, pool::Handle},
-    event::Event,
+    event::{ElementState, Event, WindowEvent},
     gui::message::UiMessage,
+    keyboard::{KeyCode, PhysicalKey},
     plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
     renderer::QualitySettings,
     scene::{node::Node, Scene},
@@ -27,12 +28,19 @@ pub mod start;
 pub mod target;
 pub mod utils;
 
+#[derive(Default)]
+pub struct DebugSettings {
+    pub show_paths: bool,
+    pub show_physics: bool,
+}
+
 pub struct Game {
     menu: Menu,
     scene: Handle<Scene>,
     pub targets: HashSet<Handle<Node>>,
     pub start_points: HashSet<Handle<Node>>,
     pub actors: HashSet<Handle<Node>>,
+    pub debug_settings: DebugSettings,
 }
 
 pub struct GameConstructor;
@@ -75,6 +83,7 @@ impl Game {
             start_points: Default::default(),
             actors: Default::default(),
             scene: Default::default(),
+            debug_settings: Default::default(),
         }
     }
 }
@@ -88,7 +97,7 @@ impl Plugin for Game {
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
             scene.drawing_context.clear_lines();
 
-            if false {
+            if self.debug_settings.show_physics {
                 scene.graph.physics.draw(&mut scene.drawing_context);
             }
         }
@@ -96,6 +105,24 @@ impl Plugin for Game {
 
     fn on_os_event(&mut self, event: &Event<()>, context: PluginContext) {
         self.menu.handle_os_event(event, context);
+
+        if let Event::WindowEvent { event, .. } = event {
+            if let WindowEvent::KeyboardInput { event, .. } = event {
+                if let PhysicalKey::Code(key_code) = event.physical_key {
+                    if event.state == ElementState::Pressed {
+                        match key_code {
+                            KeyCode::F1 => {
+                                self.debug_settings.show_physics = !self.debug_settings.show_physics
+                            }
+                            KeyCode::F2 => {
+                                self.debug_settings.show_paths = !self.debug_settings.show_paths
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn on_graphics_context_initialized(&mut self, context: PluginContext) {
