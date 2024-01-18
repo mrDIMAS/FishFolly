@@ -1,6 +1,8 @@
 //! A simple bot that tries to react Target points on a level.
 
 use crate::{actor::Actor, utils, Game};
+use fyrox::core::color::Color;
+use fyrox::scene::debug::Line;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
@@ -52,7 +54,7 @@ impl Default for Bot {
             actor: Default::default(),
             probe_locator: Default::default(),
             agent: NavmeshAgentBuilder::new()
-                .with_recalculation_threshold(0.5)
+                .with_recalculation_threshold(0.1)
                 .build(),
             absm: Default::default(),
             navmesh: Default::default(),
@@ -125,6 +127,16 @@ impl ScriptTrait for Bot {
             .next()
             .cloned()
             .map(|t| ctx.scene.graph[t].global_position());
+
+        for pts in self.agent.path().windows(2) {
+            let a = pts[0];
+            let b = pts[1];
+            ctx.scene.drawing_context.add_line(Line {
+                begin: a,
+                end: b,
+                color: Color::RED,
+            })
+        }
 
         let ground_probe_begin =
             if let Some(probe_locator) = ctx.scene.graph.try_get(self.probe_locator) {

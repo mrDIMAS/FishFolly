@@ -4,15 +4,15 @@ use crate::{
     obstacle::RotatorObstacle, player::Player, respawn::RespawnZone, start::StartPoint,
     target::Target,
 };
-use fyrox::renderer::QualitySettings;
 use fyrox::{
     core::{log::Log, pool::Handle},
     event::Event,
     gui::message::UiMessage,
     plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
+    renderer::QualitySettings,
     scene::{node::Node, Scene},
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, path::Path};
 
 pub mod actor;
 pub mod bot;
@@ -84,6 +84,20 @@ impl Plugin for Game {
         Log::info("Game stopped!");
     }
 
+    fn update(&mut self, context: &mut PluginContext) {
+        if let Some(scene) = context.scenes.try_get_mut(self.scene) {
+            scene.drawing_context.clear_lines();
+
+            if false {
+                scene.graph.physics.draw(&mut scene.drawing_context);
+            }
+        }
+    }
+
+    fn on_os_event(&mut self, event: &Event<()>, context: PluginContext) {
+        self.menu.handle_os_event(event, context);
+    }
+
     fn on_graphics_context_initialized(&mut self, context: PluginContext) {
         let graphics_context = context.graphics_context.as_initialized_mut();
 
@@ -103,21 +117,23 @@ impl Plugin for Game {
         );
     }
 
-    fn update(&mut self, context: &mut PluginContext) {
-        if false {
-            if let Some(scene) = context.scenes.try_get_mut(self.scene) {
-                scene.drawing_context.clear_lines();
+    fn on_ui_message(&mut self, context: &mut PluginContext, message: &UiMessage) {
+        self.menu.handle_ui_message(context, message);
+    }
 
-                scene.graph.physics.draw(&mut scene.drawing_context);
-            }
+    fn on_scene_begin_loading(&mut self, _path: &Path, context: &mut PluginContext) {
+        if self.scene.is_some() {
+            context.scenes.remove(self.scene);
         }
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, context: PluginContext) {
-        self.menu.handle_os_event(event, context);
-    }
-
-    fn on_ui_message(&mut self, context: &mut PluginContext, message: &UiMessage) {
-        self.menu.handle_ui_message(context, message);
+    fn on_scene_loaded(
+        &mut self,
+        _path: &Path,
+        scene: Handle<Scene>,
+        _data: &[u8],
+        _context: &mut PluginContext,
+    ) {
+        self.scene = scene;
     }
 }
