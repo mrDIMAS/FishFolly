@@ -1,14 +1,13 @@
 //! A spawn point for players (bots).
 
-use crate::game_mut;
+use crate::Game;
 use fyrox::{
-    core::{reflect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*},
-    engine::resource_manager::ResourceManager,
-    impl_component_provider,
-    resource::model::Model,
-    scene::node::TypeUuidProvider,
+    core::{
+        impl_component_provider, log::Log, reflect::prelude::*, uuid::uuid, uuid::Uuid,
+        visitor::prelude::*, TypeUuidProvider,
+    },
+    resource::model::{ModelResource, ModelResourceExtension},
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
-    utils::log::Log,
 };
 
 #[derive(Clone, Default, Debug, Visit, Reflect)]
@@ -16,7 +15,7 @@ pub struct StartPoint {
     #[reflect(
         description = "A handle of a player resource. The resource will be instantiated to the scene."
     )]
-    model: Option<Model>,
+    model: Option<ModelResource>,
 }
 
 impl_component_provider!(StartPoint);
@@ -29,7 +28,11 @@ impl TypeUuidProvider for StartPoint {
 
 impl ScriptTrait for StartPoint {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
-        assert!(game_mut(ctx.plugins).start_points.insert(ctx.handle));
+        assert!(ctx
+            .plugins
+            .get_mut::<Game>()
+            .start_points
+            .insert(ctx.handle));
 
         if let Some(resource) = self.model.as_ref() {
             // Spawn specified actor.
@@ -39,7 +42,9 @@ impl ScriptTrait for StartPoint {
             let body = ctx
                 .scene
                 .graph
-                .find(instance, &mut |node| node.tag() == "Body");
+                .find(instance, &mut |node| node.tag() == "Body")
+                .map(|(h, _)| h)
+                .unwrap_or_default();
             if let Some(body) = ctx.scene.graph.try_get_mut(body) {
                 body.local_transform_mut().set_position(position);
             } else {
@@ -51,19 +56,11 @@ impl ScriptTrait for StartPoint {
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
-        assert!(game_mut(ctx.plugins).start_points.remove(&ctx.node_handle));
+        assert!(ctx
+            .plugins
+            .get_mut::<Game>()
+            .start_points
+            .remove(&ctx.node_handle));
         Log::info(format!("Start point {:?} destroyed!", ctx.node_handle));
-    }
-
-    fn restore_resources(&mut self, resource_manager: ResourceManager) {
-        resource_manager
-            .state()
-            .containers_mut()
-            .models
-            .try_restore_optional_resource(&mut self.model);
-    }
-
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }

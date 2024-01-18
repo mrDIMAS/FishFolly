@@ -2,13 +2,14 @@
 
 use fyrox::{
     core::{
+        impl_component_provider,
         pool::Handle,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
+        TypeUuidProvider,
     },
-    impl_component_provider,
-    scene::{node::Node, node::TypeUuidProvider},
+    scene::node::Node,
     script::ScriptTrait,
 };
 
@@ -25,8 +26,4 @@ impl TypeUuidProvider for BoneLink {
     }
 }
 
-impl ScriptTrait for BoneLink {
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
-    }
-}
+impl ScriptTrait for BoneLink {}

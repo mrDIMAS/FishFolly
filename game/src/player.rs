@@ -1,25 +1,21 @@
 //! Main player (host) script.
 
-use crate::{game_mut, marker::Actor, utils, CameraController, Event};
+use crate::{marker::Actor, utils, CameraController, Event, Game};
 use fyrox::{
-    animation::machine::Parameter,
     core::{
         algebra::{UnitQuaternion, Vector3},
+        impl_component_provider,
+        log::Log,
         pool::Handle,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
+        TypeUuidProvider,
     },
-    event::{ElementState, VirtualKeyCode, WindowEvent},
-    impl_component_provider,
-    scene::{
-        animation::absm::AnimationBlendingStateMachine,
-        graph::Graph,
-        node::{Node, TypeUuidProvider},
-        rigidbody::RigidBody,
-    },
+    event::{ElementState, WindowEvent},
+    keyboard::{KeyCode, PhysicalKey},
+    scene::{animation::absm::prelude::*, graph::Graph, node::Node, rigidbody::RigidBody},
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
-    utils::log::Log,
 };
 
 #[derive(Clone, Default, Debug)]
@@ -34,18 +30,18 @@ pub struct InputController {
 impl InputController {
     pub fn on_os_event(&mut self, event: &Event<()>) {
         if let Event::WindowEvent {
-            event: WindowEvent::KeyboardInput { input, .. },
+            event: WindowEvent::KeyboardInput { event, .. },
             ..
         } = event
         {
-            if let Some(keycode) = input.virtual_keycode {
-                let state = input.state == ElementState::Pressed;
+            if let PhysicalKey::Code(keycode) = event.physical_key {
+                let state = event.state == ElementState::Pressed;
                 match keycode {
-                    VirtualKeyCode::W => self.move_forward = state,
-                    VirtualKeyCode::S => self.move_backward = state,
-                    VirtualKeyCode::A => self.move_left = state,
-                    VirtualKeyCode::D => self.move_right = state,
-                    VirtualKeyCode::Space => self.jump = state,
+                    KeyCode::KeyW => self.move_forward = state,
+                    KeyCode::KeyS => self.move_backward = state,
+                    KeyCode::KeyA => self.move_left = state,
+                    KeyCode::KeyD => self.move_right = state,
+                    KeyCode::Space => self.jump = state,
                     _ => (),
                 }
             }
@@ -104,13 +100,17 @@ impl Player {
 
 impl ScriptTrait for Player {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
-        assert!(game_mut(ctx.plugins).actors.insert(ctx.handle));
+        assert!(ctx.plugins.get_mut::<Game>().actors.insert(ctx.handle));
 
         Log::info(format!("Player {:?} created!", ctx.handle));
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
-        assert!(game_mut(ctx.plugins).actors.remove(&ctx.node_handle));
+        assert!(ctx
+            .plugins
+            .get_mut::<Game>()
+            .actors
+            .remove(&ctx.node_handle));
         Log::info(format!("Player {:?} destroyed!", ctx.node_handle));
     }
 
@@ -215,9 +215,5 @@ impl ScriptTrait for Player {
                     .set_parameter("Jump", Parameter::Rule(jump));
             }
         }
-    }
-
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }

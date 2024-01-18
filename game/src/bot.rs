@@ -1,26 +1,31 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{game_mut, game_ref, marker::Actor, utils, Ragdoll};
+use crate::{marker::Actor, utils, Game, Ragdoll};
 use fyrox::{
-    animation::machine::Parameter,
     core::{
-        algebra::Point3, algebra::UnitQuaternion, algebra::Vector3, arrayvec::ArrayVec,
-        pool::Handle, reflect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*,
+        algebra::{Point3, UnitQuaternion, Vector3},
+        arrayvec::ArrayVec,
+        impl_component_provider,
+        log::Log,
+        parking_lot::RwLock,
+        pool::Handle,
+        reflect::prelude::*,
+        type_traits::prelude::*,
+        uuid::{uuid, Uuid},
+        visitor::prelude::*,
     },
-    impl_component_provider,
     scene::{
-        animation::absm::AnimationBlendingStateMachine,
+        animation::absm::prelude::*,
         collider::{Collider, ColliderShape},
         graph::{physics::RayCastOptions, Graph},
-        node::{Node, TypeUuidProvider},
+        navmesh::NavigationalMesh,
+        node::Node,
         rigidbody::RigidBody,
     },
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
-    utils::{
-        log::Log,
-        navmesh::{NavmeshAgent, NavmeshAgentBuilder},
-    },
+    utils::navmesh::{Navmesh, NavmeshAgent, NavmeshAgentBuilder},
 };
+use std::sync::Arc;
 
 #[derive(Clone, Visit, Reflect, Debug)]
 pub struct Bot {
@@ -49,6 +54,9 @@ pub struct Bot {
     #[visit(skip)]
     #[reflect(hidden)]
     stand_up_timer: f32,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    navmesh: Option<Arc<RwLock<Navmesh>>>,
 }
 
 impl_component_provider!(Bot, actor: Actor);
@@ -73,6 +81,7 @@ impl Default for Bot {
             stand_up_timeout: 2.0,
             stand_up_timer: 0.0,
             absm: Default::default(),
+            navmesh: Default::default(),
         }
     }
 }
@@ -121,17 +130,27 @@ fn set_ragdoll_enabled(ragdoll_holder: Handle<Node>, graph: &mut Graph, enabled:
 
 impl ScriptTrait for Bot {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
-        assert!(game_mut(ctx.plugins).actors.insert(ctx.handle));
+        assert!(ctx.plugins.get_mut::<Game>().actors.insert(ctx.handle));
         Log::info(format!("Bot {:?} created!", ctx.handle));
+        self.navmesh = ctx
+            .scene
+            .graph
+            .find_from_root(&mut |n| n.is_navigational_mesh())
+            .and_then(|(_, n)| n.cast::<NavigationalMesh>())
+            .map(|n| n.navmesh());
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
-        assert!(game_mut(ctx.plugins).actors.remove(&ctx.node_handle));
+        assert!(ctx
+            .plugins
+            .get_mut::<Game>()
+            .actors
+            .remove(&ctx.node_handle));
         Log::info(format!("Bot {:?} destroyed!", ctx.node_handle));
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        let game = game_ref(ctx.plugins);
+        let game = ctx.plugins.get::<Game>();
 
         // Dead-simple AI - run straight to target.
         let target_pos = game
@@ -154,11 +173,12 @@ impl ScriptTrait for Bot {
                 let self_position = rigid_body.global_position();
                 let current_y_lin_vel = rigid_body.lin_vel().y;
 
-                if let Some(navmesh) = ctx.scene.navmeshes.at_mut(0) {
+                if let Some(navmesh) = self.navmesh.as_ref() {
+                    let navmesh = navmesh.read();
                     self.agent.set_speed(self.speed);
                     self.agent.set_target(target_pos);
                     self.agent.set_position(self_position);
-                    let _ = self.agent.update(ctx.dt, navmesh);
+                    let _ = self.agent.update(ctx.dt, &navmesh);
                 }
 
                 let has_reached_destination =
@@ -233,9 +253,5 @@ impl ScriptTrait for Bot {
                 }
             }
         }
-    }
-
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }

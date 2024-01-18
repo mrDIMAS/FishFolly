@@ -3,12 +3,13 @@
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, UnitVector3, Vector3},
+        impl_component_provider,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
+        TypeUuidProvider,
     },
-    impl_component_provider,
-    scene::{node::TypeUuidProvider, rigidbody::RigidBody},
+    scene::rigidbody::RigidBody,
     script::{ScriptContext, ScriptTrait},
 };
 
@@ -51,9 +52,5 @@ impl ScriptTrait for RotatorObstacle {
                     self.angle,
                 ));
         }
-    }
-
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }

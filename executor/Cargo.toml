@@ -1,9 +1,10 @@
-
 [package]
 name = "executor"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-fyrox = { path = "../../Fyrox" }
 fish_fall = { path = "../game" }
+
+[dependencies.fyrox]
+workspace = true

@@ -1,16 +1,16 @@
 //! A cuboid respawn zone, any actor (player or bot) that will touch respawn zone will be spawned
 //! at one of start points.
 
-use crate::game_ref;
+use crate::Game;
 use fyrox::{
     core::{
+        impl_component_provider,
         math::aabb::AxisAlignedBoundingBox,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
+        TypeUuidProvider,
     },
-    impl_component_provider,
-    scene::node::TypeUuidProvider,
     script::{ScriptContext, ScriptTrait},
 };
 
@@ -27,7 +27,7 @@ impl TypeUuidProvider for RespawnZone {
 
 impl ScriptTrait for RespawnZone {
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        let game_ref = game_ref(ctx.plugins);
+        let game_ref = ctx.plugins.get::<Game>();
         let self_bounds = AxisAlignedBoundingBox::unit()
             .transform(&ctx.scene.graph[ctx.handle].global_transform());
 
@@ -46,9 +46,5 @@ impl ScriptTrait for RespawnZone {
                 }
             }
         }
-    }
-
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }

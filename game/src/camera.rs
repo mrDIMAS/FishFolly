@@ -6,19 +6,17 @@ use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
         arrayvec::ArrayVec,
+        impl_component_provider,
+        log::Log,
         pool::Handle,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
+        TypeUuidProvider,
     },
     event::DeviceEvent,
-    impl_component_provider,
-    scene::{
-        graph::physics::RayCastOptions,
-        node::{Node, TypeUuidProvider},
-    },
+    scene::{graph::physics::RayCastOptions, node::Node},
     script::{ScriptContext, ScriptTrait},
-    utils::log::Log,
 };
 use std::ops::Range;
 
@@ -175,9 +173,5 @@ impl ScriptTrait for CameraController {
         } else {
             Log::warn("Player is not set!");
         }
-    }
-
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }

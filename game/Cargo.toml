@@ -1,10 +1,11 @@
-
 [package]
 name = "fish_fall"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-fyrox = { path = "../../Fyrox" }
-strum = "0.24.1"
-strum_macros = "0.24.1"
+strum = "0.25.0"
+strum_macros = "0.25.1"
+
+[dependencies.fyrox]
+workspace = true

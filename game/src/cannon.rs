@@ -2,21 +2,21 @@
 
 use fyrox::{
     core::{
+        impl_component_provider,
+        log::Log,
         reflect::prelude::*,
+        type_traits::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    engine::resource_manager::ResourceManager,
-    impl_component_provider,
-    resource::model::Model,
-    scene::{node::TypeUuidProvider, rigidbody::RigidBody},
+    resource::model::{ModelResource, ModelResourceExtension},
+    scene::rigidbody::RigidBody,
     script::{ScriptContext, ScriptTrait},
-    utils::log::Log,
 };
 
 #[derive(Clone, Debug, Visit, Reflect)]
 pub struct Cannon {
-    ball_prefab: Option<Model>,
+    ball_prefab: Option<ModelResource>,
     shooting_timeout: f32,
     #[visit(optional)]
     shooting_force: f32,
@@ -63,7 +63,9 @@ impl ScriptTrait for Cannon {
                 let body = ctx
                     .scene
                     .graph
-                    .find(ball_instance, &mut |node| node.tag() == "Body");
+                    .find(ball_instance, &mut |node| node.tag() == "Body")
+                    .map(|(h, _)| h)
+                    .unwrap_or_default();
                 if let Some(body) = ctx.scene.graph.try_get_mut(body) {
                     body.local_transform_mut().set_position(self_position);
 
@@ -75,17 +77,5 @@ impl ScriptTrait for Cannon {
                 }
             }
         }
-    }
-
-    fn restore_resources(&mut self, resource_manager: ResourceManager) {
-        resource_manager
-            .state()
-            .containers_mut()
-            .models
-            .try_restore_optional_resource(&mut self.ball_prefab);
-    }
-
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }

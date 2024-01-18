@@ -3,3 +3,8 @@ members = ["editor", "executor", "game"]
 
 [profile.dev.package."*"]
 opt-level = 3
+
+[workspace.dependencies.fyrox]
+git = "https://github.com/FyroxEngine/Fyrox"
+[workspace.dependencies.fyroxed_base]
+git = "https://github.com/FyroxEngine/Fyrox"

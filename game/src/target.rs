@@ -1,12 +1,12 @@
 //! A target that bots will try to reach.
 
-use crate::game_mut;
+use crate::Game;
 use fyrox::{
-    core::{reflect::prelude::*, uuid::uuid, uuid::Uuid, visitor::prelude::*},
-    impl_component_provider,
-    scene::node::TypeUuidProvider,
+    core::{
+        impl_component_provider, log::Log, reflect::prelude::*, type_traits::prelude::*,
+        uuid::uuid, uuid::Uuid, visitor::prelude::*,
+    },
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
-    utils::log::Log,
 };
 
 #[derive(Clone, Default, Debug, Visit, Reflect)]
@@ -22,16 +22,16 @@ impl TypeUuidProvider for Target {
 
 impl ScriptTrait for Target {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
-        assert!(game_mut(ctx.plugins).targets.insert(ctx.handle));
+        assert!(ctx.plugins.get_mut::<Game>().targets.insert(ctx.handle));
         Log::info(format!("Target {:?} added!", ctx.handle));
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
-        assert!(game_mut(ctx.plugins).targets.remove(&ctx.node_handle));
+        assert!(ctx
+            .plugins
+            .get_mut::<Game>()
+            .targets
+            .remove(&ctx.node_handle));
         Log::info(format!("Target {:?} destroyed!", ctx.node_handle));
-    }
-
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }

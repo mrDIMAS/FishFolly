@@ -3,15 +3,16 @@ use crate::ragdoll::link::BoneLink;
 use fyrox::{
     core::{
         algebra::{Matrix4, UnitQuaternion, Vector3},
+        impl_component_provider,
         math::Matrix4Ext,
         pool::Handle,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
+        TypeUuidProvider,
     },
-    impl_component_provider,
     scene::{
-        node::{Node, TypeUuidProvider},
+        node::Node,
         rigidbody::{RigidBody, RigidBodyType},
     },
     script::{ScriptContext, ScriptTrait},
@@ -142,9 +143,5 @@ impl ScriptTrait for Ragdoll {
                 }
             }
         }
-    }
-
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }

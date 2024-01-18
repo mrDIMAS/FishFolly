@@ -4,14 +4,13 @@ use crate::{
     obstacle::RotatorObstacle, player::Player, ragdoll::link::BoneLink, ragdoll::Ragdoll,
     respawn::RespawnZone, start::StartPoint, target::Target,
 };
+use fyrox::renderer::QualitySettings;
 use fyrox::{
-    core::pool::Handle,
+    core::{log::Log, pool::Handle},
     event::Event,
-    event_loop::ControlFlow,
     gui::message::UiMessage,
     plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
-    scene::{loader::AsyncSceneLoader, node::Node, Scene},
-    utils::log::Log,
+    scene::{node::Node, Scene},
 };
 use std::collections::HashSet;
 
@@ -35,7 +34,6 @@ pub struct Game {
     pub targets: HashSet<Handle<Node>>,
     pub start_points: HashSet<Handle<Node>>,
     pub actors: HashSet<Handle<Node>>,
-    loader: Option<AsyncSceneLoader>,
 }
 
 pub struct GameConstructor;
@@ -59,7 +57,7 @@ impl PluginConstructor for GameConstructor {
 
     fn create_instance(
         &self,
-        override_scene: Handle<Scene>,
+        override_scene: Option<&str>,
         context: PluginContext,
     ) -> Box<dyn Plugin> {
         Box::new(Game::new(override_scene, context))
@@ -67,28 +65,19 @@ impl PluginConstructor for GameConstructor {
 }
 
 impl Game {
-    fn new(override_scene: Handle<Scene>, mut context: PluginContext) -> Self {
+    fn new(override_scene: Option<&str>, mut context: PluginContext) -> Self {
         Log::info("Game started!");
 
-        let mut loader = None;
-        let scene = if override_scene.is_some() {
-            override_scene
-        } else {
-            loader = Some(AsyncSceneLoader::begin_loading(
-                "data/drake.rgs".into(),
-                context.serialization_context.clone(),
-                context.resource_manager.clone(),
-            ));
-            Default::default()
-        };
+        context
+            .async_scene_loader
+            .request(override_scene.unwrap_or("data/drake.rgs"));
 
         Self {
             menu: Menu::new(&mut context),
             targets: Default::default(),
             start_points: Default::default(),
             actors: Default::default(),
-            scene,
-            loader,
+            scene: Default::default(),
         }
     }
 }
@@ -98,27 +87,26 @@ impl Plugin for Game {
         Log::info("Game stopped!");
     }
 
-    fn on_os_event(
-        &mut self,
-        event: &Event<()>,
-        context: PluginContext,
-        _control_flow: &mut ControlFlow,
-    ) {
-        self.menu.handle_os_event(event, context);
+    fn on_graphics_context_initialized(&mut self, context: PluginContext) {
+        let graphics_context = context.graphics_context.as_initialized_mut();
+
+        graphics_context.window.set_title("Fish Folly");
+
+        let quality_settings = QualitySettings {
+            use_ssao: false,
+            ..Default::default()
+        };
+
+        Log::verify(
+            context
+                .graphics_context
+                .as_initialized_mut()
+                .renderer
+                .set_quality_settings(&quality_settings),
+        );
     }
 
-    fn update(&mut self, context: &mut PluginContext, _control_flow: &mut ControlFlow) {
-        if let Some(loader) = self.loader.as_ref() {
-            if let Some(result) = loader.fetch_result() {
-                match result {
-                    Ok(scene) => {
-                        self.scene = context.scenes.add(scene);
-                    }
-                    Err(err) => Log::err(err),
-                }
-            }
-        }
-
+    fn update(&mut self, context: &mut PluginContext) {
         if false {
             if let Some(scene) = context.scenes.try_get_mut(self.scene) {
                 scene.drawing_context.clear_lines();
@@ -128,20 +116,11 @@ impl Plugin for Game {
         }
     }
 
-    fn on_ui_message(
-        &mut self,
-        context: &mut PluginContext,
-        message: &UiMessage,
-        control_flow: &mut ControlFlow,
-    ) {
-        self.menu.handle_ui_message(context, message, control_flow);
+    fn on_os_event(&mut self, event: &Event<()>, context: PluginContext) {
+        self.menu.handle_os_event(event, context);
     }
-}
 
-pub fn game_ref(plugins: &[Box<dyn Plugin>]) -> &Game {
-    plugins.first().unwrap().cast::<Game>().unwrap()
-}
-
-pub fn game_mut(plugins: &mut [Box<dyn Plugin>]) -> &mut Game {
-    plugins.first_mut().unwrap().cast_mut::<Game>().unwrap()
+    fn on_ui_message(&mut self, context: &mut PluginContext, message: &UiMessage) {
+        self.menu.handle_ui_message(context, message);
+    }
 }

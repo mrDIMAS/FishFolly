@@ -1,7 +1,6 @@
 use fyrox::{
     core::pool::Handle,
     event::{Event, WindowEvent},
-    event_loop::ControlFlow,
     gui::{
         button::{ButtonBuilder, ButtonMessage},
         grid::{Column, GridBuilder, Row},
@@ -61,15 +60,12 @@ impl Menu {
         Self { root, exit }
     }
 
-    pub fn handle_ui_message(
-        &mut self,
-        _context: &mut PluginContext,
-        message: &UiMessage,
-        control_flow: &mut ControlFlow,
-    ) {
+    pub fn handle_ui_message(&mut self, ctx: &mut PluginContext, message: &UiMessage) {
         if let Some(ButtonMessage::Click) = message.data() {
             if message.destination() == self.exit {
-                *control_flow = ControlFlow::Exit;
+                if let Some(window_target) = ctx.window_target {
+                    window_target.exit();
+                }
             }
         }
     }

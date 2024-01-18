@@ -1,15 +1,16 @@
 //! Jumper is platform that pushes actors (players or bots) up.
 
-use crate::{game_ref, Bot, Player};
+use crate::{Bot, Game, Player};
 use fyrox::{
     core::{
         algebra::Vector3,
+        impl_component_provider,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
+        TypeUuidProvider,
     },
-    impl_component_provider,
-    scene::{collider::Collider, node::TypeUuidProvider, rigidbody::RigidBody},
+    scene::{collider::Collider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
 };
 use std::collections::HashSet;
@@ -29,7 +30,7 @@ impl TypeUuidProvider for Jumper {
 
 impl ScriptTrait for Jumper {
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        let game_ref = game_ref(ctx.plugins);
+        let game_ref = ctx.plugins.get::<Game>();
         if let Some(collider) = ctx.scene.graph[ctx.handle].cast::<Collider>() {
             let mut contacted_colliders = HashSet::new();
 
@@ -66,8 +67,5 @@ impl ScriptTrait for Jumper {
                 }
             }
         }
-    }
-    fn id(&self) -> Uuid {
-        Self::type_uuid()
     }
 }
