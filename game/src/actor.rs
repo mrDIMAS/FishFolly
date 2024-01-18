@@ -3,7 +3,7 @@
 use crate::{utils, Game};
 use fyrox::{
     core::{algebra::Vector3, pool::Handle, reflect::prelude::*, visitor::prelude::*},
-    scene::{graph::Graph, node::Node, ragdoll::Ragdoll, rigidbody::RigidBody},
+    scene::{collider::Collider, graph::Graph, node::Node, ragdoll::Ragdoll, rigidbody::RigidBody},
     script::{ScriptContext, ScriptMessageContext, ScriptMessagePayload},
 };
 
@@ -167,6 +167,32 @@ impl Actor {
         }
     }
 
+    fn has_serious_impact(&mut self, ctx: &mut ScriptContext) -> bool {
+        if let Some(collider) = ctx.scene.graph.try_get_of_type::<Collider>(self.collider) {
+            for contact in collider.contacts(&ctx.scene.graph.physics) {
+                if contact.has_any_active_contact {
+                    for manifold in contact.manifolds.iter() {
+                        if let (Some(rb1), Some(rb2)) = (
+                            ctx.scene
+                                .graph
+                                .try_get_of_type::<RigidBody>(manifold.rigid_body1),
+                            ctx.scene
+                                .graph
+                                .try_get_of_type::<RigidBody>(manifold.rigid_body2),
+                        ) {
+                            if (rb1.lin_vel() - rb2.lin_vel()).norm() > 1.0
+                                || manifold.points.iter().any(|p| p.impulse > 0.6)
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
     pub fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
         let has_ground_contact = self.has_ground_contact(&ctx.scene.graph);
@@ -182,6 +208,9 @@ impl Actor {
             if !game.debug_settings.disable_ragdoll && self.in_air_time >= self.max_in_air_time {
                 self.set_ragdoll_enabled(&mut ctx.scene.graph, true);
             }
+        }
+        if self.has_serious_impact(ctx) {
+            self.in_air_time = 999.0;
         }
         self.jump = false;
     }

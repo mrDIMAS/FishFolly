@@ -199,7 +199,6 @@ impl ScriptTrait for Player {
                     .set_parameter("Jump", Parameter::Rule(self.actor.jump));
             }
         }
-        dbg!(self.actor.in_air_time);
 
         self.actor
             .do_move(velocity, &mut ctx.scene.graph, has_ground_contact);

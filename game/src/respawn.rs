@@ -10,6 +10,7 @@ use fyrox::{
         math::aabb::AxisAlignedBoundingBox, reflect::prelude::*, type_traits::prelude::*,
         visitor::prelude::*,
     },
+    rand::{seq::SliceRandom, thread_rng},
     script::{ScriptContext, ScriptTrait},
 };
 
@@ -39,7 +40,7 @@ impl ScriptTrait for RespawnZone {
                 let rigid_body = actor_script.rigid_body;
                 if let Some(rigid_body) = ctx.scene.graph.try_get(rigid_body) {
                     if self_bounds.is_contains_point(rigid_body.global_position()) {
-                        if let Some(start_point) = start_points.first() {
+                        if let Some(start_point) = start_points.choose(&mut thread_rng()) {
                             ctx.message_sender.send_to_target(
                                 *actor_handle,
                                 ActorMessage::RespawnAt(*start_point),
