@@ -18,11 +18,17 @@ pub enum ActorMessage {
 pub struct Actor {
     #[visit(skip)]
     #[reflect(hidden)]
-    pub stand_up_timer: f32,
+    pub in_air_time: f32,
     #[reflect(
         description = "Amount of time that the bot will be lying on the ground with active ragdoll."
     )]
-    stand_up_timeout: f32,
+    max_in_air_time: f32,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    pub stand_up_timer: f32,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    pub stand_up_interval: f32,
     #[reflect(description = "A handle of the ragdoll")]
     ragdoll: Handle<Node>,
     #[visit(skip)]
@@ -32,17 +38,22 @@ pub struct Actor {
     pub collider: Handle<Node>,
     #[reflect(description = "Handle to actor's rigid body.")]
     pub rigid_body: Handle<Node>,
+    #[reflect(description = "Speed of the actor.")]
+    pub speed: f32,
 }
 
 impl Default for Actor {
     fn default() -> Self {
         Self {
+            in_air_time: 0.0,
+            max_in_air_time: 1.1,
             stand_up_timer: 0.0,
-            stand_up_timeout: 2.0,
+            stand_up_interval: 1.0,
             ragdoll: Default::default(),
             jump: false,
             collider: Default::default(),
             rigid_body: Default::default(),
+            speed: 4.0,
         }
     }
 }
@@ -73,7 +84,14 @@ impl Actor {
         if let Some(ragdoll) = graph.try_get_mut_of_type::<Ragdoll>(self.ragdoll) {
             ragdoll.set_active(enabled);
         }
-        self.stand_up_timer = 0.0;
+    }
+
+    pub fn is_ragdoll_enabled(&mut self, graph: &Graph) -> bool {
+        if let Some(ragdoll) = graph.try_get_of_type::<Ragdoll>(self.ragdoll) {
+            ragdoll.is_active()
+        } else {
+            false
+        }
     }
 
     pub fn on_message(
@@ -133,30 +151,37 @@ impl Actor {
         });
     }
 
-    pub fn add_force(&mut self, force: Vector3<f32>, graph: &mut Graph) {
+    pub fn add_force(&mut self, force: Vector3<f32>, max_speed: f32, graph: &mut Graph) {
         self.for_each_rigid_body(graph, &mut |rigid_body: &mut RigidBody| {
-            rigid_body.apply_force(force);
+            if rigid_body.lin_vel().xz().norm() < max_speed {
+                rigid_body.apply_force(force);
+            }
         });
     }
 
     pub fn do_move(&mut self, velocity: Vector3<f32>, graph: &mut Graph, has_ground_contact: bool) {
-        if has_ground_contact {
+        if has_ground_contact && !self.is_ragdoll_enabled(graph) {
             self.set_velocity(velocity, graph, !self.jump);
         } else {
-            self.add_force(velocity.scale(0.75), graph);
+            self.add_force(velocity.scale(2.25), self.speed, graph);
         }
     }
 
     pub fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
         let has_ground_contact = self.has_ground_contact(&ctx.scene.graph);
-        self.stand_up_timer -= ctx.dt;
-        if !game.debug_settings.disable_ragdoll && self.jump && self.stand_up_timer <= 0.0 {
-            self.set_ragdoll_enabled(&mut ctx.scene.graph, true);
-            self.stand_up_timer = self.stand_up_timeout;
-        }
-        if self.stand_up_timer <= 0.0 && has_ground_contact {
-            self.set_ragdoll_enabled(&mut ctx.scene.graph, false);
+        if has_ground_contact {
+            self.in_air_time = 0.0;
+            self.stand_up_timer += ctx.dt;
+            if self.stand_up_timer >= self.stand_up_interval {
+                self.set_ragdoll_enabled(&mut ctx.scene.graph, false);
+            }
+        } else {
+            self.in_air_time += ctx.dt;
+            self.stand_up_timer = 0.0;
+            if !game.debug_settings.disable_ragdoll && self.in_air_time >= self.max_in_air_time {
+                self.set_ragdoll_enabled(&mut ctx.scene.graph, true);
+            }
         }
         self.jump = false;
     }

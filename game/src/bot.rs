@@ -33,8 +33,6 @@ use std::sync::Arc;
 #[type_uuid(id = "85980387-81c0-4115-a74b-f9875084f464")]
 #[visit(optional)]
 pub struct Bot {
-    #[reflect(description = "Speed of the bot.")]
-    speed: f32,
     #[reflect(description = "Handle of an edge probe locator node")]
     probe_locator: Handle<Node>,
     #[reflect(description = "Handle of animation state machine.")]
@@ -52,7 +50,6 @@ pub struct Bot {
 impl Default for Bot {
     fn default() -> Self {
         Self {
-            speed: 1.0,
             actor: Default::default(),
             probe_locator: Default::default(),
             agent: NavmeshAgentBuilder::new()
@@ -165,7 +162,7 @@ impl ScriptTrait for Bot {
 
                 if let Some(navmesh) = self.navmesh.as_ref() {
                     let navmesh = navmesh.read();
-                    self.agent.set_speed(self.speed);
+                    self.agent.set_speed(self.actor.speed);
                     self.agent.set_target(target_pos);
                     self.agent.set_position(self_position);
                     let _ = self.agent.update(ctx.dt, &navmesh);
@@ -207,8 +204,8 @@ impl ScriptTrait for Bot {
                     .cast_mut::<RigidBody>()
                     .unwrap();
 
-                let is_running =
-                    self.actor.stand_up_timer <= 0.0 && horizontal_velocity.norm() > 0.1;
+                let is_running = self.actor.stand_up_timer >= self.actor.stand_up_interval
+                    && horizontal_velocity.norm() > 0.1;
 
                 if is_running {
                     rigid_body

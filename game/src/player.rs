@@ -53,8 +53,6 @@ impl InputController {
 #[type_uuid(id = "deb77c1d-668d-4716-a8f7-04ed09b0b9f6")]
 #[visit(optional)]
 pub struct Player {
-    #[reflect(description = "Speed of the player.")]
-    speed: f32,
     #[reflect(description = "Handle to player's model.")]
     model: Handle<Node>,
     #[reflect(description = "Handle to player's animation state machine.")]
@@ -71,7 +69,6 @@ pub struct Player {
 impl Default for Player {
     fn default() -> Self {
         Self {
-            speed: 1.0,
             model: Default::default(),
             absm: Default::default(),
             camera: Default::default(),
@@ -141,7 +138,7 @@ impl ScriptTrait for Player {
 
             velocity = velocity
                 .try_normalize(f32::EPSILON)
-                .map(|v| v.scale(self.speed))
+                .map(|v| v.scale(self.actor.speed))
                 .unwrap_or_default();
 
             velocity.y = rigid_body.lin_vel().y;
@@ -202,6 +199,7 @@ impl ScriptTrait for Player {
                     .set_parameter("Jump", Parameter::Rule(self.actor.jump));
             }
         }
+        dbg!(self.actor.in_air_time);
 
         self.actor
             .do_move(velocity, &mut ctx.scene.graph, has_ground_contact);
