@@ -13,7 +13,7 @@ use fyrox::{
         visitor::prelude::*,
     },
     event::DeviceEvent,
-    scene::{graph::physics::RayCastOptions, node::Node},
+    scene::{collider::Collider, graph::physics::RayCastOptions, node::Node},
     script::{ScriptContext, ScriptTrait},
 };
 use std::ops::Range;
@@ -92,6 +92,17 @@ impl CameraController {
         for intersection in buffer {
             if intersection.collider == player_collider {
                 continue;
+            }
+
+            // Filter out ragdoll colliders.
+            if let Some(collider) = context
+                .scene
+                .graph
+                .try_get_of_type::<Collider>(intersection.collider)
+            {
+                if collider.collision_groups().memberships.0 & 0b0000_0010 == 0b0000_0010 {
+                    continue;
+                }
             }
 
             let new_offset = intersection.toi;

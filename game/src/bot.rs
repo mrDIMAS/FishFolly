@@ -18,7 +18,6 @@ use fyrox::{
         graph::{physics::RayCastOptions, Graph},
         navmesh::NavigationalMesh,
         node::Node,
-        ragdoll::Ragdoll,
         rigidbody::RigidBody,
     },
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
@@ -38,22 +37,11 @@ pub struct Bot {
     probe_locator: Handle<Node>,
     #[reflect(description = "Handle of animation state machine.")]
     absm: Handle<Node>,
-    #[reflect(description = "A handle of the ragdoll")]
-    ragdoll: Handle<Node>,
-    #[reflect(
-        description = "Amount of time that the bot will be lying on the ground with active ragdoll."
-    )]
-    stand_up_timeout: f32,
-    #[visit(skip)]
-    #[reflect(hidden)]
     #[component(include)]
     pub actor: Actor,
     #[visit(skip)]
     #[reflect(hidden)]
     agent: NavmeshAgent,
-    #[visit(skip)]
-    #[reflect(hidden)]
-    stand_up_timer: f32,
     #[visit(skip)]
     #[reflect(hidden)]
     navmesh: Option<Arc<RwLock<Navmesh>>>,
@@ -69,9 +57,6 @@ impl Default for Bot {
             agent: NavmeshAgentBuilder::new()
                 .with_recalculation_threshold(0.5)
                 .build(),
-            ragdoll: Default::default(),
-            stand_up_timeout: 2.0,
-            stand_up_timer: 0.0,
             absm: Default::default(),
             navmesh: Default::default(),
         }
@@ -110,12 +95,6 @@ fn probe_ground(begin: Vector3<f32>, max_height: f32, graph: &Graph) -> Option<V
     None
 }
 
-fn set_ragdoll_enabled(ragdoll_holder: Handle<Node>, graph: &mut Graph, enabled: bool) {
-    if let Some(ragdoll) = graph.try_get_mut_of_type::<Ragdoll>(ragdoll_holder) {
-        ragdoll.set_active(enabled);
-    }
-}
-
 impl ScriptTrait for Bot {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
         assert!(ctx.plugins.get_mut::<Game>().actors.insert(ctx.handle));
@@ -138,6 +117,8 @@ impl ScriptTrait for Bot {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
+        self.actor.on_update(ctx);
+
         let game = ctx.plugins.get::<Game>();
 
         // Dead-simple AI - run straight to target.
@@ -179,35 +160,24 @@ impl ScriptTrait for Bot {
                     vel
                 };
 
-                let mut jump = false;
                 let jump_vel = 5.0;
                 let y_vel = if utils::has_ground_contact(self.collider, &ctx.scene.graph) {
                     if let Some(probed_position) =
                         probe_ground(ground_probe_begin, 10.0, &ctx.scene.graph)
                     {
                         if probed_position.metric_distance(&ground_probe_begin) > 8.0 {
-                            jump = true;
+                            self.actor.jump = true;
                             jump_vel
                         } else {
                             current_y_lin_vel
                         }
                     } else {
-                        jump = true;
+                        self.actor.jump = true;
                         jump_vel
                     }
                 } else {
                     current_y_lin_vel
                 };
-
-                // TEST - activate ragdoll on jumping
-                self.stand_up_timer -= ctx.dt;
-                if jump && self.stand_up_timer <= 0.0 {
-                    set_ragdoll_enabled(self.ragdoll, &mut ctx.scene.graph, true);
-                    self.stand_up_timer = self.stand_up_timeout;
-                }
-                if self.stand_up_timer <= 0.0 {
-                    set_ragdoll_enabled(self.ragdoll, &mut ctx.scene.graph, false);
-                }
 
                 // Reborrow the node.
                 let rigid_body = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>().unwrap();
@@ -217,7 +187,8 @@ impl ScriptTrait for Bot {
                     horizontal_velocity.z,
                 ));
 
-                let is_running = self.stand_up_timer <= 0.0 && horizontal_velocity.norm() > 0.1;
+                let is_running =
+                    self.actor.stand_up_timer <= 0.0 && horizontal_velocity.norm() > 0.1;
 
                 if is_running {
                     rigid_body
@@ -237,7 +208,7 @@ impl ScriptTrait for Bot {
                     absm.machine_mut()
                         .get_value_mut_silent()
                         .set_parameter("Run", Parameter::Rule(is_running))
-                        .set_parameter("Jump", Parameter::Rule(jump));
+                        .set_parameter("Jump", Parameter::Rule(self.actor.jump));
                 }
             }
         }

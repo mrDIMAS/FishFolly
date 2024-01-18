@@ -66,8 +66,6 @@ pub struct Player {
     #[visit(skip)]
     #[reflect(hidden)]
     pub input_controller: InputController,
-    #[visit(skip)]
-    #[reflect(hidden)]
     #[component(include)]
     pub actor: Actor,
 }
@@ -114,6 +112,8 @@ impl ScriptTrait for Player {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
+        self.actor.on_update(ctx);
+
         let has_ground_contact = self.has_ground_contact(&ctx.scene.graph);
 
         let yaw = ctx
@@ -151,11 +151,10 @@ impl ScriptTrait for Player {
 
             velocity.y = rigid_body.lin_vel().y;
 
-            let mut jump = false;
             if self.input_controller.jump && has_ground_contact {
                 velocity.y += 5.5;
                 self.input_controller.jump = false;
-                jump = true;
+                self.actor.jump = true;
             }
 
             rigid_body.set_lin_vel(velocity);
@@ -207,7 +206,7 @@ impl ScriptTrait for Player {
                 absm.machine_mut()
                     .get_value_mut_silent()
                     .set_parameter("Run", Parameter::Rule(is_moving))
-                    .set_parameter("Jump", Parameter::Rule(jump));
+                    .set_parameter("Jump", Parameter::Rule(self.actor.jump));
             }
         }
     }

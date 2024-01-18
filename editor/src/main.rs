@@ -1,6 +1,9 @@
 //! Editor with your game connected to it as a plugin.
-use fish_fall::GameConstructor;
-use fyrox::event_loop::EventLoop;
+use fish_fall::{marker::Actor, GameConstructor};
+use fyrox::{
+    event_loop::EventLoop,
+    gui::inspector::editors::inspectable::InspectablePropertyEditorDefinition,
+};
 use fyroxed_base::{Editor, StartupData};
 
 fn main() {
@@ -13,6 +16,10 @@ fn main() {
         }),
     );
 
+    editor
+        .inspector
+        .property_editors
+        .insert(InspectablePropertyEditorDefinition::<Actor>::new());
     editor.add_game_plugin(GameConstructor);
     editor.run(event_loop)
 }
