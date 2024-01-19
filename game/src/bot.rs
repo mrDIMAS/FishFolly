@@ -14,7 +14,6 @@ use fyrox::{
         visitor::prelude::*,
     },
     scene::{
-        animation::absm::prelude::*,
         collider::{Collider, ColliderShape},
         debug::Line,
         graph::{physics::RayCastOptions, Graph},
@@ -35,8 +34,6 @@ use std::sync::Arc;
 pub struct Bot {
     #[reflect(description = "Handle of an edge probe locator node")]
     probe_locator: Handle<Node>,
-    #[reflect(description = "Handle of animation state machine.")]
-    absm: Handle<Node>,
     #[component(include)]
     pub actor: Actor,
     #[visit(skip)]
@@ -55,7 +52,6 @@ impl Default for Bot {
             agent: NavmeshAgentBuilder::new()
                 .with_recalculation_threshold(0.1)
                 .build(),
-            absm: Default::default(),
             navmesh: Default::default(),
         }
     }
@@ -120,8 +116,6 @@ impl ScriptTrait for Bot {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        self.actor.on_update(ctx);
-
         let game = ctx.plugins.get::<Game>();
 
         // Dead-simple AI - run straight to target.
@@ -152,13 +146,12 @@ impl ScriptTrait for Bot {
                 Default::default()
             };
 
-        let mut velocity = Default::default();
+        self.actor.target_desired_velocity = Vector3::new(0.0, 0.0, 0.0);
 
         if let Some(target_pos) = target_pos {
             if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>()
             {
                 let self_position = rigid_body.global_position();
-                let current_y_lin_vel = rigid_body.lin_vel().y;
 
                 if let Some(navmesh) = self.navmesh.as_ref() {
                     let navmesh = navmesh.read();
@@ -178,26 +171,27 @@ impl ScriptTrait for Bot {
                     vel
                 };
 
-                let jump_vel = 5.0;
-                let y_vel = if utils::has_ground_contact(self.actor.collider, &ctx.scene.graph) {
+                let jump_y_vel = if utils::has_ground_contact(self.actor.collider, &ctx.scene.graph)
+                {
                     if let Some(probed_position) =
                         probe_ground(ground_probe_begin, 10.0, &ctx.scene.graph)
                     {
                         if probed_position.metric_distance(&ground_probe_begin) > 8.0 {
                             self.actor.jump = true;
-                            jump_vel
+                            self.actor.jump_vel
                         } else {
-                            current_y_lin_vel
+                            0.0
                         }
                     } else {
                         self.actor.jump = true;
-                        jump_vel
+                        self.actor.jump_vel
                     }
                 } else {
-                    current_y_lin_vel
+                    0.0
                 };
 
-                velocity = Vector3::new(horizontal_velocity.x, y_vel, horizontal_velocity.z);
+                self.actor.target_desired_velocity =
+                    Vector3::new(horizontal_velocity.x, jump_y_vel, horizontal_velocity.z);
 
                 // Reborrow the node.
                 let rigid_body = ctx.scene.graph[self.actor.rigid_body]
@@ -214,24 +208,10 @@ impl ScriptTrait for Bot {
                             &Vector3::y_axis(),
                         ));
                 }
-
-                if let Some(absm) = ctx
-                    .scene
-                    .graph
-                    .try_get_mut(self.absm)
-                    .and_then(|n| n.query_component_mut::<AnimationBlendingStateMachine>())
-                {
-                    absm.machine_mut()
-                        .get_value_mut_silent()
-                        .set_parameter("Run", Parameter::Rule(is_running))
-                        .set_parameter("Jump", Parameter::Rule(self.actor.jump));
-                }
             }
         }
 
-        let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
-        self.actor
-            .do_move(velocity, &mut ctx.scene.graph, has_ground_contact);
+        self.actor.on_update(ctx);
     }
 
     fn on_message(

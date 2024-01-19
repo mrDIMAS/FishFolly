@@ -12,7 +12,7 @@ use fyrox::{
     },
     event::{ElementState, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
-    scene::{animation::absm::prelude::*, node::Node, rigidbody::RigidBody},
+    scene::{node::Node, rigidbody::RigidBody},
     script::{
         ScriptContext, ScriptDeinitContext, ScriptMessageContext, ScriptMessagePayload, ScriptTrait,
     },
@@ -55,8 +55,6 @@ impl InputController {
 pub struct Player {
     #[reflect(description = "Handle to player's model.")]
     model: Handle<Node>,
-    #[reflect(description = "Handle to player's animation state machine.")]
-    absm: Handle<Node>,
     #[reflect(description = "Handle to a node with camera controller.")]
     camera: Handle<Node>,
     #[visit(skip)]
@@ -70,7 +68,6 @@ impl Default for Player {
     fn default() -> Self {
         Self {
             model: Default::default(),
-            absm: Default::default(),
             camera: Default::default(),
             input_controller: Default::default(),
             actor: Default::default(),
@@ -104,8 +101,6 @@ impl ScriptTrait for Player {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        self.actor.on_update(ctx);
-
         let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
 
         let yaw = ctx
@@ -117,39 +112,41 @@ impl ScriptTrait for Player {
             .map(|c| c.yaw)
             .unwrap_or_default();
 
-        let mut velocity = Vector3::default();
+        self.actor.target_desired_velocity = Vector3::default();
 
         if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>() {
             let forward_vec = rigid_body.look_vector();
             let side_vec = rigid_body.side_vector();
 
             if self.input_controller.move_forward {
-                velocity += forward_vec;
+                self.actor.target_desired_velocity += forward_vec;
             }
             if self.input_controller.move_backward {
-                velocity -= forward_vec;
+                self.actor.target_desired_velocity -= forward_vec;
             }
             if self.input_controller.move_left {
-                velocity += side_vec;
+                self.actor.target_desired_velocity += side_vec;
             }
             if self.input_controller.move_right {
-                velocity -= side_vec;
+                self.actor.target_desired_velocity -= side_vec;
             }
 
-            velocity = velocity
+            self.actor.target_desired_velocity = self
+                .actor
+                .target_desired_velocity
                 .try_normalize(f32::EPSILON)
                 .map(|v| v.scale(self.actor.speed))
                 .unwrap_or_default();
 
-            velocity.y = rigid_body.lin_vel().y;
-
             if self.input_controller.jump && has_ground_contact {
-                velocity.y += 5.5;
+                self.actor.target_desired_velocity.y = self.actor.jump_vel;
                 self.input_controller.jump = false;
                 self.actor.jump = true;
+            } else {
+                self.actor.target_desired_velocity.y = 0.0;
             }
 
-            let is_moving = velocity.x != 0.0 || velocity.z != 0.0;
+            let is_moving = rigid_body.lin_vel().xz().norm() > 0.2;
 
             if is_moving {
                 rigid_body
@@ -186,22 +183,9 @@ impl ScriptTrait for Player {
                         (180.0 + angle).to_radians(),
                     ));
             }
-
-            if let Some(absm) = ctx
-                .scene
-                .graph
-                .try_get_mut(self.absm)
-                .and_then(|n| n.query_component_mut::<AnimationBlendingStateMachine>())
-            {
-                absm.machine_mut()
-                    .get_value_mut_silent()
-                    .set_parameter("Run", Parameter::Rule(is_moving))
-                    .set_parameter("Jump", Parameter::Rule(self.actor.jump));
-            }
         }
 
-        self.actor
-            .do_move(velocity, &mut ctx.scene.graph, has_ground_contact);
+        self.actor.on_update(ctx);
     }
 
     fn on_message(

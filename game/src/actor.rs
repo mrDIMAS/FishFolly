@@ -2,8 +2,13 @@
 
 use crate::{utils, Game};
 use fyrox::{
-    core::{algebra::Vector3, pool::Handle, reflect::prelude::*, visitor::prelude::*},
-    scene::{collider::Collider, graph::Graph, node::Node, ragdoll::Ragdoll, rigidbody::RigidBody},
+    core::{
+        algebra::Vector3, math::Vector3Ext, pool::Handle, reflect::prelude::*, visitor::prelude::*,
+    },
+    scene::{
+        animation::absm::prelude::*, collider::Collider, graph::Graph, node::Node,
+        ragdoll::Ragdoll, rigidbody::RigidBody,
+    },
     script::{ScriptContext, ScriptMessageContext, ScriptMessagePayload},
 };
 
@@ -40,6 +45,16 @@ pub struct Actor {
     pub rigid_body: Handle<Node>,
     #[reflect(description = "Speed of the actor.")]
     pub speed: f32,
+    #[reflect(description = "Jump speed of the actor.")]
+    pub jump_vel: f32,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    pub target_desired_velocity: Vector3<f32>,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    pub desired_velocity: Vector3<f32>,
+    #[reflect(description = "Handle of animation state machine.")]
+    absm: Handle<Node>,
 }
 
 impl Default for Actor {
@@ -54,6 +69,10 @@ impl Default for Actor {
             collider: Default::default(),
             rigid_body: Default::default(),
             speed: 4.0,
+            jump_vel: 6.5,
+            target_desired_velocity: Default::default(),
+            desired_velocity: Default::default(),
+            absm: Default::default(),
         }
     }
 }
@@ -86,7 +105,7 @@ impl Actor {
         }
     }
 
-    pub fn is_ragdoll_enabled(&mut self, graph: &Graph) -> bool {
+    pub fn is_ragdoll_enabled(&self, graph: &Graph) -> bool {
         if let Some(ragdoll) = graph.try_get_of_type::<Ragdoll>(self.ragdoll) {
             ragdoll.is_active()
         } else {
@@ -140,14 +159,10 @@ impl Actor {
         }
     }
 
-    pub fn set_velocity(&mut self, velocity: Vector3<f32>, graph: &mut Graph, xz_plane_only: bool) {
+    pub fn set_velocity(&mut self, velocity: Vector3<f32>, graph: &mut Graph) {
         self.for_each_rigid_body(graph, &mut |rigid_body: &mut RigidBody| {
-            let y_vel = rigid_body.lin_vel().y;
-            rigid_body.set_lin_vel(if xz_plane_only {
-                Vector3::new(velocity.x, y_vel, velocity.z)
-            } else {
-                velocity
-            });
+            let y_vel = rigid_body.lin_vel().y + velocity.y;
+            rigid_body.set_lin_vel(Vector3::new(velocity.x, y_vel, velocity.z));
         });
     }
 
@@ -161,7 +176,7 @@ impl Actor {
 
     pub fn do_move(&mut self, velocity: Vector3<f32>, graph: &mut Graph, has_ground_contact: bool) {
         if has_ground_contact && !self.is_ragdoll_enabled(graph) {
-            self.set_velocity(velocity, graph, !self.jump);
+            self.set_velocity(velocity, graph);
         } else {
             self.add_force(velocity.scale(2.25), self.speed, graph);
         }
@@ -213,5 +228,31 @@ impl Actor {
             self.in_air_time = 999.0;
         }
         self.jump = false;
+
+        let y_vel = self.target_desired_velocity.y;
+        self.desired_velocity
+            .follow(&self.target_desired_velocity, 0.2);
+        self.desired_velocity.y = y_vel;
+
+        self.do_move(
+            self.desired_velocity,
+            &mut ctx.scene.graph,
+            has_ground_contact,
+        );
+
+        if let Some(absm) = ctx
+            .scene
+            .graph
+            .try_get_mut(self.absm)
+            .and_then(|n| n.query_component_mut::<AnimationBlendingStateMachine>())
+        {
+            absm.machine_mut()
+                .get_value_mut_silent()
+                .set_parameter(
+                    "Run",
+                    Parameter::Rule(self.desired_velocity.xz().norm() > 0.5),
+                )
+                .set_parameter("Jump", Parameter::Rule(self.jump));
+        }
     }
 }
