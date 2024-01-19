@@ -50,7 +50,7 @@ impl Default for Bot {
             actor: Default::default(),
             probe_locator: Default::default(),
             agent: NavmeshAgentBuilder::new()
-                .with_recalculation_threshold(0.1)
+                .with_recalculation_threshold(2.0)
                 .build(),
             navmesh: Default::default(),
         }
@@ -104,6 +104,9 @@ impl ScriptTrait for Bot {
     fn on_start(&mut self, ctx: &mut ScriptContext) {
         ctx.message_dispatcher
             .subscribe_to::<ActorMessage>(ctx.handle);
+
+        self.agent
+            .set_position(ctx.scene.graph[ctx.handle].global_position());
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
@@ -117,6 +120,8 @@ impl ScriptTrait for Bot {
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
+
+        let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph);
 
         // Dead-simple AI - run straight to target.
         let target_pos = game
@@ -135,6 +140,29 @@ impl ScriptTrait for Bot {
                     end: b,
                     color: Color::RED,
                 })
+            }
+
+            ctx.scene
+                .drawing_context
+                .draw_sphere(self.agent.target(), 16, 16, 0.25, Color::GREEN);
+
+            ctx.scene.drawing_context.draw_sphere(
+                self.agent.position(),
+                16,
+                16,
+                0.25,
+                Color::GREEN,
+            );
+
+            if let Some(navmesh) = self.navmesh.as_ref() {
+                let navmesh = navmesh.read();
+                if let Some(closest) =
+                    navmesh.query_closest(ctx.scene.graph[self.actor.rigid_body].global_position())
+                {
+                    ctx.scene
+                        .drawing_context
+                        .draw_sphere(closest.0, 16, 16, 0.25, Color::BLUE);
+                }
             }
         }
 
@@ -166,24 +194,29 @@ impl ScriptTrait for Bot {
                 let horizontal_velocity = if has_reached_destination {
                     Vector3::new(0.0, 0.0, 0.0)
                 } else {
-                    let mut vel = (self.agent.position() - self_position).scale(1.0 / ctx.dt);
+                    let mut vel = (self.agent.position() - self_position)
+                        .try_normalize(f32::EPSILON)
+                        .unwrap_or_default()
+                        .scale(self.actor.speed);
                     vel.y = 0.0;
                     vel
                 };
 
                 let jump_y_vel = if utils::has_ground_contact(self.actor.collider, &ctx.scene.graph)
+                    && !is_in_jump_state
+                    && self.actor.jump_interval <= 0.0
                 {
                     if let Some(probed_position) =
                         probe_ground(ground_probe_begin, 10.0, &ctx.scene.graph)
                     {
                         if probed_position.metric_distance(&ground_probe_begin) > 8.0 {
-                            self.actor.jump = true;
+                            self.actor.jump();
                             self.actor.jump_vel
                         } else {
                             0.0
                         }
                     } else {
-                        self.actor.jump = true;
+                        self.actor.jump();
                         self.actor.jump_vel
                     }
                 } else {
@@ -220,5 +253,15 @@ impl ScriptTrait for Bot {
         ctx: &mut ScriptMessageContext,
     ) {
         self.actor.on_message(message, ctx);
+
+        let Some(message) = message.downcast_ref::<ActorMessage>() else {
+            return;
+        };
+
+        match message {
+            ActorMessage::RespawnAt(position) => {
+                self.agent.set_position(*position);
+            }
+        }
     }
 }

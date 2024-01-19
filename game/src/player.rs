@@ -102,6 +102,7 @@ impl ScriptTrait for Player {
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
         let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
+        let is_in_jump_state = false; // self.actor.is_in_jump_state(&ctx.scene.graph);
 
         let yaw = ctx
             .scene
@@ -138,10 +139,14 @@ impl ScriptTrait for Player {
                 .map(|v| v.scale(self.actor.speed))
                 .unwrap_or_default();
 
-            if self.input_controller.jump && has_ground_contact {
+            if self.input_controller.jump
+                && has_ground_contact
+                && !is_in_jump_state
+                && self.actor.jump_interval <= 0.0
+            {
                 self.actor.target_desired_velocity.y = self.actor.jump_vel;
                 self.input_controller.jump = false;
-                self.actor.jump = true;
+                self.actor.jump();
             } else {
                 self.actor.target_desired_velocity.y = 0.0;
             }

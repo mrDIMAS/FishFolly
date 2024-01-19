@@ -38,7 +38,7 @@ pub struct Actor {
     ragdoll: Handle<Node>,
     #[visit(skip)]
     #[reflect(hidden)]
-    pub jump: bool,
+    jump: bool,
     #[reflect(description = "Handle to actor's collider.")]
     pub collider: Handle<Node>,
     #[reflect(description = "Handle to actor's rigid body.")]
@@ -55,6 +55,9 @@ pub struct Actor {
     pub desired_velocity: Vector3<f32>,
     #[reflect(description = "Handle of animation state machine.")]
     absm: Handle<Node>,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    pub jump_interval: f32,
 }
 
 impl Default for Actor {
@@ -73,6 +76,7 @@ impl Default for Actor {
             target_desired_velocity: Default::default(),
             desired_velocity: Default::default(),
             absm: Default::default(),
+            jump_interval: 0.0,
         }
     }
 }
@@ -180,6 +184,13 @@ impl Actor {
         }
     }
 
+    pub fn jump(&mut self) {
+        if self.jump_interval <= 0.0 {
+            self.jump_interval = 0.75;
+            self.jump = true;
+        }
+    }
+
     fn has_serious_impact(&mut self, ctx: &mut ScriptContext) -> bool {
         if let Some(collider) = ctx.scene.graph.try_get_of_type::<Collider>(self.collider) {
             for contact in collider.contacts(&ctx.scene.graph.physics) {
@@ -206,6 +217,31 @@ impl Actor {
         false
     }
 
+    pub fn is_in_jump_state(&self, graph: &Graph) -> bool {
+        let name = "Jump";
+        if let Some(absm) = graph.try_get_of_type::<AnimationBlendingStateMachine>(self.absm) {
+            absm.machine().layers().first().map_or(false, |layer| {
+                if let Some(active_state) = layer.states().try_borrow(layer.active_state()) {
+                    active_state.name == name
+                } else if let Some(active_transition) =
+                    layer.transitions().try_borrow(layer.active_transition())
+                {
+                    if let Some(source) = layer.states().try_borrow(active_transition.source()) {
+                        source.name == name
+                    } else if let Some(dest) = layer.states().try_borrow(active_transition.dest()) {
+                        dest.name == name
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            })
+        } else {
+            false
+        }
+    }
+
     pub fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
         let has_ground_contact = self.has_ground_contact(&ctx.scene.graph);
@@ -225,7 +261,6 @@ impl Actor {
         if self.has_serious_impact(ctx) {
             self.in_air_time = 999.0;
         }
-        self.jump = false;
 
         let y_vel = self.target_desired_velocity.y;
         self.desired_velocity.follow(
@@ -250,5 +285,9 @@ impl Actor {
                 )
                 .set_parameter("Jump", Parameter::Rule(self.jump));
         }
+
+        self.jump_interval -= ctx.dt;
+
+        self.jump = false;
     }
 }
