@@ -107,9 +107,9 @@ impl Actor {
             ActorMessage::RespawnAt(position) => {
                 self.set_ragdoll_enabled(&mut ctx.scene.graph, false);
 
-                if let Some(rigid_body) = ctx.scene.graph.try_get_mut(self.rigid_body) {
-                    rigid_body.local_transform_mut().set_position(*position);
-                }
+                self.for_each_rigid_body(&mut ctx.scene.graph, |rb| {
+                    rb.local_transform_mut().set_position(*position);
+                });
             }
         }
     }
@@ -180,8 +180,8 @@ impl Actor {
                                 .graph
                                 .try_get_of_type::<RigidBody>(manifold.rigid_body2),
                         ) {
-                            if (rb1.lin_vel() - rb2.lin_vel()).norm() > 1.0
-                                || manifold.points.iter().any(|p| p.impulse > 0.6)
+                            if (rb1.lin_vel() - rb2.lin_vel()).norm() > 10.0
+                                || manifold.points.iter().any(|p| p.impulse > 2.0)
                             {
                                 return true;
                             }

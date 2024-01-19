@@ -204,8 +204,7 @@ impl ScriptTrait for Bot {
                     .cast_mut::<RigidBody>()
                     .unwrap();
 
-                let is_running = self.actor.stand_up_timer >= self.actor.stand_up_interval
-                    && horizontal_velocity.norm() > 0.1;
+                let is_running = horizontal_velocity.norm() > 0.1;
 
                 if is_running {
                     rigid_body
