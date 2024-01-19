@@ -174,11 +174,9 @@ impl Actor {
         });
     }
 
-    pub fn do_move(&mut self, velocity: Vector3<f32>, graph: &mut Graph, has_ground_contact: bool) {
-        if has_ground_contact && !self.is_ragdoll_enabled(graph) {
+    pub fn do_move(&mut self, velocity: Vector3<f32>, graph: &mut Graph) {
+        if !self.is_ragdoll_enabled(graph) {
             self.set_velocity(velocity, graph);
-        } else {
-            self.add_force(velocity.scale(2.25), self.speed, graph);
         }
     }
 
@@ -230,15 +228,13 @@ impl Actor {
         self.jump = false;
 
         let y_vel = self.target_desired_velocity.y;
-        self.desired_velocity
-            .follow(&self.target_desired_velocity, 0.2);
+        self.desired_velocity.follow(
+            &self.target_desired_velocity,
+            if has_ground_contact { 0.2 } else { 0.025 },
+        );
         self.desired_velocity.y = y_vel;
 
-        self.do_move(
-            self.desired_velocity,
-            &mut ctx.scene.graph,
-            has_ground_contact,
-        );
+        self.do_move(self.desired_velocity, &mut ctx.scene.graph);
 
         if let Some(absm) = ctx
             .scene
