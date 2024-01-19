@@ -105,8 +105,6 @@ impl Plugin for Game {
     }
 
     fn on_os_event(&mut self, event: &Event<()>, context: PluginContext) {
-        self.menu.handle_os_event(event, context);
-
         if let Event::WindowEvent {
             event: WindowEvent::KeyboardInput { event, .. },
             ..

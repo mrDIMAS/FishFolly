@@ -1,91 +1,60 @@
+use crate::Game;
 use fyrox::{
+    asset::io::FsResourceIo,
     core::pool::Handle,
-    event::{Event, WindowEvent},
     gui::{
-        button::{ButtonBuilder, ButtonMessage},
-        grid::{Column, GridBuilder, Row},
+        button::ButtonMessage,
+        constructor::WidgetConstructorContainer,
         message::{MessageDirection, UiMessage},
-        stack_panel::StackPanelBuilder,
-        widget::{WidgetBuilder, WidgetMessage},
-        Thickness, UiNode,
+        widget::WidgetMessage,
+        UiNode, UserInterface,
     },
     plugin::PluginContext,
 };
+use std::{path::Path, sync::Arc};
 
 pub struct Menu {
-    root: Handle<UiNode>,
+    debug_text: Handle<UiNode>,
+    new_game: Handle<UiNode>,
     exit: Handle<UiNode>,
 }
 
 impl Menu {
-    pub fn new(context: &mut PluginContext) -> Self {
-        let ctx = &mut context.user_interface.build_ctx();
-
-        let exit;
-        let root = GridBuilder::new(
-            WidgetBuilder::new()
-                .with_visibility(false) // TODO
-                .with_child(
-                    StackPanelBuilder::new(
-                        WidgetBuilder::new()
-                            .on_row(1)
-                            .on_column(1)
-                            .with_child(
-                                ButtonBuilder::new(
-                                    WidgetBuilder::new().with_margin(Thickness::uniform(1.0)),
-                                )
-                                .with_text("Start")
-                                .build(ctx),
-                            )
-                            .with_child({
-                                exit = ButtonBuilder::new(
-                                    WidgetBuilder::new().with_margin(Thickness::uniform(1.0)),
-                                )
-                                .with_text("Exit")
-                                .build(ctx);
-                                exit
-                            }),
-                    )
-                    .build(ctx),
-                ),
-        )
-        .add_row(Row::stretch())
-        .add_row(Row::auto())
-        .add_row(Row::stretch())
-        .add_column(Column::stretch())
-        .add_column(Column::auto())
-        .add_column(Column::stretch())
-        .build(ctx);
-
-        Self { root, exit }
+    pub fn new(ctx: &mut PluginContext) -> Self {
+        ctx.task_pool.spawn_plugin_task(
+            UserInterface::load_from_file(
+                Path::new("data/menu.ui"),
+                Arc::new(WidgetConstructorContainer::new()),
+                ctx.resource_manager.clone(),
+                &FsResourceIo,
+            ),
+            |result, game: &mut Game, ctx| {
+                *ctx.user_interface = result.unwrap();
+                game.menu.new_game = ctx.user_interface.find_by_name_down_from_root("NewGame");
+                game.menu.exit = ctx.user_interface.find_by_name_down_from_root("Exit");
+                game.menu.debug_text = ctx.user_interface.find_by_name_down_from_root("DebugText");
+            },
+        );
+        Self {
+            debug_text: Default::default(),
+            new_game: Default::default(),
+            exit: Default::default(),
+        }
     }
 
     pub fn handle_ui_message(&mut self, ctx: &mut PluginContext, message: &UiMessage) {
         if let Some(ButtonMessage::Click) = message.data() {
-            if message.destination() == self.exit {
+            if message.destination() == self.new_game {
+                ctx.user_interface.send_message(WidgetMessage::visibility(
+                    ctx.user_interface.root(),
+                    MessageDirection::ToWidget,
+                    false,
+                ));
+            } else if message.destination() == self.exit {
                 if let Some(window_target) = ctx.window_target {
                     window_target.exit();
                 }
             }
-        }
-    }
-
-    pub fn handle_os_event(&mut self, event: &Event<()>, context: PluginContext) {
-        if let Event::WindowEvent {
-            event: WindowEvent::Resized(size),
-            ..
-        } = event
-        {
-            context.user_interface.send_message(WidgetMessage::width(
-                self.root,
-                MessageDirection::ToWidget,
-                size.width as f32,
-            ));
-            context.user_interface.send_message(WidgetMessage::height(
-                self.root,
-                MessageDirection::ToWidget,
-                size.height as f32,
-            ));
         }
     }
 }
