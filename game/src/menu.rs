@@ -79,6 +79,7 @@ impl ServerMenu {
                     MessageDirection::ToWidget,
                     true,
                 ));
+                *server = None;
             }
         }
     }
