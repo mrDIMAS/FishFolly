@@ -1,6 +1,14 @@
-use crate::net::{ClientMessage, NetSocket};
-use fyrox::core::log::Log;
-use std::{fmt::Debug, net::ToSocketAddrs};
+use crate::net::{ClientMessage, NetSocket, ServerMessage};
+use fyrox::{
+    core::log::Log,
+    plugin::PluginContext,
+    rand::{thread_rng, Rng},
+};
+use std::{
+    fmt::Debug,
+    net::ToSocketAddrs,
+    net::{IpAddr, SocketAddr},
+};
 
 pub struct Client {
     socket: NetSocket,
@@ -8,8 +16,12 @@ pub struct Client {
 
 impl Client {
     pub fn new() -> Self {
+        let addr = SocketAddr::new(
+            IpAddr::from([127, 0, 0, 1]),
+            thread_rng().gen_range(1024..65530),
+        );
         Self {
-            socket: NetSocket::bind("127.0.0.1:10000").unwrap(),
+            socket: NetSocket::bind(addr).unwrap(),
         }
     }
 
@@ -37,5 +49,19 @@ impl Client {
                 err
             )),
         }
+    }
+
+    pub fn read_messages(&mut self, context: &mut PluginContext) {
+        self.socket.process_input(|data, sender_address| {
+            if let Some(message) = ServerMessage::try_create(data) {
+                match message {
+                    ServerMessage::LoadLevel { path } => {
+                        context.async_scene_loader.request(path);
+                    }
+                }
+            } else {
+                Log::err("Malformed server message!");
+            }
+        })
     }
 }

@@ -76,12 +76,8 @@ impl PluginConstructor for GameConstructor {
 }
 
 impl Game {
-    fn new(override_scene: Option<&str>, mut context: PluginContext) -> Self {
+    fn new(_override_scene: Option<&str>, mut context: PluginContext) -> Self {
         Log::info("Game started!");
-
-        context
-            .async_scene_loader
-            .request(override_scene.unwrap_or("data/drake.rgs"));
 
         Self {
             menu: Menu::new(&mut context),
@@ -90,7 +86,7 @@ impl Game {
             actors: Default::default(),
             scene: Default::default(),
             debug_settings: Default::default(),
-            server: Some(Server::new()), // TODO
+            server: None,
             client: Client::new(),
         }
     }
@@ -105,6 +101,7 @@ impl Plugin for Game {
         if let Some(server) = self.server.as_mut() {
             server.read_messages();
         }
+        self.client.read_messages(context);
 
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
             scene.drawing_context.clear_lines();
@@ -115,7 +112,7 @@ impl Plugin for Game {
         }
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, context: PluginContext) {
+    fn on_os_event(&mut self, event: &Event<()>, _context: PluginContext) {
         if let Event::WindowEvent {
             event: WindowEvent::KeyboardInput { event, .. },
             ..
@@ -164,7 +161,8 @@ impl Plugin for Game {
     }
 
     fn on_ui_message(&mut self, context: &mut PluginContext, message: &UiMessage) {
-        self.menu.handle_ui_message(context, message);
+        self.menu
+            .handle_ui_message(context, message, &mut self.server, &mut self.client);
     }
 
     fn on_scene_begin_loading(&mut self, _path: &Path, context: &mut PluginContext) {

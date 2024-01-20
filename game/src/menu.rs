@@ -1,4 +1,4 @@
-use crate::Game;
+use crate::{client::Client, server::Server, Game};
 use fyrox::{
     asset::io::FsResourceIo,
     core::pool::Handle,
@@ -17,6 +17,8 @@ pub struct Menu {
     debug_text: Handle<UiNode>,
     new_game: Handle<UiNode>,
     exit: Handle<UiNode>,
+    start_as_server: Handle<UiNode>,
+    start_as_client: Handle<UiNode>,
 }
 
 impl Menu {
@@ -33,18 +35,34 @@ impl Menu {
                 game.menu.new_game = ctx.user_interface.find_by_name_down_from_root("NewGame");
                 game.menu.exit = ctx.user_interface.find_by_name_down_from_root("Exit");
                 game.menu.debug_text = ctx.user_interface.find_by_name_down_from_root("DebugText");
+                game.menu.start_as_server =
+                    ctx.user_interface.find_by_name_down_from_root("Server");
+                game.menu.start_as_client =
+                    ctx.user_interface.find_by_name_down_from_root("Client");
             },
         );
         Self {
             debug_text: Default::default(),
             new_game: Default::default(),
             exit: Default::default(),
+            start_as_server: Default::default(),
+            start_as_client: Default::default(),
         }
     }
 
-    pub fn handle_ui_message(&mut self, ctx: &mut PluginContext, message: &UiMessage) {
+    pub fn handle_ui_message(
+        &mut self,
+        ctx: &mut PluginContext,
+        message: &UiMessage,
+        server: &mut Option<Server>,
+        client: &mut Client,
+    ) {
         if let Some(ButtonMessage::Click) = message.data() {
             if message.destination() == self.new_game {
+                if let Some(server) = server.as_ref() {
+                    server.start_game();
+                }
+
                 ctx.user_interface.send_message(WidgetMessage::visibility(
                     ctx.user_interface.root(),
                     MessageDirection::ToWidget,
@@ -54,6 +72,11 @@ impl Menu {
                 if let Some(window_target) = ctx.window_target {
                     window_target.exit();
                 }
+            } else if message.destination() == self.start_as_server {
+                *server = Some(Server::new());
+                client.try_connect(Server::ADDRESS);
+            } else if message.destination() == self.start_as_client {
+                client.try_connect(Server::ADDRESS);
             }
         }
     }

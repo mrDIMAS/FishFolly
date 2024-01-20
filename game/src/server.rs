@@ -1,6 +1,6 @@
-use crate::net::{ClientMessage, NetSocket};
+use crate::net::{ClientMessage, NetSocket, ServerMessage};
 use fyrox::core::log::Log;
-use std::{io::ErrorKind, net::SocketAddr};
+use std::net::SocketAddr;
 
 pub struct Server {
     socket: NetSocket,
@@ -17,41 +17,30 @@ impl Server {
         }
     }
 
-    pub fn read_messages(&mut self) {
-        loop {
-            let mut bytes = [0; 8192];
-            match self.socket.recv_from(&mut bytes) {
-                Ok((bytes_count, sender_address)) => {
-                    if bytes_count == 0 {
-                        break;
-                    } else {
-                        let received_data = &bytes[..bytes_count];
-                        if let Some(message) = ClientMessage::try_create(received_data) {
-                            match message {
-                                ClientMessage::Connect { name } => {
-                                    Log::info(format!("Client {} connected successfully!", name));
+    pub fn start_game(&self) {
+        for client in self.clients.iter() {
+            Log::verify(self.socket.send_to(
+                &ServerMessage::LoadLevel {
+                    path: "data/drake.rgs".into(),
+                },
+                client,
+            ))
+        }
+    }
 
-                                    self.clients.push(sender_address);
-                                }
-                            }
-                        } else {
-                            Log::err("Malformed server message!");
-                        }
+    pub fn read_messages(&mut self) {
+        self.socket.process_input(|data, sender_address| {
+            if let Some(message) = ClientMessage::try_create(data) {
+                match message {
+                    ClientMessage::Connect { name } => {
+                        Log::info(format!("Client {} connected successfully!", name));
+
+                        self.clients.push(sender_address);
                     }
                 }
-                Err(err) => match err.kind() {
-                    ErrorKind::WouldBlock => {
-                        break;
-                    }
-                    ErrorKind::Interrupted => {
-                        // Retry
-                    }
-                    _ => Log::err(format!(
-                        "An error occurred when reading data from socket: {}",
-                        err
-                    )),
-                },
+            } else {
+                Log::err("Malformed server message!");
             }
-        }
+        })
     }
 }

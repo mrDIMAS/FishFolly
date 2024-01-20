@@ -1,12 +1,16 @@
+use fyrox::core::log::Log;
 use serde::{Deserialize, Serialize};
 use std::{
-    io,
+    io::{self, ErrorKind},
     net::{SocketAddr, ToSocketAddrs, UdpSocket},
+    path::PathBuf,
 };
 
 /// A message sent from the server to a client.
 #[derive(Serialize, Deserialize)]
-pub enum ServerMessage {}
+pub enum ServerMessage {
+    LoadLevel { path: PathBuf },
+}
 
 impl ServerMessage {
     pub fn try_create(bytes: &[u8]) -> Option<Self> {
@@ -65,5 +69,36 @@ impl NetSocket {
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.socket.recv_from(buf)
+    }
+
+    pub fn process_input<F>(&self, mut func: F)
+    where
+        F: FnMut(&[u8], SocketAddr),
+    {
+        loop {
+            let mut bytes = [0; 8192];
+            match self.socket.recv_from(&mut bytes) {
+                Ok((bytes_count, sender_address)) => {
+                    if bytes_count == 0 {
+                        break;
+                    } else {
+                        let received_data = &bytes[..bytes_count];
+                        func(received_data, sender_address)
+                    }
+                }
+                Err(err) => match err.kind() {
+                    ErrorKind::WouldBlock => {
+                        break;
+                    }
+                    ErrorKind::Interrupted => {
+                        // Retry
+                    }
+                    _ => Log::err(format!(
+                        "An error occurred when reading data from socket: {}",
+                        err
+                    )),
+                },
+            }
+        }
     }
 }
