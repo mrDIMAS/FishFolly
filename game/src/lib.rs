@@ -97,19 +97,21 @@ impl Plugin for Game {
         Log::info("Game stopped!");
     }
 
-    fn update(&mut self, context: &mut PluginContext) {
+    fn update(&mut self, ctx: &mut PluginContext) {
         if let Some(server) = self.server.as_mut() {
             server.read_messages();
         }
-        self.client.read_messages(context);
+        self.client.read_messages(ctx);
 
-        if let Some(scene) = context.scenes.try_get_mut(self.scene) {
+        if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
             scene.drawing_context.clear_lines();
 
             if self.debug_settings.show_physics {
                 scene.graph.physics.draw(&mut scene.drawing_context);
             }
         }
+
+        self.menu.update(ctx, &self.server);
     }
 
     fn on_os_event(&mut self, event: &Event<()>, _context: PluginContext) {
@@ -135,7 +137,8 @@ impl Plugin for Game {
                             self.client.try_connect(Server::ADDRESS);
                         }
                         KeyCode::Escape => {
-                            self.menu.switch_visibility(&_context.user_interface);
+                            self.menu
+                                .switch_main_menu_visibility(&_context.user_interface);
                         }
                         _ => (),
                     }
@@ -182,6 +185,7 @@ impl Plugin for Game {
         _context: &mut PluginContext,
     ) {
         self.scene = scene;
-        self.menu.set_visibility(&_context.user_interface, false);
+        self.menu
+            .set_main_menu_visibility(&_context.user_interface, false);
     }
 }

@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 pub struct Server {
     socket: NetSocket,
-    clients: Vec<SocketAddr>,
+    players: Vec<SocketAddr>,
 }
 
 impl Server {
@@ -13,12 +13,12 @@ impl Server {
     pub fn new() -> Self {
         Self {
             socket: NetSocket::bind(Self::ADDRESS).unwrap(),
-            clients: Default::default(),
+            players: Default::default(),
         }
     }
 
     pub fn start_game(&self) {
-        for client in self.clients.iter() {
+        for client in self.players.iter() {
             Log::verify(self.socket.send_to(
                 &ServerMessage::LoadLevel {
                     path: "data/drake.rgs".into(),
@@ -35,12 +35,16 @@ impl Server {
                     ClientMessage::Connect { name } => {
                         Log::info(format!("Client {} connected successfully!", name));
 
-                        self.clients.push(sender_address);
+                        self.players.push(sender_address);
                     }
                 }
             } else {
                 Log::err("Malformed server message!");
             }
         })
+    }
+
+    pub fn players(&self) -> &[SocketAddr] {
+        &self.players
     }
 }

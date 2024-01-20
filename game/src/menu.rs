@@ -1,24 +1,130 @@
 use crate::{client::Client, server::Server, Game};
 use fyrox::{
-    asset::io::FsResourceIo,
+    asset::{io::FsResourceIo, manager::ResourceManager},
     core::pool::Handle,
     gui::{
         button::ButtonMessage,
         constructor::WidgetConstructorContainer,
+        font::Font,
+        list_view::{ListView, ListViewMessage},
         message::{MessageDirection, UiMessage},
-        widget::WidgetMessage,
-        UiNode, UserInterface,
+        text::TextBuilder,
+        widget::{WidgetBuilder, WidgetMessage},
+        BuildContext, Thickness, UiNode, UserInterface, VerticalAlignment,
     },
     plugin::PluginContext,
 };
 use std::{path::Path, sync::Arc};
 
+pub fn make_player_entry(
+    ctx: &mut BuildContext,
+    name: &str,
+    resource_manager: &ResourceManager,
+) -> Handle<UiNode> {
+    TextBuilder::new(WidgetBuilder::new().with_margin(Thickness::uniform(2.0)))
+        .with_vertical_text_alignment(VerticalAlignment::Center)
+        .with_text(name)
+        .with_font(resource_manager.request::<Font>("data/font.ttf"))
+        .with_font_size(28.0)
+        .build(ctx)
+}
+
+#[derive(Default)]
+struct ServerMenu {
+    self_handle: Handle<UiNode>,
+    main_menu: Handle<UiNode>,
+    back: Handle<UiNode>,
+    players_list: Handle<UiNode>,
+    start: Handle<UiNode>,
+    server_address: Handle<UiNode>,
+}
+
+impl ServerMenu {
+    pub fn new(self_handle: Handle<UiNode>, main_menu: Handle<UiNode>, ui: &UserInterface) -> Self {
+        Self {
+            self_handle,
+            main_menu,
+            back: ui.find_by_name_down_from_root("SVBack"),
+            players_list: ui.find_by_name_down_from_root("SVPlayersList"),
+            start: ui.find_by_name_down_from_root("SVStart"),
+            server_address: ui.find_by_name_down_from_root("SVServerAddress"),
+        }
+    }
+
+    pub fn handle_ui_message(
+        &mut self,
+        ctx: &mut PluginContext,
+        message: &UiMessage,
+        server: &mut Option<Server>,
+    ) {
+        if let Some(ButtonMessage::Click) = message.data() {
+            if message.destination() == self.start {
+                ctx.user_interface.send_message(WidgetMessage::visibility(
+                    self.self_handle,
+                    MessageDirection::ToWidget,
+                    false,
+                ));
+
+                if let Some(server) = server.as_ref() {
+                    server.start_game();
+                }
+            } else if message.destination() == self.back {
+                ctx.user_interface.send_message(WidgetMessage::visibility(
+                    self.self_handle,
+                    MessageDirection::ToWidget,
+                    false,
+                ));
+                ctx.user_interface.send_message(WidgetMessage::visibility(
+                    self.main_menu,
+                    MessageDirection::ToWidget,
+                    true,
+                ));
+            }
+        }
+    }
+
+    pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>) {
+        let Some(server) = server else {
+            return;
+        };
+
+        let player_entries_count = ctx
+            .user_interface
+            .node(self.players_list)
+            .query_component::<ListView>()
+            .unwrap()
+            .items()
+            .len();
+        if server.players().len() != player_entries_count {
+            let new_player_entries = server
+                .players()
+                .iter()
+                .map(|e| {
+                    make_player_entry(
+                        &mut ctx.user_interface.build_ctx(),
+                        &e.to_string(),
+                        ctx.resource_manager,
+                    )
+                })
+                .collect::<Vec<_>>();
+            ctx.user_interface.send_message(ListViewMessage::items(
+                self.players_list,
+                MessageDirection::ToWidget,
+                new_player_entries,
+            ));
+        }
+    }
+}
+
 pub struct Menu {
     debug_text: Handle<UiNode>,
-    new_game: Handle<UiNode>,
+    single_player: Handle<UiNode>,
+    settings: Handle<UiNode>,
     exit: Handle<UiNode>,
     start_as_server: Handle<UiNode>,
     start_as_client: Handle<UiNode>,
+    main_menu: Handle<UiNode>,
+    server_menu: ServerMenu,
 }
 
 impl Menu {
@@ -32,21 +138,27 @@ impl Menu {
             ),
             |result, game: &mut Game, ctx| {
                 *ctx.user_interface = result.unwrap();
-                game.menu.new_game = ctx.user_interface.find_by_name_down_from_root("NewGame");
-                game.menu.exit = ctx.user_interface.find_by_name_down_from_root("Exit");
-                game.menu.debug_text = ctx.user_interface.find_by_name_down_from_root("DebugText");
-                game.menu.start_as_server =
-                    ctx.user_interface.find_by_name_down_from_root("Server");
-                game.menu.start_as_client =
-                    ctx.user_interface.find_by_name_down_from_root("Client");
+                let menu = &mut game.menu;
+                let ui = &mut *ctx.user_interface;
+                menu.single_player = ui.find_by_name_down_from_root("SinglePlayer");
+                menu.exit = ui.find_by_name_down_from_root("Exit");
+                menu.debug_text = ui.find_by_name_down_from_root("DebugText");
+                menu.start_as_server = ui.find_by_name_down_from_root("Server");
+                menu.start_as_client = ui.find_by_name_down_from_root("Client");
+                menu.main_menu = ui.find_by_name_down_from_root("MainMenu");
+                let server_menu = ui.find_by_name_down_from_root("ServerMenu");
+                menu.server_menu = ServerMenu::new(server_menu, menu.main_menu, ui);
             },
         );
         Self {
             debug_text: Default::default(),
-            new_game: Default::default(),
+            single_player: Default::default(),
+            settings: Default::default(),
             exit: Default::default(),
             start_as_server: Default::default(),
             start_as_client: Default::default(),
+            main_menu: Default::default(),
+            server_menu: Default::default(),
         }
     }
 
@@ -57,33 +169,45 @@ impl Menu {
         server: &mut Option<Server>,
         client: &mut Client,
     ) {
+        self.server_menu.handle_ui_message(ctx, message, server);
+
         if let Some(ButtonMessage::Click) = message.data() {
-            if message.destination() == self.new_game {
-                if let Some(server) = server.as_ref() {
-                    server.start_game();
-                }
-            } else if message.destination() == self.exit {
+            if message.destination() == self.exit {
                 if let Some(window_target) = ctx.window_target {
                     window_target.exit();
                 }
             } else if message.destination() == self.start_as_server {
+                ctx.user_interface.send_message(WidgetMessage::visibility(
+                    self.server_menu.self_handle,
+                    MessageDirection::ToWidget,
+                    true,
+                ));
+                ctx.user_interface.send_message(WidgetMessage::visibility(
+                    self.main_menu,
+                    MessageDirection::ToWidget,
+                    false,
+                ));
                 *server = Some(Server::new());
                 client.try_connect(Server::ADDRESS);
             } else if message.destination() == self.start_as_client {
                 client.try_connect(Server::ADDRESS);
+            } else if message.destination() == self.single_player {
+                *server = Some(Server::new());
+                client.try_connect(Server::ADDRESS);
+                server.as_mut().unwrap().start_game();
             }
         }
     }
 
-    pub fn set_visibility(&self, ui: &UserInterface, visible: bool) {
+    pub fn set_main_menu_visibility(&self, ui: &UserInterface, visible: bool) {
         ui.send_message(WidgetMessage::visibility(
-            ui.root(),
+            self.main_menu,
             MessageDirection::ToWidget,
             visible,
         ));
     }
 
-    pub fn switch_visibility(&self, ui: &UserInterface) {
+    pub fn switch_main_menu_visibility(&self, ui: &UserInterface) {
         let handle = ui.root();
         let is_visible = ui.node(handle).is_globally_visible();
         ui.send_message(WidgetMessage::visibility(
@@ -91,5 +215,9 @@ impl Menu {
             MessageDirection::ToWidget,
             !is_visible,
         ));
+    }
+
+    pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>) {
+        self.server_menu.update(ctx, server)
     }
 }
