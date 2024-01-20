@@ -1,50 +1,45 @@
-use crate::net::{ClientMessage, NetSocket, ServerMessage};
+use crate::net::{ClientMessage, NetListener, NetStream, ServerMessage};
 use fyrox::core::log::Log;
-use std::net::SocketAddr;
+use std::io;
 
 pub struct Server {
-    socket: NetSocket,
-    players: Vec<SocketAddr>,
+    listener: NetListener,
+    connections: Vec<NetStream>,
 }
 
 impl Server {
     pub const ADDRESS: &'static str = "127.0.0.1:10001"; // TODO
 
-    pub fn new() -> Self {
-        Self {
-            socket: NetSocket::bind(Self::ADDRESS).unwrap(),
-            players: Default::default(),
-        }
+    pub fn new() -> io::Result<Self> {
+        Ok(Self {
+            listener: NetListener::bind(Self::ADDRESS)?,
+            connections: Default::default(),
+        })
     }
 
-    pub fn start_game(&self) {
-        for client in self.players.iter() {
-            Log::verify(self.socket.send_to(
-                &ServerMessage::LoadLevel {
-                    path: "data/drake.rgs".into(),
-                },
-                client,
-            ))
+    pub fn start_game(&mut self) {
+        for client in self.connections.iter_mut() {
+            Log::verify(client.send_message(&ServerMessage::LoadLevel {
+                path: "data/drake.rgs".into(),
+            }))
         }
     }
 
     pub fn read_messages(&mut self) {
-        self.socket.process_input(|data, sender_address| {
-            if let Some(message) = ClientMessage::try_create(data) {
-                match message {
-                    ClientMessage::Connect { name } => {
-                        Log::info(format!("Client {} connected successfully!", name));
-
-                        self.players.push(sender_address);
-                    }
+        for player in self.connections.iter_mut() {
+            player.process_input::<ClientMessage>(|msg| match msg {
+                ClientMessage::Connect { name } => {
+                    Log::info(format!("Client {} connected successfully!", name));
                 }
-            } else {
-                Log::err("Malformed server message!");
-            }
-        })
+            });
+        }
     }
 
-    pub fn players(&self) -> &[SocketAddr] {
-        &self.players
+    pub fn connections(&self) -> &[NetStream] {
+        &self.connections
+    }
+
+    pub fn accept_connections(&mut self) {
+        self.connections.extend(self.listener.accept_connections())
     }
 }

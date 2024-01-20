@@ -1,7 +1,7 @@
 use crate::{client::Client, server::Server, Game};
 use fyrox::{
     asset::{io::FsResourceIo, manager::ResourceManager},
-    core::pool::Handle,
+    core::{log::Log, pool::Handle},
     gui::{
         button::ButtonMessage,
         constructor::WidgetConstructorContainer,
@@ -65,7 +65,7 @@ impl ServerMenu {
                     false,
                 ));
 
-                if let Some(server) = server.as_ref() {
+                if let Some(server) = server.as_mut() {
                     server.start_game();
                 }
             } else if message.destination() == self.back {
@@ -96,14 +96,14 @@ impl ServerMenu {
             .unwrap()
             .items()
             .len();
-        if server.players().len() != player_entries_count {
+        if server.connections().len() != player_entries_count {
             let new_player_entries = server
-                .players()
+                .connections()
                 .iter()
                 .map(|e| {
                     make_player_entry(
                         &mut ctx.user_interface.build_ctx(),
-                        &e.to_string(),
+                        &e.string_peer_address(),
                         ctx.resource_manager,
                     )
                 })
@@ -126,6 +126,16 @@ pub struct Menu {
     start_as_client: Handle<UiNode>,
     main_menu: Handle<UiNode>,
     server_menu: ServerMenu,
+}
+
+fn try_connect_to_server() -> Option<Client> {
+    match Client::try_connect(Server::ADDRESS) {
+        Ok(new_client) => Some(new_client),
+        Err(err) => {
+            Log::err(format!("Unable to create a client. Reason: {:?}", err));
+            None
+        }
+    }
 }
 
 impl Menu {
@@ -168,7 +178,7 @@ impl Menu {
         ctx: &mut PluginContext,
         message: &UiMessage,
         server: &mut Option<Server>,
-        client: &mut Client,
+        client: &mut Option<Client>,
     ) {
         self.server_menu.handle_ui_message(ctx, message, server);
 
@@ -188,14 +198,30 @@ impl Menu {
                     MessageDirection::ToWidget,
                     false,
                 ));
-                *server = Some(Server::new());
-                client.try_connect(Server::ADDRESS);
+
+                // Try to start the server and the client.
+                match Server::new() {
+                    Ok(new_server) => {
+                        *server = Some(new_server);
+                        *client = try_connect_to_server();
+                        let server = server.as_mut().unwrap();
+                        server.accept_connections();
+                    }
+                    Err(err) => Log::err(format!("Unable to create a server. Reason: {:?}", err)),
+                }
             } else if message.destination() == self.start_as_client {
-                client.try_connect(Server::ADDRESS);
+                *client = try_connect_to_server();
             } else if message.destination() == self.single_player {
-                *server = Some(Server::new());
-                client.try_connect(Server::ADDRESS);
-                server.as_mut().unwrap().start_game();
+                match Server::new() {
+                    Ok(new_server) => {
+                        *server = Some(new_server);
+                        *client = try_connect_to_server();
+                        let server = server.as_mut().unwrap();
+                        server.accept_connections();
+                        server.start_game();
+                    }
+                    Err(err) => Log::err(format!("Unable to create a server. Reason: {:?}", err)),
+                }
             }
         }
     }

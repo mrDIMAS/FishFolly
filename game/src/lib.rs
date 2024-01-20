@@ -46,7 +46,7 @@ pub struct Game {
     pub actors: HashSet<Handle<Node>>,
     pub debug_settings: DebugSettings,
     server: Option<Server>,
-    client: Client,
+    client: Option<Client>,
 }
 
 pub struct GameConstructor;
@@ -87,7 +87,7 @@ impl Game {
             scene: Default::default(),
             debug_settings: Default::default(),
             server: None,
-            client: Client::new(),
+            client: None,
         }
     }
 }
@@ -99,9 +99,12 @@ impl Plugin for Game {
 
     fn update(&mut self, ctx: &mut PluginContext) {
         if let Some(server) = self.server.as_mut() {
+            server.accept_connections();
             server.read_messages();
         }
-        self.client.read_messages(ctx);
+        if let Some(client) = self.client.as_mut() {
+            client.read_messages(ctx);
+        }
 
         if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
             scene.drawing_context.clear_lines();
@@ -132,9 +135,6 @@ impl Plugin for Game {
                         KeyCode::F3 => {
                             self.debug_settings.disable_ragdoll =
                                 !self.debug_settings.disable_ragdoll
-                        }
-                        KeyCode::F4 => {
-                            self.client.try_connect(Server::ADDRESS);
                         }
                         KeyCode::Escape => {
                             self.menu

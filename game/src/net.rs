@@ -1,10 +1,17 @@
-use fyrox::core::log::Log;
+use fyrox::core::{
+    byteorder::{LittleEndian, WriteBytesExt},
+    log::Log,
+};
 use serde::{Deserialize, Serialize};
 use std::{
-    io::{self, ErrorKind},
-    net::{SocketAddr, ToSocketAddrs, UdpSocket},
+    io::{self, ErrorKind, Read, Write},
+    net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
     path::PathBuf,
 };
+
+pub trait Message: Sized {
+    fn try_create(bytes: &[u8]) -> Result<Self, bincode::Error>;
+}
 
 /// A message sent from the server to a client.
 #[derive(Serialize, Deserialize)]
@@ -12,9 +19,9 @@ pub enum ServerMessage {
     LoadLevel { path: PathBuf },
 }
 
-impl ServerMessage {
-    pub fn try_create(bytes: &[u8]) -> Option<Self> {
-        bincode::deserialize(bytes).ok()
+impl Message for ServerMessage {
+    fn try_create(bytes: &[u8]) -> Result<Self, bincode::Error> {
+        bincode::deserialize(bytes)
     }
 }
 
@@ -24,66 +31,115 @@ pub enum ClientMessage {
     Connect { name: String },
 }
 
-impl ClientMessage {
-    pub fn try_create(bytes: &[u8]) -> Option<Self> {
-        bincode::deserialize(bytes).ok()
+impl Message for ClientMessage {
+    fn try_create(bytes: &[u8]) -> Result<Self, bincode::Error> {
+        bincode::deserialize(bytes)
     }
 }
 
-pub struct NetSocket {
-    socket: UdpSocket,
+pub struct NetListener {
+    listener: TcpListener,
 }
 
-impl NetSocket {
-    pub fn bind<A>(addr: A) -> io::Result<Self>
-    where
-        A: ToSocketAddrs,
-    {
-        let socket = UdpSocket::bind(addr)?;
-        socket.set_nonblocking(true)?;
-        Ok(Self { socket })
+impl NetListener {
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
+        let listener = TcpListener::bind(addr)?;
+        listener.set_nonblocking(true)?;
+        Ok(Self { listener })
     }
 
-    pub fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
-        self.socket.connect(addr)
+    pub fn accept_connections(&self) -> Vec<NetStream> {
+        let mut streams = Vec::new();
+        while let Ok(result) = self.listener.accept() {
+            streams.push(NetStream::from_inner(result.0).unwrap())
+        }
+        streams
+    }
+}
+
+pub struct NetStream {
+    stream: TcpStream,
+    buffer: Vec<u8>,
+}
+
+impl NetStream {
+    pub fn from_inner(stream: TcpStream) -> io::Result<Self> {
+        stream.set_nonblocking(true)?;
+        stream.set_nodelay(true)?;
+
+        Ok(Self {
+            stream,
+            buffer: Default::default(),
+        })
     }
 
-    pub fn send<T>(&self, data: &T) -> io::Result<()>
+    pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
+        Ok(Self::from_inner(TcpStream::connect(addr)?)?)
+    }
+
+    pub fn send_message<T>(&mut self, data: &T) -> io::Result<()>
     where
         T: Serialize,
     {
         let data = bincode::serialize(data).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        self.socket.send(&data)?;
+        self.stream.write_u32::<LittleEndian>(data.len() as u32)?;
+        self.stream.write_all(&data)?;
         Ok(())
     }
 
-    pub fn send_to<T, A>(&self, data: &T, addr: A) -> io::Result<()>
-    where
-        T: Serialize,
-        A: ToSocketAddrs,
-    {
-        let data = bincode::serialize(data).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        self.socket.send_to(&data, addr)?;
-        Ok(())
+    pub fn peer_address(&self) -> io::Result<SocketAddr> {
+        self.stream.peer_addr()
     }
 
-    pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        self.socket.recv_from(buf)
+    pub fn string_peer_address(&self) -> String {
+        self.peer_address()
+            .map(|addr| addr.to_string())
+            .unwrap_or_else(|_| "Unknown".into())
     }
 
-    pub fn process_input<F>(&self, mut func: F)
+    fn next_message<M: Message>(&mut self) -> Option<M> {
+        if self.buffer.len() < 4 {
+            return None;
+        }
+
+        let length = u32::from_le_bytes([
+            self.buffer[0],
+            self.buffer[1],
+            self.buffer[2],
+            self.buffer[3],
+        ]) as usize;
+
+        let end = 4 + length;
+        let message = match M::try_create(&self.buffer[4..end]) {
+            Ok(message) => Some(message),
+            Err(err) => {
+                Log::err(format!(
+                    "Failed to parse a network message of {} bytes long. Reason: {:?}",
+                    length, err
+                ));
+
+                None
+            }
+        };
+
+        self.buffer.drain(..end);
+
+        message
+    }
+
+    pub fn process_input<M>(&mut self, mut func: impl FnMut(M))
     where
-        F: FnMut(&[u8], SocketAddr),
+        M: Message,
     {
+        // Receive all bytes from the stream first.
         loop {
             let mut bytes = [0; 8192];
-            match self.socket.recv_from(&mut bytes) {
-                Ok((bytes_count, sender_address)) => {
+            match self.stream.read(&mut bytes) {
+                Ok(bytes_count) => {
                     if bytes_count == 0 {
                         break;
                     } else {
-                        let received_data = &bytes[..bytes_count];
-                        func(received_data, sender_address)
+                        self.buffer.extend(&bytes[..bytes_count])
                     }
                 }
                 Err(err) => match err.kind() {
@@ -99,6 +155,11 @@ impl NetSocket {
                     )),
                 },
             }
+        }
+
+        // Extract all the messages and process them.
+        while let Some(message) = self.next_message() {
+            func(message)
         }
     }
 }
