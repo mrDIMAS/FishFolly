@@ -62,12 +62,6 @@ impl Menu {
                 if let Some(server) = server.as_ref() {
                     server.start_game();
                 }
-
-                ctx.user_interface.send_message(WidgetMessage::visibility(
-                    ctx.user_interface.root(),
-                    MessageDirection::ToWidget,
-                    false,
-                ));
             } else if message.destination() == self.exit {
                 if let Some(window_target) = ctx.window_target {
                     window_target.exit();
@@ -79,5 +73,23 @@ impl Menu {
                 client.try_connect(Server::ADDRESS);
             }
         }
+    }
+
+    pub fn set_visibility(&self, ui: &UserInterface, visible: bool) {
+        ui.send_message(WidgetMessage::visibility(
+            ui.root(),
+            MessageDirection::ToWidget,
+            visible,
+        ));
+    }
+
+    pub fn switch_visibility(&self, ui: &UserInterface) {
+        let handle = ui.root();
+        let is_visible = ui.node(handle).is_globally_visible();
+        ui.send_message(WidgetMessage::visibility(
+            handle,
+            MessageDirection::ToWidget,
+            !is_visible,
+        ));
     }
 }

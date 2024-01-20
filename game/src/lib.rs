@@ -134,6 +134,9 @@ impl Plugin for Game {
                         KeyCode::F4 => {
                             self.client.try_connect(Server::ADDRESS);
                         }
+                        KeyCode::Escape => {
+                            self.menu.switch_visibility(&_context.user_interface);
+                        }
                         _ => (),
                     }
                 }
@@ -179,5 +182,6 @@ impl Plugin for Game {
         _context: &mut PluginContext,
     ) {
         self.scene = scene;
+        self.menu.set_visibility(&_context.user_interface, false);
     }
 }
