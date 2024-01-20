@@ -12,7 +12,7 @@ fn main() {
         &event_loop,
         Some(StartupData {
             working_directory: Default::default(),
-            scene: "data/drake.rgs".into(),
+            scenes: vec!["data/drake.rgs".into()],
         }),
     );
 
