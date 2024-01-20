@@ -1,8 +1,8 @@
 //! Game project.
 use crate::{
-    bot::Bot, camera::CameraController, cannon::Cannon, jumper::Jumper, menu::Menu,
-    obstacle::RotatorObstacle, player::Player, respawn::RespawnZone, start::StartPoint,
-    target::Target,
+    bot::Bot, camera::CameraController, cannon::Cannon, client::Client, jumper::Jumper, menu::Menu,
+    obstacle::RotatorObstacle, player::Player, respawn::RespawnZone, server::Server,
+    start::StartPoint, target::Target,
 };
 use fyrox::{
     core::{log::Log, pool::Handle},
@@ -19,11 +19,14 @@ pub mod actor;
 pub mod bot;
 pub mod camera;
 pub mod cannon;
+pub mod client;
 pub mod jumper;
 pub mod menu;
+pub mod net;
 pub mod obstacle;
 pub mod player;
 pub mod respawn;
+pub mod server;
 pub mod start;
 pub mod target;
 pub mod utils;
@@ -42,6 +45,8 @@ pub struct Game {
     pub start_points: HashSet<Handle<Node>>,
     pub actors: HashSet<Handle<Node>>,
     pub debug_settings: DebugSettings,
+    server: Option<Server>,
+    client: Client,
 }
 
 pub struct GameConstructor;
@@ -85,6 +90,8 @@ impl Game {
             actors: Default::default(),
             scene: Default::default(),
             debug_settings: Default::default(),
+            server: Some(Server::new()), // TODO
+            client: Client::new(),
         }
     }
 }
@@ -95,6 +102,10 @@ impl Plugin for Game {
     }
 
     fn update(&mut self, context: &mut PluginContext) {
+        if let Some(server) = self.server.as_mut() {
+            server.read_messages();
+        }
+
         if let Some(scene) = context.scenes.try_get_mut(self.scene) {
             scene.drawing_context.clear_lines();
 
@@ -122,6 +133,9 @@ impl Plugin for Game {
                         KeyCode::F3 => {
                             self.debug_settings.disable_ragdoll =
                                 !self.debug_settings.disable_ragdoll
+                        }
+                        KeyCode::F4 => {
+                            self.client.try_connect(Server::ADDRESS);
                         }
                         _ => (),
                     }
