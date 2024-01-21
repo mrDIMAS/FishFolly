@@ -1,4 +1,5 @@
 use crate::{client::Client, server::Server, Game};
+use fyrox::gui::text::TextMessage;
 use fyrox::{
     asset::{io::FsResourceIo, manager::ResourceManager},
     core::{log::Log, pool::Handle},
@@ -197,6 +198,11 @@ impl Menu {
                     self.main_menu,
                     MessageDirection::ToWidget,
                     false,
+                ));
+                ctx.user_interface.send_message(TextMessage::text(
+                    self.server_menu.server_address,
+                    MessageDirection::ToWidget,
+                    Server::ADDRESS.to_string(),
                 ));
 
                 // Try to start the server and the client.

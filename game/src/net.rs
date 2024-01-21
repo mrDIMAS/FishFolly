@@ -1,6 +1,11 @@
-use fyrox::core::{
-    byteorder::{LittleEndian, WriteBytesExt},
-    log::Log,
+use fyrox::{
+    core::{
+        algebra::{UnitQuaternion, Vector3},
+        byteorder::{LittleEndian, WriteBytesExt},
+        log::Log,
+        pool::Handle,
+    },
+    scene::node::Node,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -13,10 +18,36 @@ pub trait Message: Sized {
     fn try_create(bytes: &[u8]) -> Result<Self, bincode::Error>;
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct NodeState {
+    pub node: Handle<Node>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct InstanceDescriptor {
+    pub path: PathBuf,
+    pub position: Vector3<f32>,
+    pub rotation: UnitQuaternion<f32>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PlayerDescriptor {
+    pub path: PathBuf,
+    pub position: Vector3<f32>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct UpdateTickMessage {
+    pub nodes: Vec<NodeState>,
+}
+
 /// A message sent from the server to a client.
 #[derive(Serialize, Deserialize)]
 pub enum ServerMessage {
     LoadLevel { path: PathBuf },
+    UpdateTick(UpdateTickMessage),
+    AddPlayers(Vec<PlayerDescriptor>),
+    Instantiate(Vec<InstanceDescriptor>),
 }
 
 impl Message for ServerMessage {

@@ -17,12 +17,19 @@ impl Server {
         })
     }
 
-    pub fn start_game(&mut self) {
-        for client in self.connections.iter_mut() {
-            Log::verify(client.send_message(&ServerMessage::LoadLevel {
-                path: "data/drake.rgs".into(),
-            }))
+    pub fn broadcast_message(&mut self, message: ServerMessage) {
+        for client_connection in self.connections.iter_mut() {
+            match client_connection.send_message(&message) {
+                Ok(_) => {}
+                Err(err) => Log::err(format!("Unable to send server message: {}", err)),
+            }
         }
+    }
+
+    pub fn start_game(&mut self) {
+        self.broadcast_message(ServerMessage::LoadLevel {
+            path: "data/drake.rgs".into(),
+        });
     }
 
     pub fn read_messages(&mut self) {

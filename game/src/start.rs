@@ -1,10 +1,12 @@
 //! A spawn point for players (bots).
 
-use crate::actor::Actor;
-use crate::Game;
+use crate::{
+    net::{PlayerDescriptor, ServerMessage},
+    Game,
+};
 use fyrox::{
     core::{log::Log, reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*},
-    resource::model::{ModelResource, ModelResourceExtension},
+    resource::model::ModelResource,
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
 };
 
@@ -20,21 +22,18 @@ pub struct StartPoint {
 
 impl ScriptTrait for StartPoint {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
-        assert!(ctx
-            .plugins
-            .get_mut::<Game>()
-            .start_points
-            .insert(ctx.handle));
+        let game = ctx.plugins.get_mut::<Game>();
+        assert!(game.start_points.insert(ctx.handle));
 
-        if let Some(resource) = self.model.as_ref() {
-            let position = ctx.scene.graph[ctx.handle].global_position();
-            // Spawn specified actor.
-            let root = resource.instantiate(ctx.scene);
-            if let Some(actor) = ctx.scene.graph.try_get_script_component_of::<Actor>(root) {
-                let rigid_body = actor.rigid_body;
-                if let Some(rigid_body) = ctx.scene.graph.try_get_mut(rigid_body) {
-                    rigid_body.local_transform_mut().set_position(position);
-                }
+        // Start point operates only on server side.
+        if let Some(server) = game.server.as_mut() {
+            if let Some(resource) = self.model.as_ref() {
+                let position = ctx.scene.graph[ctx.handle].global_position();
+
+                server.broadcast_message(ServerMessage::AddPlayers(vec![PlayerDescriptor {
+                    path: resource.kind().path().unwrap().to_path_buf(),
+                    position,
+                }]))
             }
         }
 
