@@ -117,7 +117,7 @@ impl Plugin for Game {
         self.menu.update(ctx, &self.server);
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, _context: PluginContext) {
+    fn on_os_event(&mut self, event: &Event<()>, ctx: PluginContext) {
         if let Event::WindowEvent {
             event: WindowEvent::KeyboardInput { event, .. },
             ..
@@ -137,8 +137,7 @@ impl Plugin for Game {
                                 !self.debug_settings.disable_ragdoll
                         }
                         KeyCode::Escape => {
-                            self.menu
-                                .switch_main_menu_visibility(&_context.user_interface);
+                            self.menu.switch_main_menu_visibility(ctx.user_interface);
                         }
                         _ => (),
                     }
@@ -182,10 +181,10 @@ impl Plugin for Game {
         _path: &Path,
         scene: Handle<Scene>,
         _data: &[u8],
-        _context: &mut PluginContext,
+        ctx: &mut PluginContext,
     ) {
         self.scene = scene;
         self.menu
-            .set_main_menu_visibility(&_context.user_interface, false);
+            .set_main_menu_visibility(ctx.user_interface, false);
     }
 }

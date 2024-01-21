@@ -7,6 +7,7 @@ use fyrox::{
     core::log::Log,
     plugin::PluginContext,
     resource::model::{Model, ModelResourceExtension},
+    scene::rigidbody::RigidBody,
 };
 use std::{fmt::Debug, io, net::ToSocketAddrs};
 
@@ -21,7 +22,12 @@ fn instantiate_objects(instances: Vec<InstanceDescriptor>, ctx: &mut PluginConte
             move |result, game: &mut Game, ctx| match result {
                 Ok(model) => {
                     let scene = &mut ctx.scenes[game.scene];
-                    model.instantiate_at(scene, new_instance.position, new_instance.rotation);
+                    let instance =
+                        model.instantiate_at(scene, new_instance.position, new_instance.rotation);
+
+                    if let Some(rigid_body) = scene.graph[instance].cast_mut::<RigidBody>() {
+                        rigid_body.set_lin_vel(new_instance.velocity);
+                    }
                 }
                 Err(err) => {
                     Log::err(format!(

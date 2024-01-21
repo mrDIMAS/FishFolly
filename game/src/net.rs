@@ -8,41 +8,43 @@ use fyrox::{
     scene::node::Node,
 };
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::{
     io::{self, ErrorKind, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
     path::PathBuf,
 };
 
-pub trait Message: Sized {
+pub trait Message: Sized + Debug {
     fn try_create(bytes: &[u8]) -> Result<Self, bincode::Error>;
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct NodeState {
     pub node: Handle<Node>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct InstanceDescriptor {
     pub path: PathBuf,
     pub position: Vector3<f32>,
     pub rotation: UnitQuaternion<f32>,
+    pub velocity: Vector3<f32>, // Rigid body only.
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerDescriptor {
     pub path: PathBuf,
     pub position: Vector3<f32>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateTickMessage {
     pub nodes: Vec<NodeState>,
 }
 
 /// A message sent from the server to a client.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ServerMessage {
     LoadLevel { path: PathBuf },
     UpdateTick(UpdateTickMessage),
@@ -57,7 +59,7 @@ impl Message for ServerMessage {
 }
 
 /// A message sent from a client to the server.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ClientMessage {
     Connect { name: String },
 }
@@ -105,7 +107,7 @@ impl NetStream {
     }
 
     pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
-        Ok(Self::from_inner(TcpStream::connect(addr)?)?)
+        Self::from_inner(TcpStream::connect(addr)?)
     }
 
     pub fn send_message<T>(&mut self, data: &T) -> io::Result<()>

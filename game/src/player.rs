@@ -49,7 +49,7 @@ impl InputController {
     }
 }
 
-#[derive(Clone, Visit, Debug, Reflect, TypeUuidProvider, ComponentProvider)]
+#[derive(Clone, Visit, Debug, Default, Reflect, TypeUuidProvider, ComponentProvider)]
 #[type_uuid(id = "deb77c1d-668d-4716-a8f7-04ed09b0b9f6")]
 #[visit(optional)]
 pub struct Player {
@@ -62,17 +62,6 @@ pub struct Player {
     pub input_controller: InputController,
     #[component(include)]
     pub actor: Actor,
-}
-
-impl Default for Player {
-    fn default() -> Self {
-        Self {
-            model: Default::default(),
-            camera: Default::default(),
-            input_controller: Default::default(),
-            actor: Default::default(),
-        }
-    }
 }
 
 impl ScriptTrait for Player {
