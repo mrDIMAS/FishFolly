@@ -49,7 +49,7 @@ impl ScriptTrait for Cannon {
                     .try_normalize(f32::EPSILON)
                     .unwrap_or_default();
                 if let Some(ball_prefab) = self.ball_prefab.as_ref() {
-                    server.broadcast_message(ServerMessage::Instantiate(vec![
+                    server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
                         InstanceDescriptor {
                             path: ball_prefab.kind().path().unwrap().to_path_buf(),
                             position: self_position,

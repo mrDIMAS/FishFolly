@@ -1,3 +1,4 @@
+use crate::player::InputController;
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -8,8 +9,8 @@ use fyrox::{
     scene::node::Node,
 };
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
 use std::{
+    fmt::Debug,
     io::{self, ErrorKind, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
     path::PathBuf,
@@ -19,9 +20,13 @@ pub trait Message: Sized + Debug {
     fn try_create(bytes: &[u8]) -> Result<Self, bincode::Error>;
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct NodeState {
     pub node: Handle<Node>,
+    pub position: Vector3<f32>,
+    pub rotation: UnitQuaternion<f32>,
+    pub velocity: Vector3<f32>,         // Rigid body only.
+    pub angular_velocity: Vector3<f32>, // Rigid body only.
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -36,6 +41,7 @@ pub struct InstanceDescriptor {
 pub struct PlayerDescriptor {
     pub path: PathBuf,
     pub position: Vector3<f32>,
+    pub is_remote: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -61,7 +67,10 @@ impl Message for ServerMessage {
 /// A message sent from a client to the server.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientMessage {
-    Connect { name: String },
+    Input {
+        player: Handle<Node>,
+        input_state: InputController,
+    },
 }
 
 impl Message for ClientMessage {
@@ -143,21 +152,27 @@ impl NetStream {
         ]) as usize;
 
         let end = 4 + length;
-        let message = match M::try_create(&self.buffer[4..end]) {
-            Ok(message) => Some(message),
-            Err(err) => {
-                Log::err(format!(
-                    "Failed to parse a network message of {} bytes long. Reason: {:?}",
-                    length, err
-                ));
 
-                None
-            }
-        };
+        // The actual data could be missing (i.e. because it is not delivered yet).
+        if let Some(data) = self.buffer.as_slice().get(4..end) {
+            let message = match M::try_create(data) {
+                Ok(message) => Some(message),
+                Err(err) => {
+                    Log::err(format!(
+                        "Failed to parse a network message of {} bytes long. Reason: {:?}",
+                        length, err
+                    ));
 
-        self.buffer.drain(..end);
+                    None
+                }
+            };
 
-        message
+            self.buffer.drain(..end);
+
+            message
+        } else {
+            None
+        }
     }
 
     pub fn process_input<M>(&mut self, mut func: impl FnMut(M))
@@ -182,10 +197,16 @@ impl NetStream {
                     ErrorKind::Interrupted => {
                         // Retry
                     }
-                    _ => Log::err(format!(
-                        "An error occurred when reading data from socket: {}",
-                        err
-                    )),
+                    _ => {
+                        Log::err(format!(
+                            "An error occurred when reading data from socket: {}",
+                            err
+                        ));
+
+                        self.buffer.clear();
+
+                        return;
+                    }
                 },
             }
         }

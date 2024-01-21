@@ -4,10 +4,10 @@ use crate::{
     Game,
 };
 use fyrox::{
-    core::log::Log,
+    core::{log::Log, pool::Handle},
     plugin::PluginContext,
     resource::model::{Model, ModelResourceExtension},
-    scene::rigidbody::RigidBody,
+    scene::{rigidbody::RigidBody, Scene},
 };
 use std::{fmt::Debug, io, net::ToSocketAddrs};
 
@@ -49,7 +49,9 @@ fn add_players(players: Vec<PlayerDescriptor>, ctx: &mut PluginContext) {
                 Ok(model) => {
                     let scene = &mut ctx.scenes[game.scene];
                     let root = model.instantiate(scene);
-                    if let Some(actor) = scene.graph.try_get_script_component_of::<Actor>(root) {
+                    if let Some(actor) = scene.graph.try_get_script_component_of_mut::<Actor>(root)
+                    {
+                        actor.is_remote = player.is_remote;
                         let rigid_body = actor.rigid_body;
                         if let Some(rigid_body) = scene.graph.try_get_mut(rigid_body) {
                             rigid_body
@@ -80,19 +82,42 @@ impl Client {
         })
     }
 
-    pub fn send_message(&mut self, message: ClientMessage) {
+    pub fn send_message_to_server(&mut self, message: ClientMessage) {
         match self.connection.send_message(&message) {
             Ok(_) => {}
             Err(err) => Log::err(format!("Unable to send client message: {}", err)),
         }
     }
 
-    pub fn read_messages(&mut self, ctx: &mut PluginContext) {
+    pub fn read_messages(&mut self, scene: Handle<Scene>, ctx: &mut PluginContext) {
         self.connection.process_input(|msg| match msg {
             ServerMessage::LoadLevel { path } => {
                 ctx.async_scene_loader.request(path);
             }
-            ServerMessage::UpdateTick(data) => {}
+            ServerMessage::UpdateTick(data) => {
+                if let Some(scene) = ctx.scenes.try_get_mut(scene) {
+                    for entry in data.nodes {
+                        if let Some(node) = scene.graph.try_get_mut(entry.node) {
+                            if let Some(rigid_body) = node.query_component_mut::<RigidBody>() {
+                                if rigid_body.lin_vel() != entry.velocity {
+                                    rigid_body.set_lin_vel(entry.velocity);
+                                }
+                                if rigid_body.ang_vel() != entry.angular_velocity {
+                                    rigid_body.set_ang_vel(entry.angular_velocity);
+                                }
+                            }
+
+                            let transform = node.local_transform_mut();
+                            if **transform.position() != entry.position {
+                                transform.set_position(entry.position);
+                            }
+                            if **transform.rotation() != entry.rotation {
+                                transform.set_rotation(entry.rotation);
+                            }
+                        }
+                    }
+                }
+            }
             ServerMessage::Instantiate(instances) => {
                 instantiate_objects(instances, ctx);
             }

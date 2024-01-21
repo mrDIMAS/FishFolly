@@ -23,6 +23,9 @@ pub enum ActorMessage {
 pub struct Actor {
     #[visit(skip)]
     #[reflect(hidden)]
+    pub is_remote: bool,
+    #[visit(skip)]
+    #[reflect(hidden)]
     pub in_air_time: f32,
     #[reflect(
         description = "Amount of time that the bot will be lying on the ground with active ragdoll."
@@ -63,6 +66,7 @@ pub struct Actor {
 impl Default for Actor {
     fn default() -> Self {
         Self {
+            is_remote: false,
             in_air_time: 0.0,
             max_in_air_time: 1.1,
             stand_up_timer: 0.0,

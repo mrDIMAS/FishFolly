@@ -100,10 +100,12 @@ impl Plugin for Game {
     fn update(&mut self, ctx: &mut PluginContext) {
         if let Some(server) = self.server.as_mut() {
             server.accept_connections();
-            server.read_messages();
+            server.read_messages(self.scene, ctx);
+            server.update(self.scene, ctx);
         }
+
         if let Some(client) = self.client.as_mut() {
-            client.read_messages(ctx);
+            client.read_messages(self.scene, ctx);
         }
 
         if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
@@ -186,5 +188,8 @@ impl Plugin for Game {
         self.scene = scene;
         self.menu
             .set_main_menu_visibility(ctx.user_interface, false);
+        if let Some(server) = self.server.as_mut() {
+            server.on_scene_loaded(scene, ctx);
+        }
     }
 }

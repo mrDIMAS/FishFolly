@@ -1,6 +1,6 @@
 //! Main player (host) script.
 
-use crate::{actor::Actor, actor::ActorMessage, CameraController, Event, Game};
+use crate::{actor::Actor, actor::ActorMessage, net::ClientMessage, CameraController, Event, Game};
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -17,8 +17,9 @@ use fyrox::{
         ScriptContext, ScriptDeinitContext, ScriptMessageContext, ScriptMessagePayload, ScriptTrait,
     },
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct InputController {
     pub move_forward: bool,
     pub move_backward: bool,
@@ -85,13 +86,34 @@ impl ScriptTrait for Player {
         Log::info(format!("Player {:?} destroyed!", ctx.node_handle));
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, _context: &mut ScriptContext) {
+    fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {
+        if self.actor.is_remote {
+            return;
+        }
+
         self.input_controller.on_os_event(event);
+
+        //  dbg!(ctx.handle, &self.input_controller);
+
+        let game = ctx.plugins.get_mut::<Game>();
+        if let Some(client) = game.client.as_mut() {
+            client.send_message_to_server(ClientMessage::Input {
+                player: ctx.handle,
+                input_state: self.input_controller.clone(),
+            })
+        }
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
+        // Disable camera controller for remote players.
+        ctx.scene
+            .graph
+            .try_get_mut(self.camera)
+            .unwrap()
+            .set_enabled(!self.actor.is_remote);
+
         let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
-        let is_in_jump_state = false; // self.actor.is_in_jump_state(&ctx.scene.graph);
+        let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph);
 
         let yaw = ctx
             .scene
