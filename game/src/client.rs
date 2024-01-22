@@ -1,9 +1,10 @@
 use crate::{
     actor::Actor,
-    net::{ClientMessage, InstanceDescriptor, NetStream, PlayerDescriptor, ServerMessage},
+    net::{ClientMessage, InstanceDescriptor, PlayerDescriptor, ServerMessage},
     Game,
 };
 use fyrox::{
+    core::net::NetStream,
     core::{log::Log, pool::Handle},
     plugin::PluginContext,
     resource::model::{Model, ModelResourceExtension},

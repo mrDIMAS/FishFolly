@@ -1,13 +1,14 @@
 use crate::{
-    net::{
-        ClientMessage, NetListener, NetStream, NodeState, PlayerDescriptor, ServerMessage,
-        UpdateTickMessage,
-    },
+    net::{ClientMessage, NodeState, PlayerDescriptor, ServerMessage, UpdateTickMessage},
     player::Player,
     start::StartPoint,
 };
 use fyrox::{
-    core::{log::Log, pool::Handle},
+    core::{
+        log::Log,
+        net::{NetListener, NetStream},
+        pool::Handle,
+    },
     fxhash::FxHashMap,
     plugin::PluginContext,
     scene::{node::Node, rigidbody::RigidBody, Scene},
@@ -109,7 +110,7 @@ impl Server {
 
     pub fn on_scene_loaded(&mut self, scene: Handle<Scene>, ctx: &mut PluginContext) {
         let scene = &mut ctx.scenes[scene];
-        let mut players_to_spawn = self.connections.len();
+        let players_to_spawn = self.connections.len();
 
         let start_points = scene
             .graph
