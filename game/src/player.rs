@@ -1,10 +1,15 @@
 //! Main player (host) script.
 
-use crate::{actor::Actor, actor::ActorMessage, net::ClientMessage, CameraController, Event, Game};
+use crate::{
+    actor::{Actor, ActorMessage},
+    net::ClientMessage,
+    CameraController, Event, Game,
+};
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
         log::Log,
+        math::SmoothAngle,
         pool::Handle,
         reflect::prelude::*,
         type_traits::prelude::*,
@@ -66,7 +71,7 @@ impl InputController {
     }
 }
 
-#[derive(Clone, Visit, Debug, Default, Reflect, TypeUuidProvider, ComponentProvider)]
+#[derive(Clone, Visit, Debug, Reflect, TypeUuidProvider, ComponentProvider)]
 #[type_uuid(id = "deb77c1d-668d-4716-a8f7-04ed09b0b9f6")]
 #[visit(optional)]
 pub struct Player {
@@ -79,6 +84,25 @@ pub struct Player {
     pub input_controller: InputController,
     #[component(include)]
     pub actor: Actor,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    pub model_angle: SmoothAngle,
+}
+
+impl Default for Player {
+    fn default() -> Self {
+        Self {
+            model: Default::default(),
+            camera: Default::default(),
+            input_controller: Default::default(),
+            actor: Default::default(),
+            model_angle: SmoothAngle {
+                angle: 0.0,
+                target: 0.0,
+                speed: 1.5 * std::f32::consts::TAU, // 540 deg/s
+            },
+        }
+    }
 }
 
 impl ScriptTrait for Player {
@@ -206,14 +230,18 @@ impl ScriptTrait for Player {
                     0.0
                 };
 
+                self.model_angle.set_target(angle.to_radians());
+
                 ctx.scene.graph[self.model]
                     .local_transform_mut()
                     .set_rotation(UnitQuaternion::from_axis_angle(
                         &Vector3::y_axis(),
-                        (180.0 + angle).to_radians(),
+                        180.0f32.to_radians() + self.model_angle.angle(),
                     ));
             }
         }
+
+        self.model_angle.update(ctx.dt);
 
         self.actor.on_update(ctx);
     }
