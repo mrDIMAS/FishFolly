@@ -158,6 +158,7 @@ impl Menu {
                 menu.start_as_server = ui.find_by_name_down_from_root("Server");
                 menu.start_as_client = ui.find_by_name_down_from_root("Client");
                 menu.main_menu = ui.find_by_name_down_from_root("MainMenu");
+                menu.settings = ui.find_by_name_down_from_root("Settings");
                 let server_menu = ui.find_by_name_down_from_root("ServerMenu");
                 menu.server_menu = ServerMenu::new(server_menu, menu.main_menu, ui);
             },

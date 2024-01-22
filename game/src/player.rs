@@ -29,7 +29,7 @@ pub struct InputController {
 }
 
 impl InputController {
-    pub fn on_os_event(&mut self, event: &Event<()>) {
+    pub fn on_os_event(&mut self, event: &Event<()>) -> bool {
         if let Event::WindowEvent {
             event: WindowEvent::KeyboardInput { event, .. },
             ..
@@ -38,15 +38,31 @@ impl InputController {
             if let PhysicalKey::Code(keycode) = event.physical_key {
                 let state = event.state == ElementState::Pressed;
                 match keycode {
-                    KeyCode::KeyW => self.move_forward = state,
-                    KeyCode::KeyS => self.move_backward = state,
-                    KeyCode::KeyA => self.move_left = state,
-                    KeyCode::KeyD => self.move_right = state,
-                    KeyCode::Space => self.jump = state,
+                    KeyCode::KeyW => {
+                        self.move_forward = state;
+                        return true;
+                    }
+                    KeyCode::KeyS => {
+                        self.move_backward = state;
+                        return true;
+                    }
+                    KeyCode::KeyA => {
+                        self.move_left = state;
+                        return true;
+                    }
+                    KeyCode::KeyD => {
+                        self.move_right = state;
+                        return true;
+                    }
+                    KeyCode::Space => {
+                        self.jump = state;
+                        return true;
+                    }
                     _ => (),
                 }
             }
         }
+        false
     }
 }
 
@@ -91,16 +107,14 @@ impl ScriptTrait for Player {
             return;
         }
 
-        self.input_controller.on_os_event(event);
-
-        //  dbg!(ctx.handle, &self.input_controller);
-
-        let game = ctx.plugins.get_mut::<Game>();
-        if let Some(client) = game.client.as_mut() {
-            client.send_message_to_server(ClientMessage::Input {
-                player: ctx.handle,
-                input_state: self.input_controller.clone(),
-            })
+        if self.input_controller.on_os_event(event) {
+            let game = ctx.plugins.get_mut::<Game>();
+            if let Some(client) = game.client.as_mut() {
+                client.send_message_to_server(ClientMessage::Input {
+                    player: ctx.handle,
+                    input_state: self.input_controller.clone(),
+                })
+            }
         }
     }
 

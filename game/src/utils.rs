@@ -1,6 +1,6 @@
 use fyrox::{
     core::pool::Handle,
-    scene::{collider::Collider, graph::Graph, node::Node, rigidbody::RigidBody},
+    scene::{collider::Collider, graph::Graph, node::Node},
 };
 
 pub fn has_ground_contact(collider: Handle<Node>, graph: &Graph) -> bool {
@@ -14,14 +14,4 @@ pub fn has_ground_contact(collider: Handle<Node>, graph: &Graph) -> bool {
         }
     }
     false
-}
-
-pub fn push_up(body: Handle<Node>, collider: Handle<Node>, graph: &mut Graph, amount: f32) {
-    if has_ground_contact(collider, graph) {
-        if let Some(rigid_body) = graph[body].cast_mut::<RigidBody>() {
-            let mut velocity = rigid_body.lin_vel();
-            velocity.y += amount;
-            rigid_body.set_lin_vel(velocity);
-        }
-    }
 }

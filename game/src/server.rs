@@ -119,6 +119,11 @@ impl Server {
             .map(|n| n.global_position())
             .collect::<Vec<_>>();
 
+        // 0 1 1 1
+        // 1 0 1 1
+        // 1 1 0 1
+        // 1 1 1 0
+
         for player_num in 0..players_to_spawn {
             if let Some(position) = start_points.get(player_num) {
                 for (connection_num, connection) in self.connections.iter_mut().enumerate() {
