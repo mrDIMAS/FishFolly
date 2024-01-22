@@ -23,12 +23,16 @@ pub struct Jumper {
 
 impl ScriptTrait for Jumper {
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        let game_ref = ctx.plugins.get::<Game>();
+        let game = ctx.plugins.get::<Game>();
+        if game.server.is_none() {
+            return;
+        }
+
         if let Some(collider) = ctx.scene.graph[ctx.handle].cast::<Collider>() {
             let mut contacted_colliders = HashSet::new();
 
             for contact in collider.contacts(&ctx.scene.graph.physics) {
-                for actor in game_ref.actors.iter() {
+                for actor in game.actors.iter() {
                     let actor_script = ctx.scene.graph[*actor].script();
 
                     if let Some(actor_collider) = actor_script

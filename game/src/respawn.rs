@@ -22,6 +22,10 @@ pub struct RespawnZone {}
 impl ScriptTrait for RespawnZone {
     fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
+        if game.server.is_none() {
+            return;
+        }
+
         let self_bounds = AxisAlignedBoundingBox::unit()
             .transform(&ctx.scene.graph[ctx.handle].global_transform());
 

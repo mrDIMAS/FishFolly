@@ -1,7 +1,7 @@
 //! Camera controller for the main player (host). It smoothly follows the host and has obstacle
 //! avoiding functionality.
 
-use crate::Event;
+use crate::{Event, Game};
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
@@ -138,6 +138,11 @@ impl ScriptTrait for CameraController {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
+        let game = ctx.plugins.get::<Game>();
+        if game.server.is_none() {
+            return;
+        }
+
         if let Some(anchor) = ctx.scene.graph.try_get(self.anchor) {
             self.target_position = anchor.global_position();
 

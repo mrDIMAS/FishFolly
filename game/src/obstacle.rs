@@ -1,5 +1,6 @@
 //! A dynamic (rotating, moving) obstacle.
 
+use crate::Game;
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, UnitVector3, Vector3},
@@ -33,6 +34,11 @@ impl Default for RotatorObstacle {
 
 impl ScriptTrait for RotatorObstacle {
     fn on_update(&mut self, ctx: &mut ScriptContext) {
+        let game = ctx.plugins.get::<Game>();
+        if game.server.is_none() {
+            return;
+        }
+
         self.angle += self.speed * ctx.dt;
 
         if let Some(rigid_body) = ctx.scene.graph[ctx.handle].cast_mut::<RigidBody>() {
