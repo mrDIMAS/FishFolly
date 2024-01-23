@@ -106,15 +106,6 @@ impl Client {
                 if let Some(scene) = ctx.scenes.try_get_mut(scene) {
                     for entry in data.nodes {
                         if let Some((_, node)) = scene.graph.node_by_id_mut(entry.node) {
-                            if let Some(rigid_body) = node.query_component_mut::<RigidBody>() {
-                                if rigid_body.lin_vel() != entry.velocity {
-                                    rigid_body.set_lin_vel(entry.velocity);
-                                }
-                                if rigid_body.ang_vel() != entry.angular_velocity {
-                                    rigid_body.set_ang_vel(entry.angular_velocity);
-                                }
-                            }
-
                             let transform = node.local_transform_mut();
                             if **transform.position() != entry.position {
                                 transform.set_position(entry.position);

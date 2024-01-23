@@ -65,16 +65,12 @@ impl Server {
                             node: node.instance_id(),
                             position: **rigid_body.local_transform().position(),
                             rotation: **rigid_body.local_transform().rotation(),
-                            velocity: rigid_body.lin_vel(),
-                            angular_velocity: rigid_body.ang_vel(),
                         }
                     } else {
                         NodeState {
                             node: node.instance_id(),
                             position: **node.local_transform().position(),
                             rotation: **node.local_transform().rotation(),
-                            velocity: Default::default(),
-                            angular_velocity: Default::default(),
                         }
                     };
 

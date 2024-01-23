@@ -15,8 +15,6 @@ pub struct NodeState {
     pub node: SceneNodeId,
     pub position: Vector3<f32>,
     pub rotation: UnitQuaternion<f32>,
-    pub velocity: Vector3<f32>,         // Rigid body only.
-    pub angular_velocity: Vector3<f32>, // Rigid body only.
 }
 
 #[derive(Serialize, Deserialize, Debug)]
