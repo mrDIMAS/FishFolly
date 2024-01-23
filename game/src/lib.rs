@@ -191,5 +191,8 @@ impl Plugin for Game {
         if let Some(server) = self.server.as_mut() {
             server.on_scene_loaded(scene, ctx);
         }
+        if let Some(client) = self.client.as_mut() {
+            client.on_scene_loaded(self.server.is_some(), scene, ctx);
+        }
     }
 }

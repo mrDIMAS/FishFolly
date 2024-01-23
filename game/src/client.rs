@@ -132,4 +132,16 @@ impl Client {
             ServerMessage::AddPlayers(players) => add_players(players, ctx),
         })
     }
+
+    pub fn on_scene_loaded(
+        &mut self,
+        has_server: bool,
+        scene: Handle<Scene>,
+        ctx: &mut PluginContext,
+    ) {
+        let scene = &mut ctx.scenes[scene];
+        if !has_server {
+            scene.graph.physics.enabled.set_value_silent(false);
+        }
+    }
 }
