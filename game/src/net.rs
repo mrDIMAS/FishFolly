@@ -4,14 +4,15 @@ use fyrox::{
         algebra::{UnitQuaternion, Vector3},
         pool::Handle,
     },
-    scene::node::Node,
+    fxhash::FxHashMap,
+    scene::{base::SceneNodeId, node::Node},
 };
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, path::PathBuf};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct NodeState {
-    pub node: Handle<Node>,
+    pub node: SceneNodeId,
     pub position: Vector3<f32>,
     pub rotation: UnitQuaternion<f32>,
     pub velocity: Vector3<f32>,         // Rigid body only.
@@ -24,12 +25,12 @@ pub struct InstanceDescriptor {
     pub position: Vector3<f32>,
     pub rotation: UnitQuaternion<f32>,
     pub velocity: Vector3<f32>, // Rigid body only.
+    pub ids: FxHashMap<Handle<Node>, SceneNodeId>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerDescriptor {
-    pub path: PathBuf,
-    pub position: Vector3<f32>,
+    pub instance: InstanceDescriptor,
     pub is_remote: bool,
 }
 
@@ -51,7 +52,7 @@ pub enum ServerMessage {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientMessage {
     Input {
-        player: Handle<Node>,
+        player: SceneNodeId,
         input_state: InputController,
     },
 }

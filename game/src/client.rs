@@ -23,8 +23,12 @@ fn instantiate_objects(instances: Vec<InstanceDescriptor>, ctx: &mut PluginConte
             move |result, game: &mut Game, ctx| match result {
                 Ok(model) => {
                     let scene = &mut ctx.scenes[game.scene];
-                    let instance =
-                        model.instantiate_at(scene, new_instance.position, new_instance.rotation);
+                    let instance = model
+                        .begin_instantiation(scene)
+                        .with_position(new_instance.position)
+                        .with_rotation(new_instance.rotation)
+                        .with_ids(&new_instance.ids)
+                        .finish();
 
                     if let Some(rigid_body) = scene.graph[instance].cast_mut::<RigidBody>() {
                         rigid_body.set_lin_vel(new_instance.velocity);
@@ -45,11 +49,14 @@ fn instantiate_objects(instances: Vec<InstanceDescriptor>, ctx: &mut PluginConte
 fn add_players(players: Vec<PlayerDescriptor>, ctx: &mut PluginContext) {
     for player in players {
         ctx.task_pool.spawn_plugin_task(
-            ctx.resource_manager.request::<Model>(&player.path),
+            ctx.resource_manager.request::<Model>(&player.instance.path),
             move |result, game: &mut Game, ctx| match result {
                 Ok(model) => {
                     let scene = &mut ctx.scenes[game.scene];
-                    let root = model.instantiate(scene);
+                    let root = model
+                        .begin_instantiation(scene)
+                        .with_ids(&player.instance.ids)
+                        .finish();
                     if let Some(actor) = scene.graph.try_get_script_component_of_mut::<Actor>(root)
                     {
                         actor.is_remote = player.is_remote;
@@ -57,14 +64,14 @@ fn add_players(players: Vec<PlayerDescriptor>, ctx: &mut PluginContext) {
                         if let Some(rigid_body) = scene.graph.try_get_mut(rigid_body) {
                             rigid_body
                                 .local_transform_mut()
-                                .set_position(player.position);
+                                .set_position(player.instance.position);
                         }
                     }
                 }
                 Err(err) => {
                     Log::err(format!(
                         "Unable to instantiate {} prefab. Reason: {:?}",
-                        player.path.display(),
+                        player.instance.path.display(),
                         err
                     ));
                 }
@@ -98,7 +105,7 @@ impl Client {
             ServerMessage::UpdateTick(data) => {
                 if let Some(scene) = ctx.scenes.try_get_mut(scene) {
                     for entry in data.nodes {
-                        if let Some(node) = scene.graph.try_get_mut(entry.node) {
+                        if let Some((_, node)) = scene.graph.node_by_id_mut(entry.node) {
                             if let Some(rigid_body) = node.query_component_mut::<RigidBody>() {
                                 if rigid_body.lin_vel() != entry.velocity {
                                     rigid_body.set_lin_vel(entry.velocity);

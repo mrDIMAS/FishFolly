@@ -29,7 +29,7 @@ pub struct CameraController {
     #[reflect(description = "Handle of camera hinge.")]
     hinge: Handle<Node>,
     #[reflect(description = "Handle of Camera node.")]
-    camera: Handle<Node>,
+    pub camera: Handle<Node>,
     #[reflect(description = "Distance from first blocker that in the way of camera.")]
     probe_radius: f32,
     #[reflect(description = "Pitch range for camera")]
@@ -124,6 +124,11 @@ impl CameraController {
 
 impl ScriptTrait for CameraController {
     fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {
+        let game = ctx.plugins.get::<Game>();
+        if game.server.is_none() {
+            return;
+        }
+
         if let Event::DeviceEvent {
             event: DeviceEvent::MouseMotion { delta },
             ..

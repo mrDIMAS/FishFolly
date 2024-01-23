@@ -6,7 +6,7 @@ use crate::{
 };
 use fyrox::{
     core::{reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*},
-    resource::model::ModelResource,
+    resource::model::{ModelResource, ModelResourceExtension},
     script::{ScriptContext, ScriptTrait},
 };
 
@@ -55,6 +55,7 @@ impl ScriptTrait for Cannon {
                             position: self_position,
                             rotation: Default::default(),
                             velocity: shooting_dir.scale(self.shooting_force),
+                            ids: ball_prefab.generate_ids(),
                         },
                     ]));
                 }

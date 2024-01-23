@@ -1,16 +1,21 @@
 use crate::{
-    net::{ClientMessage, NodeState, PlayerDescriptor, ServerMessage, UpdateTickMessage},
+    net::{
+        ClientMessage, InstanceDescriptor, NodeState, PlayerDescriptor, ServerMessage,
+        UpdateTickMessage,
+    },
     player::Player,
     start::StartPoint,
 };
 use fyrox::{
     core::{
+        futures::executor::block_on,
         log::Log,
         net::{NetListener, NetStream},
         pool::Handle,
     },
     fxhash::FxHashMap,
     plugin::PluginContext,
+    resource::model::{Model, ModelResourceExtension},
     scene::{node::Node, rigidbody::RigidBody, Scene},
 };
 use std::io;
@@ -57,7 +62,7 @@ impl Server {
                 let current_state =
                     if let Some(rigid_body) = node.query_component_ref::<RigidBody>() {
                         NodeState {
-                            node: handle,
+                            node: node.instance_id(),
                             position: **rigid_body.local_transform().position(),
                             rotation: **rigid_body.local_transform().rotation(),
                             velocity: rigid_body.lin_vel(),
@@ -65,7 +70,7 @@ impl Server {
                         }
                     } else {
                         NodeState {
-                            node: handle,
+                            node: node.instance_id(),
                             position: **node.local_transform().position(),
                             rotation: **node.local_transform().rotation(),
                             velocity: Default::default(),
@@ -97,11 +102,12 @@ impl Server {
                     input_state,
                 } => {
                     let scene = &mut ctx.scenes[scene];
-                    if let Some(player_ref) = scene
-                        .graph
-                        .try_get_script_component_of_mut::<Player>(player)
-                    {
-                        player_ref.input_controller = input_state;
+                    if let Some((_, player_node)) = scene.graph.node_by_id_mut(player) {
+                        if let Some(player_ref) = player_node.try_get_script_mut::<Player>() {
+                            player_ref.input_controller = input_state;
+                        }
+                    } else {
+                        Log::err("No such player!");
                     }
                 }
             });
@@ -119,18 +125,26 @@ impl Server {
             .map(|n| n.global_position())
             .collect::<Vec<_>>();
 
-        // 0 1 1 1
-        // 1 0 1 1
-        // 1 1 0 1
-        // 1 1 1 0
+        let player_prefab = block_on(
+            ctx.resource_manager
+                .request::<Model>("data/models/player.rgs"),
+        )
+        .unwrap();
 
         for player_num in 0..players_to_spawn {
+            let ids = player_prefab.generate_ids();
+
             if let Some(position) = start_points.get(player_num) {
                 for (connection_num, connection) in self.connections.iter_mut().enumerate() {
                     connection
                         .send_message(&ServerMessage::AddPlayers(vec![PlayerDescriptor {
-                            path: "data/models/player.rgs".into(),
-                            position: *position,
+                            instance: InstanceDescriptor {
+                                path: "data/models/player.rgs".into(),
+                                position: *position,
+                                rotation: Default::default(),
+                                velocity: Default::default(),
+                                ids: ids.clone(),
+                            },
                             is_remote: player_num != connection_num,
                         }]))
                         .unwrap();

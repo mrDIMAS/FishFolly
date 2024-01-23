@@ -5,6 +5,7 @@ use crate::{
     net::ClientMessage,
     CameraController, Event, Game,
 };
+use fyrox::scene::camera::Camera;
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -109,12 +110,27 @@ impl ScriptTrait for Player {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
         assert!(ctx.plugins.get_mut::<Game>().actors.insert(ctx.handle));
 
-        Log::info(format!("Player {:?} created!", ctx.handle));
+        Log::info(format!(
+            "Player {:?} created!",
+            ctx.scene.graph[ctx.handle].instance_id()
+        ));
     }
 
     fn on_start(&mut self, ctx: &mut ScriptContext) {
         ctx.message_dispatcher
             .subscribe_to::<ActorMessage>(ctx.handle);
+
+        // Disable camera for remote players, because multiple camera will.
+        if let Some(camera_controller) = ctx
+            .scene
+            .graph
+            .try_get_script_component_of_mut::<CameraController>(self.camera)
+        {
+            let camera = camera_controller.camera;
+            if let Some(camera) = ctx.scene.graph.try_get_mut_of_type::<Camera>(camera) {
+                camera.set_enabled(!self.actor.is_remote);
+            }
+        }
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
@@ -123,7 +139,10 @@ impl ScriptTrait for Player {
             .get_mut::<Game>()
             .actors
             .remove(&ctx.node_handle));
-        Log::info(format!("Player {:?} destroyed!", ctx.node_handle));
+        Log::info(format!(
+            "Player {:?} destroyed!",
+            ctx.scene.graph[ctx.node_handle].instance_id()
+        ));
     }
 
     fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {
@@ -131,11 +150,12 @@ impl ScriptTrait for Player {
             return;
         }
 
+        let this = &ctx.scene.graph[ctx.handle];
         if self.input_controller.on_os_event(event) {
             let game = ctx.plugins.get_mut::<Game>();
             if let Some(client) = game.client.as_mut() {
                 client.send_message_to_server(ClientMessage::Input {
-                    player: ctx.handle,
+                    player: this.instance_id(),
                     input_state: self.input_controller.clone(),
                 })
             }
@@ -143,12 +163,10 @@ impl ScriptTrait for Player {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        // Disable camera controller for remote players.
-        ctx.scene
-            .graph
-            .try_get_mut(self.camera)
-            .unwrap()
-            .set_enabled(!self.actor.is_remote);
+        let game = ctx.plugins.get_mut::<Game>();
+        if game.server.is_none() {
+            return;
+        }
 
         let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
         let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph);
