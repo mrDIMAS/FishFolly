@@ -120,7 +120,7 @@ impl ScriptTrait for Bot {
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
-        if game.server.is_none() {
+        if game.is_client() {
             return;
         }
 

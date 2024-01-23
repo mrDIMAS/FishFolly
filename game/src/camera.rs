@@ -1,7 +1,7 @@
 //! Camera controller for the main player (host). It smoothly follows the host and has obstacle
 //! avoiding functionality.
 
-use crate::{Event, Game};
+use crate::Game;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
@@ -12,11 +12,9 @@ use fyrox::{
         uuid::{uuid, Uuid},
         visitor::prelude::*,
     },
-    event::DeviceEvent,
     scene::{collider::Collider, graph::physics::RayCastOptions, node::Node},
     script::{ScriptContext, ScriptTrait},
 };
-use std::ops::Range;
 
 #[derive(Clone, Visit, Debug, Reflect, TypeUuidProvider, ComponentProvider)]
 #[type_uuid(id = "0c45d21f-878e-4aa5-b4e1-097aaa44f314")]
@@ -32,8 +30,6 @@ pub struct CameraController {
     pub camera: Handle<Node>,
     #[reflect(description = "Distance from first blocker that in the way of camera.")]
     probe_radius: f32,
-    #[reflect(description = "Pitch range for camera")]
-    pitch_range: Range<f32>,
     #[reflect(description = "A collider that should be ignored by ray casting.")]
     pub collider_to_ignore: Handle<Node>,
 
@@ -59,7 +55,6 @@ impl Default for CameraController {
             pitch: 0.0,
             default_distance: 2.0,
             probe_radius: 0.2,
-            pitch_range: -90.0f32..90.0f32,
             yaw: 0.0,
             collider_to_ignore: Default::default(),
             target_position: Default::default(),
@@ -123,28 +118,8 @@ impl CameraController {
 }
 
 impl ScriptTrait for CameraController {
-    fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {
-        let game = ctx.plugins.get::<Game>();
-        if game.server.is_none() {
-            return;
-        }
-
-        if let Event::DeviceEvent {
-            event: DeviceEvent::MouseMotion { delta },
-            ..
-        } = event
-        {
-            self.yaw -= delta.0 as f32 * ctx.dt;
-            self.pitch = (self.pitch + delta.1 as f32 * ctx.dt).clamp(
-                self.pitch_range.start.to_radians(),
-                self.pitch_range.end.to_radians(),
-            );
-        }
-    }
-
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        let game = ctx.plugins.get::<Game>();
-        if game.server.is_none() {
+        if ctx.plugins.get::<Game>().is_client() {
             return;
         }
 

@@ -5,6 +5,7 @@ use crate::{
     net::ClientMessage,
     CameraController, Event, Game,
 };
+use fyrox::event::DeviceEvent;
 use fyrox::scene::camera::Camera;
 use fyrox::{
     core::{
@@ -24,6 +25,7 @@ use fyrox::{
     },
 };
 use serde::{Deserialize, Serialize};
+use std::ops::Range;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct InputController {
@@ -32,10 +34,12 @@ pub struct InputController {
     pub move_left: bool,
     pub move_right: bool,
     pub jump: bool,
+    pub pitch: f32,
+    pub yaw: f32,
 }
 
 impl InputController {
-    pub fn on_os_event(&mut self, event: &Event<()>) -> bool {
+    pub fn on_os_event(&mut self, event: &Event<()>, pitch_range: &Range<f32>, dt: f32) -> bool {
         if let Event::WindowEvent {
             event: WindowEvent::KeyboardInput { event, .. },
             ..
@@ -67,6 +71,15 @@ impl InputController {
                     _ => (),
                 }
             }
+        } else if let Event::DeviceEvent {
+            event: DeviceEvent::MouseMotion { delta },
+            ..
+        } = event
+        {
+            self.yaw -= delta.0 as f32 * dt;
+            self.pitch = (self.pitch + delta.1 as f32 * dt)
+                .clamp(pitch_range.start.to_radians(), pitch_range.end.to_radians());
+            return true;
         }
         false
     }
@@ -88,6 +101,8 @@ pub struct Player {
     #[visit(skip)]
     #[reflect(hidden)]
     pub model_angle: SmoothAngle,
+    #[reflect(description = "Pitch range for camera")]
+    pitch_range: Range<f32>,
 }
 
 impl Default for Player {
@@ -97,6 +112,7 @@ impl Default for Player {
             camera: Default::default(),
             input_controller: Default::default(),
             actor: Default::default(),
+            pitch_range: -90.0f32..90.0f32,
             model_angle: SmoothAngle {
                 angle: 0.0,
                 target: 0.0,
@@ -151,7 +167,10 @@ impl ScriptTrait for Player {
         }
 
         let this = &ctx.scene.graph[ctx.handle];
-        if self.input_controller.on_os_event(event) {
+        if self
+            .input_controller
+            .on_os_event(event, &self.pitch_range, ctx.dt)
+        {
             let game = ctx.plugins.get_mut::<Game>();
             if let Some(client) = game.client.as_mut() {
                 client.send_message_to_server(ClientMessage::Input {
@@ -163,22 +182,21 @@ impl ScriptTrait for Player {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        let game = ctx.plugins.get_mut::<Game>();
-        if game.server.is_none() {
+        if ctx.plugins.get_mut::<Game>().is_client() {
             return;
         }
 
         let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
         let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph);
 
-        let yaw = ctx
+        if let Some(camera_controller) = ctx
             .scene
             .graph
-            .try_get(self.camera)
-            .and_then(|c| c.script())
-            .and_then(|s| s.cast::<CameraController>())
-            .map(|c| c.yaw)
-            .unwrap_or_default();
+            .try_get_script_component_of_mut::<CameraController>(self.camera)
+        {
+            camera_controller.pitch = self.input_controller.pitch;
+            camera_controller.yaw = self.input_controller.yaw;
+        }
 
         self.actor.target_desired_velocity = Vector3::default();
 
@@ -223,7 +241,10 @@ impl ScriptTrait for Player {
             if is_moving {
                 rigid_body
                     .local_transform_mut()
-                    .set_rotation(UnitQuaternion::from_axis_angle(&Vector3::y_axis(), yaw));
+                    .set_rotation(UnitQuaternion::from_axis_angle(
+                        &Vector3::y_axis(),
+                        self.input_controller.yaw,
+                    ));
 
                 // Apply additional rotation to model - it will turn in front of walking direction.
                 let angle: f32 = if self.input_controller.move_left {

@@ -90,6 +90,10 @@ impl Game {
             client: None,
         }
     }
+
+    pub fn is_client(&self) -> bool {
+        self.server.is_none() && self.client.is_some()
+    }
 }
 
 impl Plugin for Game {

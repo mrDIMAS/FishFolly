@@ -36,29 +36,34 @@ impl Default for Cannon {
 impl ScriptTrait for Cannon {
     fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get_mut::<Game>();
+        if game.is_client() {
+            return;
+        }
 
-        if let Some(server) = game.server.as_mut() {
-            self.timer += ctx.dt;
-            if self.timer >= self.shooting_timeout {
-                self.timer = 0.0;
+        let Some(server) = game.server.as_mut() else {
+            return;
+        };
 
-                let self_node = &ctx.scene.graph[ctx.handle];
-                let self_position = self_node.global_position();
-                let shooting_dir = self_node
-                    .look_vector()
-                    .try_normalize(f32::EPSILON)
-                    .unwrap_or_default();
-                if let Some(ball_prefab) = self.ball_prefab.as_ref() {
-                    server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
-                        InstanceDescriptor {
-                            path: ball_prefab.kind().path().unwrap().to_path_buf(),
-                            position: self_position,
-                            rotation: Default::default(),
-                            velocity: shooting_dir.scale(self.shooting_force),
-                            ids: ball_prefab.generate_ids(),
-                        },
-                    ]));
-                }
+        self.timer += ctx.dt;
+        if self.timer >= self.shooting_timeout {
+            self.timer = 0.0;
+
+            let self_node = &ctx.scene.graph[ctx.handle];
+            let self_position = self_node.global_position();
+            let shooting_dir = self_node
+                .look_vector()
+                .try_normalize(f32::EPSILON)
+                .unwrap_or_default();
+            if let Some(ball_prefab) = self.ball_prefab.as_ref() {
+                server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
+                    InstanceDescriptor {
+                        path: ball_prefab.kind().path().unwrap().to_path_buf(),
+                        position: self_position,
+                        rotation: Default::default(),
+                        velocity: shooting_dir.scale(self.shooting_force),
+                        ids: ball_prefab.generate_ids(),
+                    },
+                ]));
             }
         }
     }
