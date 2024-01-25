@@ -1,21 +1,19 @@
 use crate::{client::Client, server::Server, Game};
-use fyrox::gui::text::TextMessage;
 use fyrox::{
-    asset::{io::FsResourceIo, manager::ResourceManager},
+    asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
     gui::{
         button::ButtonMessage,
-        constructor::WidgetConstructorContainer,
         font::Font,
         list_view::{ListView, ListViewMessage},
         message::{MessageDirection, UiMessage},
         text::TextBuilder,
+        text::TextMessage,
         widget::{WidgetBuilder, WidgetMessage},
         BuildContext, Thickness, UiNode, UserInterface, VerticalAlignment,
     },
     plugin::PluginContext,
 };
-use std::{path::Path, sync::Arc};
 
 pub fn make_player_entry(
     ctx: &mut BuildContext,
@@ -142,12 +140,7 @@ fn try_connect_to_server() -> Option<Client> {
 impl Menu {
     pub fn new(ctx: &mut PluginContext) -> Self {
         ctx.task_pool.spawn_plugin_task(
-            UserInterface::load_from_file(
-                Path::new("data/menu.ui"),
-                Arc::new(WidgetConstructorContainer::new()),
-                ctx.resource_manager.clone(),
-                &FsResourceIo,
-            ),
+            UserInterface::load_from_file("data/menu.ui", ctx.resource_manager.clone()),
             |result, game: &mut Game, ctx| {
                 *ctx.user_interface = result.unwrap();
                 let menu = &mut game.menu;
