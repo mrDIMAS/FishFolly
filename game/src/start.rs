@@ -13,17 +13,20 @@ pub struct StartPoint {}
 
 impl ScriptTrait for StartPoint {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
-        let game = ctx.plugins.get_mut::<Game>();
-        assert!(game.start_points.insert(ctx.handle));
+        ctx.plugins
+            .get_mut::<Game>()
+            .level
+            .start_points
+            .insert(ctx.handle);
         Log::info(format!("Start point {:?} created!", ctx.handle));
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
-        assert!(ctx
-            .plugins
+        ctx.plugins
             .get_mut::<Game>()
+            .level
             .start_points
-            .remove(&ctx.node_handle));
+            .remove(&ctx.node_handle);
         Log::info(format!("Start point {:?} destroyed!", ctx.node_handle));
     }
 }

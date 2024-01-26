@@ -32,7 +32,7 @@ impl ScriptTrait for Jumper {
             let mut contacted_colliders = HashSet::new();
 
             for contact in collider.contacts(&ctx.scene.graph.physics) {
-                for actor in game.actors.iter() {
+                for actor in game.level.actors.iter() {
                     let actor_script = ctx.scene.graph[*actor].script();
 
                     if let Some(actor_collider) = actor_script

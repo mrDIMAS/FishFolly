@@ -1,5 +1,4 @@
 //! A simple bot that tries to react Target points on a level.
-
 use crate::{actor::Actor, actor::ActorMessage, utils, Game};
 use fyrox::{
     core::{
@@ -91,7 +90,11 @@ fn probe_ground(begin: Vector3<f32>, max_height: f32, graph: &Graph) -> Option<V
 
 impl ScriptTrait for Bot {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
-        assert!(ctx.plugins.get_mut::<Game>().actors.insert(ctx.handle));
+        ctx.plugins
+            .get_mut::<Game>()
+            .level
+            .actors
+            .insert(ctx.handle);
         Log::info(format!("Bot {:?} created!", ctx.handle));
         self.navmesh = ctx
             .scene
@@ -110,11 +113,11 @@ impl ScriptTrait for Bot {
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
-        assert!(ctx
-            .plugins
+        ctx.plugins
             .get_mut::<Game>()
+            .level
             .actors
-            .remove(&ctx.node_handle));
+            .remove(&ctx.node_handle);
         Log::info(format!("Bot {:?} destroyed!", ctx.node_handle));
     }
 
@@ -128,6 +131,7 @@ impl ScriptTrait for Bot {
 
         // Dead-simple AI - run straight to target.
         let target_pos = game
+            .level
             .targets
             .iter()
             .next()

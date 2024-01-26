@@ -55,12 +55,13 @@ impl ScriptTrait for Respawner {
             .transform(&ctx.scene.graph[ctx.handle].global_transform());
 
         let start_points = game
+            .level
             .start_points
             .iter()
             .map(|p| ctx.scene.graph[*p].global_position())
             .collect::<Vec<_>>();
 
-        for actor_handle in game.actors.iter() {
+        for actor_handle in game.level.actors.iter() {
             if let Some(actor_script) = ctx
                 .scene
                 .graph

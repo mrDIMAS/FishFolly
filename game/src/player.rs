@@ -5,8 +5,6 @@ use crate::{
     net::ClientMessage,
     CameraController, Event, Game,
 };
-use fyrox::event::DeviceEvent;
-use fyrox::scene::camera::Camera;
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -17,9 +15,9 @@ use fyrox::{
         type_traits::prelude::*,
         visitor::prelude::*,
     },
-    event::{ElementState, WindowEvent},
+    event::{DeviceEvent, ElementState, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
-    scene::{node::Node, rigidbody::RigidBody},
+    scene::{camera::Camera, node::Node, rigidbody::RigidBody},
     script::{
         ScriptContext, ScriptDeinitContext, ScriptMessageContext, ScriptMessagePayload, ScriptTrait,
     },
@@ -124,7 +122,11 @@ impl Default for Player {
 
 impl ScriptTrait for Player {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
-        assert!(ctx.plugins.get_mut::<Game>().actors.insert(ctx.handle));
+        ctx.plugins
+            .get_mut::<Game>()
+            .level
+            .actors
+            .insert(ctx.handle);
 
         Log::info(format!(
             "Player {:?} created!",
@@ -150,11 +152,11 @@ impl ScriptTrait for Player {
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
-        assert!(ctx
-            .plugins
+        ctx.plugins
             .get_mut::<Game>()
+            .level
             .actors
-            .remove(&ctx.node_handle));
+            .remove(&ctx.node_handle);
         Log::info(format!(
             "Player {:?} destroyed!",
             ctx.scene.graph[ctx.node_handle].instance_id()
@@ -162,7 +164,9 @@ impl ScriptTrait for Player {
     }
 
     fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {
-        if self.actor.is_remote {
+        let game = ctx.plugins.get_mut::<Game>();
+
+        if self.actor.is_remote || game.level.leaderboard.is_finished(ctx.handle) {
             return;
         }
 
@@ -171,7 +175,6 @@ impl ScriptTrait for Player {
             .input_controller
             .on_os_event(event, &self.pitch_range, ctx.dt)
         {
-            let game = ctx.plugins.get_mut::<Game>();
             if let Some(client) = game.client.as_mut() {
                 client.send_message_to_server(ClientMessage::Input {
                     player: this.instance_id(),
@@ -182,7 +185,9 @@ impl ScriptTrait for Player {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        if ctx.plugins.get_mut::<Game>().is_client() {
+        let game = ctx.plugins.get_mut::<Game>();
+
+        if game.is_client() || game.level.leaderboard.is_finished(ctx.handle) {
             return;
         }
 

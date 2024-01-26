@@ -22,7 +22,7 @@ fn instantiate_objects(instances: Vec<InstanceDescriptor>, ctx: &mut PluginConte
             ctx.resource_manager.request::<Model>(&new_instance.path),
             move |result, game: &mut Game, ctx| match result {
                 Ok(model) => {
-                    let scene = &mut ctx.scenes[game.scene];
+                    let scene = &mut ctx.scenes[game.level.scene];
                     let instance = model
                         .begin_instantiation(scene)
                         .with_position(new_instance.position)
@@ -52,7 +52,7 @@ fn add_players(players: Vec<PlayerDescriptor>, ctx: &mut PluginContext) {
             ctx.resource_manager.request::<Model>(&player.instance.path),
             move |result, game: &mut Game, ctx| match result {
                 Ok(model) => {
-                    let scene = &mut ctx.scenes[game.scene];
+                    let scene = &mut ctx.scenes[game.level.scene];
                     let root = model
                         .begin_instantiation(scene)
                         .with_ids(&player.instance.ids)

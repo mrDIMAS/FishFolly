@@ -13,16 +13,20 @@ pub struct Target {}
 
 impl ScriptTrait for Target {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
-        assert!(ctx.plugins.get_mut::<Game>().targets.insert(ctx.handle));
+        ctx.plugins
+            .get_mut::<Game>()
+            .level
+            .targets
+            .insert(ctx.handle);
         Log::info(format!("Target {:?} added!", ctx.handle));
     }
 
     fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
-        assert!(ctx
-            .plugins
+        ctx.plugins
             .get_mut::<Game>()
+            .level
             .targets
-            .remove(&ctx.node_handle));
+            .remove(&ctx.node_handle);
         Log::info(format!("Target {:?} destroyed!", ctx.node_handle));
     }
 }

@@ -1,8 +1,8 @@
 //! Game project.
 use crate::{
-    bot::Bot, camera::CameraController, cannon::Cannon, client::Client, jumper::Jumper, menu::Menu,
-    obstacle::RotatorObstacle, player::Player, respawn::Respawner, server::Server,
-    start::StartPoint, target::Target,
+    bot::Bot, camera::CameraController, cannon::Cannon, client::Client, jumper::Jumper,
+    level::Level, menu::Menu, obstacle::RotatorObstacle, player::Player, respawn::Respawner,
+    server::Server, start::StartPoint, target::Target, trigger::Trigger,
 };
 use fyrox::{
     core::{log::Log, pool::Handle},
@@ -11,9 +11,9 @@ use fyrox::{
     keyboard::{KeyCode, PhysicalKey},
     plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
     renderer::QualitySettings,
-    scene::{node::Node, Scene},
+    scene::Scene,
 };
-use std::{collections::HashSet, path::Path};
+use std::path::Path;
 
 pub mod actor;
 pub mod bot;
@@ -21,6 +21,7 @@ pub mod camera;
 pub mod cannon;
 pub mod client;
 pub mod jumper;
+pub mod level;
 pub mod menu;
 pub mod net;
 pub mod obstacle;
@@ -29,6 +30,7 @@ pub mod respawn;
 pub mod server;
 pub mod start;
 pub mod target;
+pub mod trigger;
 pub mod utils;
 
 #[derive(Default)]
@@ -40,10 +42,7 @@ pub struct DebugSettings {
 
 pub struct Game {
     menu: Menu,
-    scene: Handle<Scene>,
-    pub targets: HashSet<Handle<Node>>,
-    pub start_points: HashSet<Handle<Node>>,
-    pub actors: HashSet<Handle<Node>>,
+    pub level: Level,
     pub debug_settings: DebugSettings,
     server: Option<Server>,
     client: Option<Client>,
@@ -63,6 +62,7 @@ impl PluginConstructor for GameConstructor {
             .add::<StartPoint>("Start Point")
             .add::<Respawner>("Respawner")
             .add::<Cannon>("Cannon")
+            .add::<Trigger>("Trigger")
             .add::<Jumper>("Jumper");
     }
 
@@ -81,10 +81,7 @@ impl Game {
 
         Self {
             menu: Menu::new(&mut context),
-            targets: Default::default(),
-            start_points: Default::default(),
-            actors: Default::default(),
-            scene: Default::default(),
+            level: Default::default(),
             debug_settings: Default::default(),
             server: None,
             client: None,
@@ -104,15 +101,16 @@ impl Plugin for Game {
     fn update(&mut self, ctx: &mut PluginContext) {
         if let Some(server) = self.server.as_mut() {
             server.accept_connections();
-            server.read_messages(self.scene, ctx);
-            server.update(self.scene, ctx);
+
+            server.read_messages(self.level.scene, ctx);
+            server.update(self.level.scene, ctx);
         }
 
         if let Some(client) = self.client.as_mut() {
-            client.read_messages(self.scene, ctx);
+            client.read_messages(self.level.scene, ctx);
         }
 
-        if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
+        if let Some(scene) = ctx.scenes.try_get_mut(self.level.scene) {
             scene.drawing_context.clear_lines();
 
             if self.debug_settings.show_physics {
@@ -177,8 +175,8 @@ impl Plugin for Game {
     }
 
     fn on_scene_begin_loading(&mut self, _path: &Path, context: &mut PluginContext) {
-        if self.scene.is_some() {
-            context.scenes.remove(self.scene);
+        if self.level.scene.is_some() {
+            context.scenes.remove(self.level.scene);
         }
     }
 
@@ -189,7 +187,11 @@ impl Plugin for Game {
         _data: &[u8],
         ctx: &mut PluginContext,
     ) {
-        self.scene = scene;
+        self.level = Level {
+            scene,
+            ..Default::default()
+        };
+
         self.menu
             .set_main_menu_visibility(ctx.user_interface, false);
         if let Some(server) = self.server.as_mut() {
