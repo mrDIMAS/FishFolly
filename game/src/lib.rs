@@ -1,7 +1,7 @@
 //! Game project.
 use crate::{
     bot::Bot, camera::CameraController, cannon::Cannon, client::Client, jumper::Jumper, menu::Menu,
-    obstacle::RotatorObstacle, player::Player, respawn::RespawnZone, server::Server,
+    obstacle::RotatorObstacle, player::Player, respawn::Respawner, server::Server,
     start::StartPoint, target::Target,
 };
 use fyrox::{
@@ -61,7 +61,7 @@ impl PluginConstructor for GameConstructor {
             .add::<Target>("Target")
             .add::<RotatorObstacle>("Rotator Obstacle")
             .add::<StartPoint>("Start Point")
-            .add::<RespawnZone>("Respawn Zone")
+            .add::<Respawner>("Respawner")
             .add::<Cannon>("Cannon")
             .add::<Jumper>("Jumper");
     }
