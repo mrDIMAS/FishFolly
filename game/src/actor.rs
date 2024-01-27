@@ -154,26 +154,21 @@ impl Actor {
     where
         F: FnMut(&mut RigidBody),
     {
-        let mut mbc = graph.begin_multi_borrow::<32>();
-        if let Some(rigid_body) = mbc
-            .try_get(self.rigid_body)
-            .and_then(|n| n.query_component_mut::<RigidBody>())
+        let mbc = graph.begin_multi_borrow();
+        if let Some(mut rigid_body) =
+            mbc.try_get_component_of_type_mut::<RigidBody>(self.rigid_body)
         {
-            func(rigid_body)
+            func(&mut rigid_body)
         }
-        if let Some(ragdoll) = mbc
-            .try_get(self.ragdoll)
-            .and_then(|n| n.query_component_ref::<Ragdoll>())
-        {
+        if let Some(ragdoll) = mbc.try_get_component_of_type::<Ragdoll>(self.ragdoll) {
             ragdoll.root_limb().iterate_recursive(&mut |limb| {
-                if let Some(rigid_body) = mbc
-                    .try_get(limb.physical_bone)
-                    .and_then(|n| n.query_component_mut::<RigidBody>())
+                if let Some(mut rigid_body) =
+                    mbc.try_get_component_of_type_mut::<RigidBody>(limb.physical_bone)
                 {
-                    func(rigid_body)
+                    func(&mut rigid_body)
                 }
             });
-        }
+        };
     }
 
     pub fn set_velocity(&mut self, velocity: Vector3<f32>, graph: &mut Graph) {
@@ -255,15 +250,13 @@ impl Actor {
         }
     }
 
-    fn play_random_footstep_sound(
-        &mut self,
-        mbc: &mut MultiBorrowContext<16, Node, NodeContainer>,
-    ) {
+    fn play_random_footstep_sound(&mut self, mbc: &MultiBorrowContext<Node, NodeContainer>) {
         let Some(random_footstep_sound) = self.footsteps.choose(&mut thread_rng()) else {
             return;
         };
 
-        let Some(sound) = mbc.try_get_component_of_type::<Sound>(*random_footstep_sound) else {
+        let Some(mut sound) = mbc.try_get_component_of_type_mut::<Sound>(*random_footstep_sound)
+        else {
             return;
         };
 
@@ -271,7 +264,7 @@ impl Actor {
     }
 
     fn process_animation_events(&mut self, ctx: &mut ScriptContext, has_ground_contact: bool) {
-        let mut mbc = ctx.scene.graph.begin_multi_borrow::<16>();
+        let mbc = ctx.scene.graph.begin_multi_borrow();
 
         let Some(absm) = mbc.try_get_component_of_type::<AnimationBlendingStateMachine>(self.absm)
         else {
@@ -280,8 +273,8 @@ impl Actor {
 
         let machine = absm.machine();
 
-        let Some(animation_player) =
-            mbc.try_get_component_of_type::<AnimationPlayer>(absm.animation_player())
+        let Some(mut animation_player) =
+            mbc.try_get_component_of_type_mut::<AnimationPlayer>(absm.animation_player())
         else {
             return;
         };
@@ -298,7 +291,7 @@ impl Actor {
 
         for (_, event) in events_collection.events {
             if event.name == "Footstep" && has_ground_contact {
-                self.play_random_footstep_sound(&mut mbc);
+                self.play_random_footstep_sound(&mbc);
             }
         }
 
