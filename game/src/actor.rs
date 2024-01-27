@@ -3,11 +3,18 @@
 use crate::{utils, Game};
 use fyrox::{
     core::{
-        algebra::Vector3, math::Vector3Ext, pool::Handle, reflect::prelude::*, visitor::prelude::*,
+        algebra::Vector3, math::Vector3Ext, pool::Handle, pool::MultiBorrowContext,
+        reflect::prelude::*, variable::InheritableVariable, visitor::prelude::*,
     },
+    rand::{prelude::SliceRandom, thread_rng},
     scene::{
-        animation::absm::prelude::*, collider::Collider, graph::Graph, node::Node,
-        ragdoll::Ragdoll, rigidbody::RigidBody,
+        animation::{absm::prelude::*, AnimationPlayer},
+        collider::Collider,
+        graph::Graph,
+        node::{container::NodeContainer, Node},
+        ragdoll::Ragdoll,
+        rigidbody::RigidBody,
+        sound::Sound,
     },
     script::{ScriptContext, ScriptMessageContext, ScriptMessagePayload},
 };
@@ -61,6 +68,7 @@ pub struct Actor {
     #[visit(skip)]
     #[reflect(hidden)]
     pub jump_interval: f32,
+    pub footsteps: InheritableVariable<Vec<Handle<Node>>>,
 }
 
 impl Default for Actor {
@@ -81,6 +89,7 @@ impl Default for Actor {
             desired_velocity: Default::default(),
             absm: Default::default(),
             jump_interval: 0.0,
+            footsteps: Default::default(),
         }
     }
 }
@@ -246,6 +255,59 @@ impl Actor {
         }
     }
 
+    fn play_random_footstep_sound(
+        &mut self,
+        mbc: &mut MultiBorrowContext<16, Node, NodeContainer>,
+    ) {
+        let Some(random_footstep_sound) = self.footsteps.choose(&mut thread_rng()) else {
+            return;
+        };
+
+        let Some(sound) = mbc.try_get_component_of_type::<Sound>(*random_footstep_sound) else {
+            return;
+        };
+
+        sound.play();
+    }
+
+    fn process_animation_events(&mut self, ctx: &mut ScriptContext, has_ground_contact: bool) {
+        let mut mbc = ctx.scene.graph.begin_multi_borrow::<16>();
+
+        let Some(absm) = mbc.try_get_component_of_type::<AnimationBlendingStateMachine>(self.absm)
+        else {
+            return;
+        };
+
+        let machine = absm.machine();
+
+        let Some(animation_player) =
+            mbc.try_get_component_of_type::<AnimationPlayer>(absm.animation_player())
+        else {
+            return;
+        };
+
+        let Some(first) = machine.layers().first() else {
+            return;
+        };
+
+        let events_collection = first.collect_active_animations_events(
+            machine.parameters(),
+            animation_player.animations(),
+            AnimationEventCollectionStrategy::All,
+        );
+
+        for (_, event) in events_collection.events {
+            if event.name == "Footstep" && has_ground_contact {
+                self.play_random_footstep_sound(&mut mbc);
+            }
+        }
+
+        animation_player
+            .animations_mut()
+            .get_value_mut_silent()
+            .clear_animation_events();
+    }
+
     pub fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
         let has_ground_contact = self.has_ground_contact(&ctx.scene.graph);
@@ -278,8 +340,7 @@ impl Actor {
         if let Some(absm) = ctx
             .scene
             .graph
-            .try_get_mut(self.absm)
-            .and_then(|n| n.query_component_mut::<AnimationBlendingStateMachine>())
+            .try_get_mut_of_type::<AnimationBlendingStateMachine>(self.absm)
         {
             absm.machine_mut()
                 .get_value_mut_silent()
@@ -289,6 +350,8 @@ impl Actor {
                 )
                 .set_parameter("Jump", Parameter::Rule(self.jump));
         }
+
+        self.process_animation_events(ctx, has_ground_contact);
 
         self.jump_interval -= ctx.dt;
 
