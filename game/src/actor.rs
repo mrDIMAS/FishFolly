@@ -7,6 +7,7 @@ use fyrox::{
         reflect::prelude::*, variable::InheritableVariable, visitor::prelude::*,
     },
     rand::{prelude::SliceRandom, thread_rng},
+    resource::model::{ModelResource, ModelResourceExtension},
     scene::{
         animation::{absm::prelude::*, AnimationPlayer},
         collider::Collider,
@@ -69,6 +70,8 @@ pub struct Actor {
     #[reflect(hidden)]
     pub jump_interval: f32,
     pub footsteps: InheritableVariable<Vec<Handle<Node>>>,
+    pub disappear_effect: InheritableVariable<Option<ModelResource>>,
+    pub appear_effect: InheritableVariable<Option<ModelResource>>,
 }
 
 impl Default for Actor {
@@ -90,6 +93,8 @@ impl Default for Actor {
             absm: Default::default(),
             jump_interval: 0.0,
             footsteps: Default::default(),
+            disappear_effect: Default::default(),
+            appear_effect: Default::default(),
         }
     }
 }
@@ -141,11 +146,24 @@ impl Actor {
 
         match message {
             ActorMessage::RespawnAt(position) => {
+                if let Some(disappear_effect) = self.disappear_effect.as_ref() {
+                    let current_position = ctx.scene.graph[self.rigid_body].global_position();
+                    disappear_effect.instantiate_at(
+                        ctx.scene,
+                        current_position,
+                        Default::default(),
+                    );
+                }
+
                 self.set_ragdoll_enabled(&mut ctx.scene.graph, false);
 
                 self.for_each_rigid_body(&mut ctx.scene.graph, |rb| {
                     rb.local_transform_mut().set_position(*position);
                 });
+
+                if let Some(appear_effect) = self.appear_effect.as_ref() {
+                    appear_effect.instantiate_at(ctx.scene, *position, Default::default());
+                }
             }
         }
     }
