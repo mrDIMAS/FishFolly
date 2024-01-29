@@ -4,6 +4,7 @@ use crate::{
     net::{InstanceDescriptor, ServerMessage},
     Game,
 };
+use fyrox::core::math::vector_to_quat;
 use fyrox::{
     core::{
         pool::Handle, reflect::prelude::*, type_traits::prelude::*, variable::InheritableVariable,
@@ -19,6 +20,7 @@ use fyrox::{
 #[visit(optional)]
 pub struct Cannon {
     ball_prefab: InheritableVariable<Option<ModelResource>>,
+    shot_effect: InheritableVariable<Option<ModelResource>>,
     shooting_force: InheritableVariable<f32>,
     shot_sound: InheritableVariable<Handle<Node>>,
     animation_player: InheritableVariable<Handle<Node>>,
@@ -28,6 +30,7 @@ impl Default for Cannon {
     fn default() -> Self {
         Self {
             ball_prefab: None.into(),
+            shot_effect: Default::default(),
             shooting_force: 100.0.into(),
             shot_sound: Default::default(),
             animation_player: Default::default(),
@@ -72,12 +75,24 @@ impl ScriptTrait for Cannon {
                                     ids: ball_prefab.generate_ids(),
                                 },
                             ]));
+                        }
 
-                            if let Some(mut sound) =
-                                mbc.try_get_component_of_type_mut::<Sound>(*self.shot_sound)
-                            {
-                                sound.play();
-                            }
+                        if let Some(shot_effect) = self.shot_effect.as_ref() {
+                            server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
+                                InstanceDescriptor {
+                                    path: shot_effect.kind().path().unwrap().to_path_buf(),
+                                    position: self_position,
+                                    rotation: vector_to_quat(shooting_dir),
+                                    ids: shot_effect.generate_ids(),
+                                    ..Default::default()
+                                },
+                            ]));
+                        }
+
+                        if let Some(mut sound) =
+                            mbc.try_get_component_of_type_mut::<Sound>(*self.shot_sound)
+                        {
+                            sound.play();
                         }
                     }
                 }

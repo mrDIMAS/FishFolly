@@ -17,7 +17,7 @@ pub struct NodeState {
     pub rotation: UnitQuaternion<f32>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct InstanceDescriptor {
     pub path: PathBuf,
     pub position: Vector3<f32>,
