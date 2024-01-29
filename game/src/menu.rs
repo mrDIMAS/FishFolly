@@ -124,6 +124,7 @@ pub struct Menu {
     start_as_server: Handle<UiNode>,
     start_as_client: Handle<UiNode>,
     main_menu: Handle<UiNode>,
+    main_menu_root: Handle<UiNode>,
     server_menu: ServerMenu,
 }
 
@@ -152,6 +153,7 @@ impl Menu {
                 menu.start_as_client = ui.find_by_name_down_from_root("Client");
                 menu.main_menu = ui.find_by_name_down_from_root("MainMenu");
                 menu.settings = ui.find_by_name_down_from_root("Settings");
+                menu.main_menu_root = ui.find_by_name_down_from_root("MainMenuRoot");
                 let server_menu = ui.find_by_name_down_from_root("ServerMenu");
                 menu.server_menu = ServerMenu::new(server_menu, menu.main_menu, ui);
             },
@@ -164,6 +166,7 @@ impl Menu {
             start_as_server: Default::default(),
             start_as_client: Default::default(),
             main_menu: Default::default(),
+            main_menu_root: Default::default(),
             server_menu: Default::default(),
         }
     }
@@ -228,17 +231,16 @@ impl Menu {
 
     pub fn set_main_menu_visibility(&self, ui: &UserInterface, visible: bool) {
         ui.send_message(WidgetMessage::visibility(
-            self.main_menu,
+            self.main_menu_root,
             MessageDirection::ToWidget,
             visible,
         ));
     }
 
     pub fn switch_main_menu_visibility(&self, ui: &UserInterface) {
-        let handle = ui.root();
-        let is_visible = ui.node(handle).is_globally_visible();
+        let is_visible = ui.node(self.main_menu_root).is_globally_visible();
         ui.send_message(WidgetMessage::visibility(
-            handle,
+            self.main_menu_root,
             MessageDirection::ToWidget,
             !is_visible,
         ));
