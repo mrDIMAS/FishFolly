@@ -173,14 +173,13 @@ impl Actor {
         F: FnMut(&mut RigidBody),
     {
         let mbc = graph.begin_multi_borrow();
-        if let Some(mut rigid_body) =
-            mbc.try_get_component_of_type_mut::<RigidBody>(self.rigid_body)
+        if let Ok(mut rigid_body) = mbc.try_get_component_of_type_mut::<RigidBody>(self.rigid_body)
         {
             func(&mut rigid_body)
         }
-        if let Some(ragdoll) = mbc.try_get_component_of_type::<Ragdoll>(self.ragdoll) {
+        if let Ok(ragdoll) = mbc.try_get_component_of_type::<Ragdoll>(self.ragdoll) {
             ragdoll.root_limb().iterate_recursive(&mut |limb| {
-                if let Some(mut rigid_body) =
+                if let Ok(mut rigid_body) =
                     mbc.try_get_component_of_type_mut::<RigidBody>(limb.physical_bone)
                 {
                     func(&mut rigid_body)
@@ -273,7 +272,7 @@ impl Actor {
             return;
         };
 
-        let Some(mut sound) = mbc.try_get_component_of_type_mut::<Sound>(*random_footstep_sound)
+        let Ok(mut sound) = mbc.try_get_component_of_type_mut::<Sound>(*random_footstep_sound)
         else {
             return;
         };
@@ -284,14 +283,14 @@ impl Actor {
     fn process_animation_events(&mut self, ctx: &mut ScriptContext, has_ground_contact: bool) {
         let mbc = ctx.scene.graph.begin_multi_borrow();
 
-        let Some(absm) = mbc.try_get_component_of_type::<AnimationBlendingStateMachine>(self.absm)
+        let Ok(absm) = mbc.try_get_component_of_type::<AnimationBlendingStateMachine>(self.absm)
         else {
             return;
         };
 
         let machine = absm.machine();
 
-        let Some(mut animation_player) =
+        let Ok(mut animation_player) =
             mbc.try_get_component_of_type_mut::<AnimationPlayer>(absm.animation_player())
         else {
             return;

@@ -58,7 +58,7 @@ impl ScriptTrait for Cannon {
             .try_normalize(f32::EPSILON)
             .unwrap_or_default();
 
-        if let Some(mut animation_player) =
+        if let Ok(mut animation_player) =
             mbc.try_get_component_of_type_mut::<AnimationPlayer>(*self.animation_player)
         {
             let animations = animation_player.animations_mut().get_value_mut_silent();
@@ -89,7 +89,7 @@ impl ScriptTrait for Cannon {
                             ]));
                         }
 
-                        if let Some(mut sound) =
+                        if let Ok(mut sound) =
                             mbc.try_get_component_of_type_mut::<Sound>(*self.shot_sound)
                         {
                             sound.play();
