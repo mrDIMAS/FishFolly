@@ -1,3 +1,4 @@
+use crate::net::SoundState;
 use crate::{
     net::{
         ClientMessage, InstanceDescriptor, NodeState, PlayerDescriptor, ServerMessage,
@@ -6,6 +7,7 @@ use crate::{
     player::Player,
     start::StartPoint,
 };
+use fyrox::scene::sound::{Sound, Status};
 use fyrox::{
     core::{
         futures::executor::block_on,
@@ -24,6 +26,7 @@ pub struct Server {
     listener: NetListener,
     connections: Vec<NetStream>,
     previous_node_states: FxHashMap<Handle<Node>, NodeState>,
+    previous_sound_states: FxHashMap<Handle<Node>, SoundState>,
 }
 
 impl Server {
@@ -34,6 +37,7 @@ impl Server {
             listener: NetListener::bind(Self::ADDRESS)?,
             connections: Default::default(),
             previous_node_states: Default::default(),
+            previous_sound_states: Default::default(),
         })
     }
 
@@ -56,6 +60,7 @@ impl Server {
         if let Some(scene) = ctx.scenes.try_get_mut(scene) {
             let mut tick_data = UpdateTickMessage {
                 nodes: Default::default(),
+                sounds: Default::default(),
             };
 
             for (handle, node) in scene.graph.pair_iter() {
@@ -83,6 +88,23 @@ impl Server {
                 if *prev_state != current_state {
                     tick_data.nodes.push(current_state.clone());
                     *prev_state = current_state;
+                }
+
+                if let Some(sound) = node.query_component_ref::<Sound>() {
+                    let current_state = SoundState {
+                        node: sound.instance_id(),
+                        is_playing: sound.status() == Status::Playing,
+                    };
+
+                    let prev_state = self
+                        .previous_sound_states
+                        .entry(handle)
+                        .or_insert(current_state.clone());
+
+                    if *prev_state != current_state {
+                        tick_data.sounds.push(current_state.clone());
+                        *prev_state = current_state;
+                    }
                 }
             }
 

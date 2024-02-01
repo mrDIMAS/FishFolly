@@ -32,9 +32,16 @@ pub struct PlayerDescriptor {
     pub is_remote: bool,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct SoundState {
+    pub node: SceneNodeId,
+    pub is_playing: bool,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateTickMessage {
     pub nodes: Vec<NodeState>,
+    pub sounds: Vec<SoundState>,
 }
 
 /// A message sent from the server to a client.
