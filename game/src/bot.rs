@@ -1,5 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 use crate::{actor::Actor, actor::ActorMessage, utils, Game};
+use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},

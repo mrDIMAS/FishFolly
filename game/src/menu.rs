@@ -1,4 +1,5 @@
 use crate::{client::Client, server::Server, Game};
+use fyrox::graph::SceneGraph;
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
@@ -43,10 +44,10 @@ impl ServerMenu {
         Self {
             self_handle,
             main_menu,
-            back: ui.find_by_name_down_from_root("SVBack"),
-            players_list: ui.find_by_name_down_from_root("SVPlayersList"),
-            start: ui.find_by_name_down_from_root("SVStart"),
-            server_address: ui.find_by_name_down_from_root("SVServerAddress"),
+            back: ui.find_handle_by_name_from_root("SVBack"),
+            players_list: ui.find_handle_by_name_from_root("SVPlayersList"),
+            start: ui.find_handle_by_name_from_root("SVStart"),
+            server_address: ui.find_handle_by_name_from_root("SVServerAddress"),
         }
     }
 
@@ -146,15 +147,15 @@ impl Menu {
                 *ctx.user_interface = result.unwrap();
                 let menu = &mut game.menu;
                 let ui = &mut *ctx.user_interface;
-                menu.single_player = ui.find_by_name_down_from_root("SinglePlayer");
-                menu.exit = ui.find_by_name_down_from_root("Exit");
-                menu.debug_text = ui.find_by_name_down_from_root("DebugText");
-                menu.start_as_server = ui.find_by_name_down_from_root("Server");
-                menu.start_as_client = ui.find_by_name_down_from_root("Client");
-                menu.main_menu = ui.find_by_name_down_from_root("MainMenu");
-                menu.settings = ui.find_by_name_down_from_root("Settings");
-                menu.main_menu_root = ui.find_by_name_down_from_root("MainMenuRoot");
-                let server_menu = ui.find_by_name_down_from_root("ServerMenu");
+                menu.single_player = ui.find_handle_by_name_from_root("SinglePlayer");
+                menu.exit = ui.find_handle_by_name_from_root("Exit");
+                menu.debug_text = ui.find_handle_by_name_from_root("DebugText");
+                menu.start_as_server = ui.find_handle_by_name_from_root("Server");
+                menu.start_as_client = ui.find_handle_by_name_from_root("Client");
+                menu.main_menu = ui.find_handle_by_name_from_root("MainMenu");
+                menu.settings = ui.find_handle_by_name_from_root("Settings");
+                menu.main_menu_root = ui.find_handle_by_name_from_root("MainMenuRoot");
+                let server_menu = ui.find_handle_by_name_from_root("ServerMenu");
                 menu.server_menu = ServerMenu::new(server_menu, menu.main_menu, ui);
             },
         );

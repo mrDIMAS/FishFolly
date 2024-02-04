@@ -5,6 +5,7 @@ use crate::{
     actor::{Actor, ActorMessage},
     Game,
 };
+use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{
         math::aabb::AxisAlignedBoundingBox, pool::Handle, reflect::prelude::*,

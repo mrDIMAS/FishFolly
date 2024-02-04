@@ -7,6 +7,7 @@ use crate::{
     player::Player,
     start::StartPoint,
 };
+use fyrox::graph::SceneGraph;
 use fyrox::scene::sound::{Sound, Status};
 use fyrox::{
     core::{
