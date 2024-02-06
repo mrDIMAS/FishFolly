@@ -5,6 +5,7 @@ use crate::{
     net::ClientMessage,
     CameraController, Event, Game,
 };
+use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},

@@ -1,6 +1,7 @@
 //! Object marker components.
 
 use crate::{utils, Game};
+use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{
         algebra::Vector3, math::Vector3Ext, pool::Handle, pool::MultiBorrowContext,
