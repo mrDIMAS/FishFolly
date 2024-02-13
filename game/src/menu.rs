@@ -1,5 +1,5 @@
 use crate::{client::Client, server::Server, Game};
-use fyrox::graph::SceneGraph;
+use fyrox::graph::{BaseSceneGraph, SceneGraph};
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
