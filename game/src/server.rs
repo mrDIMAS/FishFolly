@@ -170,6 +170,31 @@ impl Server {
                 }
             }
         }
+
+        let bot_prefab =
+            block_on(ctx.resource_manager.request::<Model>("data/models/bot.rgs")).unwrap();
+
+        // Fill rest places with bots.
+        for i in players_to_spawn..start_points.len() {
+            let ids = bot_prefab.generate_ids();
+
+            if let Some(position) = start_points.get(i) {
+                for connection in self.connections.iter_mut() {
+                    connection
+                        .send_message(&ServerMessage::AddPlayers(vec![PlayerDescriptor {
+                            instance: InstanceDescriptor {
+                                path: "data/models/bot.rgs".into(),
+                                position: *position,
+                                rotation: Default::default(),
+                                velocity: Default::default(),
+                                ids: ids.clone(),
+                            },
+                            is_remote: false,
+                        }]))
+                        .unwrap();
+                }
+            }
+        }
     }
 
     pub fn connections(&self) -> &[NetStream] {
