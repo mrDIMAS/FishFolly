@@ -1,8 +1,10 @@
 use crate::{client::Client, server::Server, Game};
-use fyrox::graph::{BaseSceneGraph, SceneGraph};
+use fyrox::gui::selector::SelectorMessage;
+use fyrox::gui::HorizontalAlignment;
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
+    graph::{BaseSceneGraph, SceneGraph},
     gui::{
         button::ButtonMessage,
         font::Font,
@@ -15,18 +17,26 @@ use fyrox::{
     },
     plugin::PluginContext,
 };
+use std::ffi::OsStr;
+use std::fmt::Debug;
+use std::net::ToSocketAddrs;
 
-pub fn make_player_entry(
+pub fn make_text_widget(
     ctx: &mut BuildContext,
     name: &str,
     resource_manager: &ResourceManager,
 ) -> Handle<UiNode> {
-    TextBuilder::new(WidgetBuilder::new().with_margin(Thickness::uniform(2.0)))
-        .with_vertical_text_alignment(VerticalAlignment::Center)
-        .with_text(name)
-        .with_font(resource_manager.request::<Font>("data/font.ttf"))
-        .with_font_size(28.0)
-        .build(ctx)
+    TextBuilder::new(
+        WidgetBuilder::new()
+            .with_margin(Thickness::uniform(2.0))
+            .with_vertical_alignment(VerticalAlignment::Center),
+    )
+    .with_vertical_text_alignment(VerticalAlignment::Center)
+    .with_horizontal_text_alignment(HorizontalAlignment::Center)
+    .with_text(name)
+    .with_font(resource_manager.request::<Font>("data/font.ttf"))
+    .with_font_size(28.0)
+    .build(ctx)
 }
 
 #[derive(Default)]
@@ -36,7 +46,9 @@ struct ServerMenu {
     back: Handle<UiNode>,
     players_list: Handle<UiNode>,
     start: Handle<UiNode>,
-    server_address: Handle<UiNode>,
+    server_address_input: Handle<UiNode>,
+    server_address: String,
+    level_selector: Handle<UiNode>,
 }
 
 impl ServerMenu {
@@ -47,7 +59,9 @@ impl ServerMenu {
             back: ui.find_handle_by_name_from_root("SVBack"),
             players_list: ui.find_handle_by_name_from_root("SVPlayersList"),
             start: ui.find_handle_by_name_from_root("SVStart"),
-            server_address: ui.find_handle_by_name_from_root("SVServerAddress"),
+            server_address_input: ui.find_handle_by_name_from_root("SVServerAddress"),
+            level_selector: ui.find_handle_by_name_from_root("SVLevelSelector"),
+            server_address: "127.0.0.1:10001".to_string(),
         }
     }
 
@@ -81,6 +95,12 @@ impl ServerMenu {
                 ));
                 *server = None;
             }
+        } else if let Some(TextMessage::Text(text)) = message.data() {
+            if message.destination() == self.server_address_input
+                && message.direction() == MessageDirection::FromWidget
+            {
+                self.server_address = text.clone();
+            }
         }
     }
 
@@ -101,7 +121,7 @@ impl ServerMenu {
                 .connections()
                 .iter()
                 .map(|e| {
-                    make_player_entry(
+                    make_text_widget(
                         &mut ctx.user_interface.build_ctx(),
                         &e.string_peer_address(),
                         ctx.resource_manager,
@@ -129,8 +149,11 @@ pub struct Menu {
     server_menu: ServerMenu,
 }
 
-fn try_connect_to_server() -> Option<Client> {
-    match Client::try_connect(Server::ADDRESS) {
+fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
+where
+    A: ToSocketAddrs + Debug,
+{
+    match Client::try_connect(server_addr) {
         Ok(new_client) => Some(new_client),
         Err(err) => {
             Log::err(format!("Unable to create a client. Reason: {:?}", err));
@@ -198,28 +221,61 @@ impl Menu {
                     false,
                 ));
                 ctx.user_interface.send_message(TextMessage::text(
-                    self.server_menu.server_address,
+                    self.server_menu.server_address_input,
                     MessageDirection::ToWidget,
-                    Server::ADDRESS.to_string(),
+                    Server::LOCALHOST.to_string(),
                 ));
 
+                let mut maps = Vec::new();
+                for entry in walkdir::WalkDir::new("./data/maps") {
+                    let Ok(entry) = entry else {
+                        continue;
+                    };
+
+                    if entry.path().extension() == Some(OsStr::new("rgs")) {
+                        maps.push(make_text_widget(
+                            &mut ctx.user_interface.build_ctx(),
+                            &entry
+                                .path()
+                                .file_stem()
+                                .map(|s| s.to_string_lossy().to_string())
+                                .unwrap_or_default(),
+                            ctx.resource_manager,
+                        ));
+                    }
+                }
+                let has_maps = !maps.is_empty();
+                ctx.user_interface.send_message(SelectorMessage::set_items(
+                    self.server_menu.level_selector,
+                    MessageDirection::ToWidget,
+                    maps,
+                    true,
+                ));
+                if has_maps {
+                    ctx.user_interface.send_message(SelectorMessage::current(
+                        self.server_menu.level_selector,
+                        MessageDirection::ToWidget,
+                        Some(0),
+                    ))
+                }
+
                 // Try to start the server and the client.
-                match Server::new() {
+                match Server::new(&self.server_menu.server_address) {
                     Ok(new_server) => {
                         *server = Some(new_server);
-                        *client = try_connect_to_server();
+                        *client = try_connect_to_server(&self.server_menu.server_address);
                         let server = server.as_mut().unwrap();
                         server.accept_connections();
                     }
                     Err(err) => Log::err(format!("Unable to create a server. Reason: {:?}", err)),
                 }
             } else if message.destination() == self.start_as_client {
-                *client = try_connect_to_server();
+                *client = try_connect_to_server(&self.server_menu.server_address);
             } else if message.destination() == self.single_player {
-                match Server::new() {
+                match Server::new(Server::LOCALHOST) {
                     Ok(new_server) => {
                         *server = Some(new_server);
-                        *client = try_connect_to_server();
+                        *client = try_connect_to_server(Server::LOCALHOST);
                         let server = server.as_mut().unwrap();
                         server.accept_connections();
                         server.start_game();

@@ -1,14 +1,11 @@
-use crate::net::SoundState;
 use crate::{
     net::{
-        ClientMessage, InstanceDescriptor, NodeState, PlayerDescriptor, ServerMessage,
+        ClientMessage, InstanceDescriptor, NodeState, PlayerDescriptor, ServerMessage, SoundState,
         UpdateTickMessage,
     },
     player::Player,
     start::StartPoint,
 };
-use fyrox::graph::SceneGraph;
-use fyrox::scene::sound::{Sound, Status};
 use fyrox::{
     core::{
         futures::executor::block_on,
@@ -17,11 +14,17 @@ use fyrox::{
         pool::Handle,
     },
     fxhash::FxHashMap,
+    graph::SceneGraph,
     plugin::PluginContext,
     resource::model::{Model, ModelResourceExtension},
-    scene::{node::Node, rigidbody::RigidBody, Scene},
+    scene::{
+        node::Node,
+        rigidbody::RigidBody,
+        sound::{Sound, Status},
+        Scene,
+    },
 };
-use std::io;
+use std::{io, net::ToSocketAddrs};
 
 pub struct Server {
     listener: NetListener,
@@ -31,11 +34,11 @@ pub struct Server {
 }
 
 impl Server {
-    pub const ADDRESS: &'static str = "127.0.0.1:10001"; // TODO
+    pub const LOCALHOST: &'static str = "127.0.0.1:10001";
 
-    pub fn new() -> io::Result<Self> {
+    pub fn new<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
         Ok(Self {
-            listener: NetListener::bind(Self::ADDRESS)?,
+            listener: NetListener::bind(addr)?,
             connections: Default::default(),
             previous_node_states: Default::default(),
             previous_sound_states: Default::default(),
@@ -53,7 +56,7 @@ impl Server {
 
     pub fn start_game(&mut self) {
         self.broadcast_message_to_clients(ServerMessage::LoadLevel {
-            path: "data/drake.rgs".into(),
+            path: "data/maps/drake.rgs".into(),
         });
     }
 
