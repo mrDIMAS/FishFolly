@@ -5,6 +5,7 @@ use fyrox::{
     graph::{BaseSceneGraph, SceneGraph},
     gui::{
         button::ButtonMessage,
+        check_box::CheckBoxMessage,
         font::Font,
         list_view::{ListView, ListViewMessage},
         message::{MessageDirection, UiMessage},
@@ -21,18 +22,15 @@ pub fn make_text_widget(
     ctx: &mut BuildContext,
     name: &str,
     resource_manager: &ResourceManager,
+    horizontal_alignment: HorizontalAlignment,
 ) -> Handle<UiNode> {
-    TextBuilder::new(
-        WidgetBuilder::new()
-            .with_margin(Thickness::uniform(2.0))
-            .with_vertical_alignment(VerticalAlignment::Center),
-    )
-    .with_vertical_text_alignment(VerticalAlignment::Center)
-    .with_horizontal_text_alignment(HorizontalAlignment::Center)
-    .with_text(name)
-    .with_font(resource_manager.request::<Font>("data/font.ttf"))
-    .with_font_size(28.0)
-    .build(ctx)
+    TextBuilder::new(WidgetBuilder::new().with_margin(Thickness::uniform(2.0)))
+        .with_vertical_text_alignment(VerticalAlignment::Center)
+        .with_horizontal_text_alignment(horizontal_alignment)
+        .with_text(name)
+        .with_font(resource_manager.request::<Font>("data/font.ttf"))
+        .with_font_size(28.0)
+        .build(ctx)
 }
 
 #[derive(Default)]
@@ -43,6 +41,7 @@ struct ServerMenu {
     players_list: Handle<UiNode>,
     start: Handle<UiNode>,
     server_address_input: Handle<UiNode>,
+    add_bots_check_box: Handle<UiNode>,
     server_address: String,
     level_selector: Handle<UiNode>,
     available_levels: Vec<PathBuf>,
@@ -75,6 +74,7 @@ impl ServerMenu {
                         .map(|s| s.to_string_lossy().to_string())
                         .unwrap_or_default(),
                     resource_manager,
+                    HorizontalAlignment::Center,
                 )
             })
             .collect::<Vec<_>>();
@@ -100,6 +100,7 @@ impl ServerMenu {
             players_list: ui.find_handle_by_name_from_root("SVPlayersList"),
             start: ui.find_handle_by_name_from_root("SVStart"),
             server_address_input: ui.find_handle_by_name_from_root("SVServerAddress"),
+            add_bots_check_box: ui.find_handle_by_name_from_root("SVAddBotsCheckBox"),
             level_selector,
             server_address: "127.0.0.1:10001".to_string(),
             selected_level: available_levels.first().map(|_| 0),
@@ -151,6 +152,14 @@ impl ServerMenu {
             {
                 self.selected_level = *selected;
             }
+        } else if let Some(CheckBoxMessage::Check(Some(value))) = message.data() {
+            if message.destination() == self.add_bots_check_box
+                && message.direction() == MessageDirection::FromWidget
+            {
+                if let Some(server) = server {
+                    server.add_bots = *value;
+                }
+            }
         }
     }
 
@@ -170,11 +179,17 @@ impl ServerMenu {
             let new_player_entries = server
                 .connections()
                 .iter()
-                .map(|e| {
+                .enumerate()
+                .map(|(n, e)| {
                     make_text_widget(
                         &mut ctx.user_interface.build_ctx(),
-                        &e.string_peer_address(),
+                        &format!(
+                            "{} - {}",
+                            e.string_peer_address(),
+                            if n == 0 { "Host" } else { "Peer" }
+                        ),
                         ctx.resource_manager,
+                        HorizontalAlignment::Left,
                     )
                 })
                 .collect::<Vec<_>>();
