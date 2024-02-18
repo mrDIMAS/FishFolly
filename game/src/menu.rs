@@ -1,6 +1,4 @@
 use crate::{client::Client, server::Server, Game};
-use fyrox::gui::selector::SelectorMessage;
-use fyrox::gui::HorizontalAlignment;
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
@@ -10,16 +8,14 @@ use fyrox::{
         font::Font,
         list_view::{ListView, ListViewMessage},
         message::{MessageDirection, UiMessage},
-        text::TextBuilder,
-        text::TextMessage,
+        selector::SelectorMessage,
+        text::{TextBuilder, TextMessage},
         widget::{WidgetBuilder, WidgetMessage},
-        BuildContext, Thickness, UiNode, UserInterface, VerticalAlignment,
+        BuildContext, HorizontalAlignment, Thickness, UiNode, UserInterface, VerticalAlignment,
     },
     plugin::PluginContext,
 };
-use std::ffi::OsStr;
-use std::fmt::Debug;
-use std::net::ToSocketAddrs;
+use std::{ffi::OsStr, fmt::Debug, net::ToSocketAddrs, path::PathBuf};
 
 pub fn make_text_widget(
     ctx: &mut BuildContext,
@@ -49,10 +45,54 @@ struct ServerMenu {
     server_address_input: Handle<UiNode>,
     server_address: String,
     level_selector: Handle<UiNode>,
+    available_levels: Vec<PathBuf>,
+    selected_level: Option<usize>,
 }
 
 impl ServerMenu {
-    pub fn new(self_handle: Handle<UiNode>, main_menu: Handle<UiNode>, ui: &UserInterface) -> Self {
+    pub fn new(
+        self_handle: Handle<UiNode>,
+        main_menu: Handle<UiNode>,
+        ui: &mut UserInterface,
+        resource_manager: &ResourceManager,
+    ) -> Self {
+        let level_selector = ui.find_handle_by_name_from_root("SVLevelSelector");
+
+        let available_levels = walkdir::WalkDir::new("./data/maps")
+            .into_iter()
+            .filter_map(|result| result.ok())
+            .filter(|entry| entry.path().extension() == Some(OsStr::new("rgs")))
+            .map(|entry| entry.path().to_path_buf())
+            .collect::<Vec<_>>();
+
+        let levels_list_items = available_levels
+            .iter()
+            .map(|path| {
+                make_text_widget(
+                    &mut ui.build_ctx(),
+                    &path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_default(),
+                    resource_manager,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        if !levels_list_items.is_empty() {
+            ui.send_message(SelectorMessage::current(
+                level_selector,
+                MessageDirection::ToWidget,
+                Some(0),
+            ))
+        }
+        ui.send_message(SelectorMessage::set_items(
+            level_selector,
+            MessageDirection::ToWidget,
+            levels_list_items,
+            true,
+        ));
+
         Self {
             self_handle,
             main_menu,
@@ -60,8 +100,10 @@ impl ServerMenu {
             players_list: ui.find_handle_by_name_from_root("SVPlayersList"),
             start: ui.find_handle_by_name_from_root("SVStart"),
             server_address_input: ui.find_handle_by_name_from_root("SVServerAddress"),
-            level_selector: ui.find_handle_by_name_from_root("SVLevelSelector"),
+            level_selector,
             server_address: "127.0.0.1:10001".to_string(),
+            selected_level: available_levels.first().map(|_| 0),
+            available_levels,
         }
     }
 
@@ -79,8 +121,10 @@ impl ServerMenu {
                     false,
                 ));
 
-                if let Some(server) = server.as_mut() {
-                    server.start_game();
+                if let Some(selected_level) = self.selected_level {
+                    if let Some(server) = server.as_mut() {
+                        server.start_game(&self.available_levels[selected_level]);
+                    }
                 }
             } else if message.destination() == self.back {
                 ctx.user_interface.send_message(WidgetMessage::visibility(
@@ -100,6 +144,12 @@ impl ServerMenu {
                 && message.direction() == MessageDirection::FromWidget
             {
                 self.server_address = text.clone();
+            }
+        } else if let Some(SelectorMessage::Current(selected)) = message.data() {
+            if message.destination() == self.level_selector
+                && message.direction() == MessageDirection::FromWidget
+            {
+                self.selected_level = *selected;
             }
         }
     }
@@ -139,7 +189,6 @@ impl ServerMenu {
 
 pub struct Menu {
     debug_text: Handle<UiNode>,
-    single_player: Handle<UiNode>,
     settings: Handle<UiNode>,
     exit: Handle<UiNode>,
     start_as_server: Handle<UiNode>,
@@ -170,7 +219,6 @@ impl Menu {
                 *ctx.user_interface = result.unwrap();
                 let menu = &mut game.menu;
                 let ui = &mut *ctx.user_interface;
-                menu.single_player = ui.find_handle_by_name_from_root("SinglePlayer");
                 menu.exit = ui.find_handle_by_name_from_root("Exit");
                 menu.debug_text = ui.find_handle_by_name_from_root("DebugText");
                 menu.start_as_server = ui.find_handle_by_name_from_root("Server");
@@ -179,12 +227,12 @@ impl Menu {
                 menu.settings = ui.find_handle_by_name_from_root("Settings");
                 menu.main_menu_root = ui.find_handle_by_name_from_root("MainMenuRoot");
                 let server_menu = ui.find_handle_by_name_from_root("ServerMenu");
-                menu.server_menu = ServerMenu::new(server_menu, menu.main_menu, ui);
+                menu.server_menu =
+                    ServerMenu::new(server_menu, menu.main_menu, ui, ctx.resource_manager);
             },
         );
         Self {
             debug_text: Default::default(),
-            single_player: Default::default(),
             settings: Default::default(),
             exit: Default::default(),
             start_as_server: Default::default(),
@@ -226,39 +274,6 @@ impl Menu {
                     Server::LOCALHOST.to_string(),
                 ));
 
-                let mut maps = Vec::new();
-                for entry in walkdir::WalkDir::new("./data/maps") {
-                    let Ok(entry) = entry else {
-                        continue;
-                    };
-
-                    if entry.path().extension() == Some(OsStr::new("rgs")) {
-                        maps.push(make_text_widget(
-                            &mut ctx.user_interface.build_ctx(),
-                            &entry
-                                .path()
-                                .file_stem()
-                                .map(|s| s.to_string_lossy().to_string())
-                                .unwrap_or_default(),
-                            ctx.resource_manager,
-                        ));
-                    }
-                }
-                let has_maps = !maps.is_empty();
-                ctx.user_interface.send_message(SelectorMessage::set_items(
-                    self.server_menu.level_selector,
-                    MessageDirection::ToWidget,
-                    maps,
-                    true,
-                ));
-                if has_maps {
-                    ctx.user_interface.send_message(SelectorMessage::current(
-                        self.server_menu.level_selector,
-                        MessageDirection::ToWidget,
-                        Some(0),
-                    ))
-                }
-
                 // Try to start the server and the client.
                 match Server::new(&self.server_menu.server_address) {
                     Ok(new_server) => {
@@ -271,17 +286,6 @@ impl Menu {
                 }
             } else if message.destination() == self.start_as_client {
                 *client = try_connect_to_server(&self.server_menu.server_address);
-            } else if message.destination() == self.single_player {
-                match Server::new(Server::LOCALHOST) {
-                    Ok(new_server) => {
-                        *server = Some(new_server);
-                        *client = try_connect_to_server(Server::LOCALHOST);
-                        let server = server.as_mut().unwrap();
-                        server.accept_connections();
-                        server.start_game();
-                    }
-                    Err(err) => Log::err(format!("Unable to create a server. Reason: {:?}", err)),
-                }
             }
         }
     }

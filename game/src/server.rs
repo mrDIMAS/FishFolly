@@ -24,7 +24,7 @@ use fyrox::{
         Scene,
     },
 };
-use std::{io, net::ToSocketAddrs};
+use std::{io, net::ToSocketAddrs, path::Path};
 
 pub struct Server {
     listener: NetListener,
@@ -54,9 +54,9 @@ impl Server {
         }
     }
 
-    pub fn start_game(&mut self) {
+    pub fn start_game(&mut self, path: &Path) {
         self.broadcast_message_to_clients(ServerMessage::LoadLevel {
-            path: "data/maps/drake.rgs".into(),
+            path: path.to_path_buf(),
         });
     }
 
