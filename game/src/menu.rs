@@ -1,7 +1,8 @@
-use crate::{client::Client, server::Server, Game};
+use crate::{client::Client, server::Server};
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
+    engine::GraphicsContext,
     graph::{BaseSceneGraph, SceneGraph},
     gui::{
         button::ButtonMessage,
@@ -210,6 +211,7 @@ pub struct Menu {
     start_as_client: Handle<UiNode>,
     main_menu: Handle<UiNode>,
     main_menu_root: Handle<UiNode>,
+    background: Handle<UiNode>,
     server_menu: ServerMenu,
 }
 
@@ -228,33 +230,19 @@ where
 
 impl Menu {
     pub fn new(ctx: &mut PluginContext) -> Self {
-        ctx.task_pool.spawn_plugin_task(
-            UserInterface::load_from_file("data/menu.ui", ctx.resource_manager.clone()),
-            |result, game: &mut Game, ctx| {
-                *ctx.user_interface = result.unwrap();
-                let menu = &mut game.menu;
-                let ui = &mut *ctx.user_interface;
-                menu.exit = ui.find_handle_by_name_from_root("Exit");
-                menu.debug_text = ui.find_handle_by_name_from_root("DebugText");
-                menu.start_as_server = ui.find_handle_by_name_from_root("Server");
-                menu.start_as_client = ui.find_handle_by_name_from_root("Client");
-                menu.main_menu = ui.find_handle_by_name_from_root("MainMenu");
-                menu.settings = ui.find_handle_by_name_from_root("Settings");
-                menu.main_menu_root = ui.find_handle_by_name_from_root("MainMenuRoot");
-                let server_menu = ui.find_handle_by_name_from_root("ServerMenu");
-                menu.server_menu =
-                    ServerMenu::new(server_menu, menu.main_menu, ui, ctx.resource_manager);
-            },
-        );
+        let ui = &mut *ctx.user_interface;
+        let main_menu = ui.find_handle_by_name_from_root("MainMenu");
+        let server_menu = ui.find_handle_by_name_from_root("ServerMenu");
         Self {
-            debug_text: Default::default(),
-            settings: Default::default(),
-            exit: Default::default(),
-            start_as_server: Default::default(),
-            start_as_client: Default::default(),
-            main_menu: Default::default(),
-            main_menu_root: Default::default(),
-            server_menu: Default::default(),
+            debug_text: ui.find_handle_by_name_from_root("DebugText"),
+            settings: ui.find_handle_by_name_from_root("Settings"),
+            exit: ui.find_handle_by_name_from_root("Exit"),
+            start_as_server: ui.find_handle_by_name_from_root("Server"),
+            start_as_client: ui.find_handle_by_name_from_root("Client"),
+            main_menu,
+            main_menu_root: ui.find_handle_by_name_from_root("MainMenuRoot"),
+            background: ui.find_handle_by_name_from_root("Background"),
+            server_menu: ServerMenu::new(server_menu, main_menu, ui, ctx.resource_manager),
         }
     }
 
@@ -273,16 +261,16 @@ impl Menu {
                     window_target.exit();
                 }
             } else if message.destination() == self.start_as_server {
-                ctx.user_interface.send_message(WidgetMessage::visibility(
-                    self.server_menu.self_handle,
-                    MessageDirection::ToWidget,
-                    true,
-                ));
-                ctx.user_interface.send_message(WidgetMessage::visibility(
-                    self.main_menu,
-                    MessageDirection::ToWidget,
-                    false,
-                ));
+                for (widget, visibility) in [
+                    (self.server_menu.self_handle, true),
+                    (self.main_menu, false),
+                ] {
+                    ctx.user_interface.send_message(WidgetMessage::visibility(
+                        widget,
+                        MessageDirection::ToWidget,
+                        visibility,
+                    ));
+                }
                 ctx.user_interface.send_message(TextMessage::text(
                     self.server_menu.server_address_input,
                     MessageDirection::ToWidget,
@@ -313,16 +301,32 @@ impl Menu {
         ));
     }
 
-    pub fn switch_main_menu_visibility(&self, ui: &UserInterface) {
+    pub fn switch_visibility(&self, ui: &UserInterface, is_client_running: bool) {
         let is_visible = ui.node(self.main_menu_root).is_globally_visible();
-        ui.send_message(WidgetMessage::visibility(
-            self.main_menu_root,
-            MessageDirection::ToWidget,
-            !is_visible,
-        ));
+        for (widget, visibility) in [
+            (self.main_menu_root, !is_visible),
+            (self.main_menu, !is_visible),
+            (self.server_menu.self_handle, false),
+            (self.background, !is_client_running),
+        ] {
+            ui.send_message(WidgetMessage::visibility(
+                widget,
+                MessageDirection::ToWidget,
+                visibility,
+            ));
+        }
     }
 
     pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>) {
-        self.server_menu.update(ctx, server)
+        self.server_menu.update(ctx, server);
+
+        if let GraphicsContext::Initialized(graphics_context) = ctx.graphics_context {
+            let fps = graphics_context.renderer.get_statistics().frames_per_second;
+            ctx.user_interface.send_message(TextMessage::text(
+                self.debug_text,
+                MessageDirection::ToWidget,
+                format!("FPS: {fps}"),
+            ));
+        }
     }
 }

@@ -7,7 +7,7 @@ use crate::{
 use fyrox::{
     core::{log::Log, pool::Handle},
     event::{ElementState, Event, WindowEvent},
-    gui::message::UiMessage,
+    gui::{message::UiMessage, UserInterface},
     keyboard::{KeyCode, PhysicalKey},
     plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
     renderer::QualitySettings,
@@ -41,7 +41,7 @@ pub struct DebugSettings {
 }
 
 pub struct Game {
-    menu: Menu,
+    menu: Option<Menu>,
     pub level: Level,
     pub debug_settings: DebugSettings,
     server: Option<Server>,
@@ -76,11 +76,22 @@ impl PluginConstructor for GameConstructor {
 }
 
 impl Game {
-    fn new(_override_scene: Option<&str>, mut context: PluginContext) -> Self {
+    fn new(_override_scene: Option<&str>, ctx: PluginContext) -> Self {
         Log::info("Game started!");
 
+        ctx.task_pool.spawn_plugin_task(
+            UserInterface::load_from_file("data/menu.ui", ctx.resource_manager.clone()),
+            |result, game: &mut Game, ctx| match result {
+                Ok(menu) => {
+                    *ctx.user_interface = menu;
+                    game.menu = Some(Menu::new(ctx));
+                }
+                Err(e) => Log::err(format!("Unable to load main menu! Reason: {:?}", e)),
+            },
+        );
+
         Self {
-            menu: Menu::new(&mut context),
+            menu: None,
             level: Default::default(),
             debug_settings: Default::default(),
             server: None,
@@ -118,7 +129,9 @@ impl Plugin for Game {
             }
         }
 
-        self.menu.update(ctx, &self.server);
+        if let Some(menu) = self.menu.as_mut() {
+            menu.update(ctx, &self.server);
+        }
     }
 
     fn on_os_event(&mut self, event: &Event<()>, ctx: PluginContext) {
@@ -141,7 +154,9 @@ impl Plugin for Game {
                                 !self.debug_settings.disable_ragdoll
                         }
                         KeyCode::Escape => {
-                            self.menu.switch_main_menu_visibility(ctx.user_interface);
+                            if let Some(menu) = self.menu.as_ref() {
+                                menu.switch_visibility(ctx.user_interface, self.client.is_some());
+                            }
                         }
                         _ => (),
                     }
@@ -170,8 +185,9 @@ impl Plugin for Game {
     }
 
     fn on_ui_message(&mut self, context: &mut PluginContext, message: &UiMessage) {
-        self.menu
-            .handle_ui_message(context, message, &mut self.server, &mut self.client);
+        if let Some(menu) = self.menu.as_mut() {
+            menu.handle_ui_message(context, message, &mut self.server, &mut self.client);
+        }
     }
 
     fn on_scene_begin_loading(&mut self, _path: &Path, context: &mut PluginContext) {
@@ -192,8 +208,9 @@ impl Plugin for Game {
             ..Default::default()
         };
 
-        self.menu
-            .set_main_menu_visibility(ctx.user_interface, false);
+        if let Some(menu) = self.menu.as_ref() {
+            menu.set_main_menu_visibility(ctx.user_interface, false);
+        }
         if let Some(server) = self.server.as_mut() {
             server.on_scene_loaded(scene, ctx);
         }
