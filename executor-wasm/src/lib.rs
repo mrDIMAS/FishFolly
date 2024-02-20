@@ -53,6 +53,7 @@ pub fn main() {
         GraphicsContextParams {
             window_attributes,
             vsync: false,
+            msaa_sample_count: None,
         },
     );
     executor.add_plugin_constructor(GameConstructor);
