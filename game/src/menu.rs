@@ -16,6 +16,7 @@ use fyrox::{
         BuildContext, HorizontalAlignment, Thickness, UiNode, UserInterface, VerticalAlignment,
     },
     plugin::PluginContext,
+    renderer::QualitySettings,
 };
 use std::{ffi::OsStr, fmt::Debug, net::ToSocketAddrs, path::PathBuf};
 
@@ -32,6 +33,16 @@ pub fn make_text_widget(
         .with_font(resource_manager.request::<Font>("data/font.ttf"))
         .with_font_size(28.0)
         .build(ctx)
+}
+
+fn set_visibility(ui: &UserInterface, pairs: &[(Handle<UiNode>, bool)]) {
+    for (widget, visibility) in pairs {
+        ui.send_message(WidgetMessage::visibility(
+            *widget,
+            MessageDirection::ToWidget,
+            *visibility,
+        ));
+    }
 }
 
 #[derive(Default)]
@@ -203,6 +214,86 @@ impl ServerMenu {
     }
 }
 
+pub struct SettingsMenu {
+    menu: Handle<UiNode>,
+    graphics_quality: Handle<UiNode>,
+    sound_volume: Handle<UiNode>,
+    music_volume: Handle<UiNode>,
+    back: Handle<UiNode>,
+    reset: Handle<UiNode>,
+    graphics_presets: Vec<(String, QualitySettings)>,
+}
+
+impl SettingsMenu {
+    pub fn new(ui: &mut UserInterface, resource_manager: &ResourceManager) -> Self {
+        let graphics_presets = vec![
+            ("Low".to_string(), QualitySettings::low()),
+            ("Medium".to_string(), QualitySettings::medium()),
+            ("High".to_string(), QualitySettings::high()),
+            ("Ultra".to_string(), QualitySettings::ultra()),
+        ];
+
+        let items = graphics_presets
+            .iter()
+            .map(|(name, _)| {
+                make_text_widget(
+                    &mut ui.build_ctx(),
+                    name,
+                    resource_manager,
+                    HorizontalAlignment::Center,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let graphics_quality = ui.find_handle_by_name_from_root("SettingsGraphicsQuality");
+
+        ui.send_message(SelectorMessage::set_items(
+            graphics_quality,
+            MessageDirection::ToWidget,
+            items,
+            true,
+        ));
+        ui.send_message(SelectorMessage::current(
+            graphics_quality,
+            MessageDirection::ToWidget,
+            Some(0),
+        ));
+
+        Self {
+            menu: ui.find_handle_by_name_from_root("SettingsMenu"),
+            graphics_quality,
+            sound_volume: ui.find_handle_by_name_from_root("SettingsSoundVolume"),
+            music_volume: ui.find_handle_by_name_from_root("SettingsMusicVolume"),
+            back: ui.find_handle_by_name_from_root("SettingsBack"),
+            reset: ui.find_handle_by_name_from_root("SettingsReset"),
+            graphics_presets,
+        }
+    }
+
+    pub fn handle_ui_message(
+        &self,
+        message: &UiMessage,
+        main_menu: Handle<UiNode>,
+        ui: &UserInterface,
+        graphics_context: &mut GraphicsContext,
+    ) {
+        if let Some(SelectorMessage::Current(Some(index))) = message.data() {
+            if message.destination() == self.graphics_quality {
+                if let GraphicsContext::Initialized(graphics_context) = graphics_context {
+                    if let Some((_, settings)) = self.graphics_presets.get(*index) {
+                        Log::verify(graphics_context.renderer.set_quality_settings(settings));
+                    }
+                }
+            }
+        } else if let Some(ButtonMessage::Click) = message.data() {
+            if message.destination() == self.back {
+                set_visibility(ui, &[(self.menu, false), (main_menu, true)]);
+            } else if message.destination() == self.reset {
+            }
+        }
+    }
+}
+
 pub struct Menu {
     debug_text: Handle<UiNode>,
     settings: Handle<UiNode>,
@@ -213,6 +304,7 @@ pub struct Menu {
     main_menu_root: Handle<UiNode>,
     background: Handle<UiNode>,
     server_menu: ServerMenu,
+    settings_menu: SettingsMenu,
 }
 
 fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
@@ -243,6 +335,7 @@ impl Menu {
             main_menu_root: ui.find_handle_by_name_from_root("MainMenuRoot"),
             background: ui.find_handle_by_name_from_root("Background"),
             server_menu: ServerMenu::new(server_menu, main_menu, ui, ctx.resource_manager),
+            settings_menu: SettingsMenu::new(ui, ctx.resource_manager),
         }
     }
 
@@ -254,6 +347,12 @@ impl Menu {
         client: &mut Option<Client>,
     ) {
         self.server_menu.handle_ui_message(ctx, message, server);
+        self.settings_menu.handle_ui_message(
+            message,
+            self.main_menu,
+            ctx.user_interface,
+            ctx.graphics_context,
+        );
 
         if let Some(ButtonMessage::Click) = message.data() {
             if message.destination() == self.exit {
@@ -261,16 +360,13 @@ impl Menu {
                     window_target.exit();
                 }
             } else if message.destination() == self.start_as_server {
-                for (widget, visibility) in [
-                    (self.server_menu.self_handle, true),
-                    (self.main_menu, false),
-                ] {
-                    ctx.user_interface.send_message(WidgetMessage::visibility(
-                        widget,
-                        MessageDirection::ToWidget,
-                        visibility,
-                    ));
-                }
+                set_visibility(
+                    ctx.user_interface,
+                    &[
+                        (self.server_menu.self_handle, true),
+                        (self.main_menu, false),
+                    ],
+                );
                 ctx.user_interface.send_message(TextMessage::text(
                     self.server_menu.server_address_input,
                     MessageDirection::ToWidget,
@@ -289,6 +385,11 @@ impl Menu {
                 }
             } else if message.destination() == self.start_as_client {
                 *client = try_connect_to_server(&self.server_menu.server_address);
+            } else if message.destination() == self.settings {
+                set_visibility(
+                    ctx.user_interface,
+                    &[(self.settings_menu.menu, true), (self.main_menu, false)],
+                );
             }
         }
     }
@@ -303,18 +404,15 @@ impl Menu {
 
     pub fn switch_visibility(&self, ui: &UserInterface, is_client_running: bool) {
         let is_visible = ui.node(self.main_menu_root).is_globally_visible();
-        for (widget, visibility) in [
-            (self.main_menu_root, !is_visible),
-            (self.main_menu, !is_visible),
-            (self.server_menu.self_handle, false),
-            (self.background, !is_client_running),
-        ] {
-            ui.send_message(WidgetMessage::visibility(
-                widget,
-                MessageDirection::ToWidget,
-                visibility,
-            ));
-        }
+        set_visibility(
+            ui,
+            &[
+                (self.main_menu_root, !is_visible),
+                (self.main_menu, !is_visible),
+                (self.server_menu.self_handle, false),
+                (self.background, !is_client_running),
+            ],
+        );
     }
 
     pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>) {
