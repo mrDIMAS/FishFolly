@@ -41,7 +41,7 @@ pub struct DebugSettings {
 }
 
 pub struct Game {
-    menu: Option<Menu>,
+    pub menu: Option<Menu>,
     pub level: Level,
     pub debug_settings: DebugSettings,
     server: Option<Server>,
@@ -185,6 +185,7 @@ impl Plugin for Game {
                 &mut self.server,
                 &mut self.client,
                 &mut self.settings,
+                self.level.scene,
             );
         }
     }
@@ -202,7 +203,7 @@ impl Plugin for Game {
         _data: &[u8],
         ctx: &mut PluginContext,
     ) {
-        self.settings.read().apply_sound_volume(ctx, scene);
+        self.settings.read().apply_sound_volume(&ctx.scenes[scene]);
 
         self.level = Level {
             scene,

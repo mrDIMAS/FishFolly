@@ -1,4 +1,5 @@
 use crate::{client::Client, server::Server, settings::Settings};
+use fyrox::scene::{Scene, SceneContainer};
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
@@ -289,6 +290,8 @@ impl SettingsMenu {
         ui: &UserInterface,
         graphics_context: &mut GraphicsContext,
         settings: &mut Settings,
+        scenes: &SceneContainer,
+        game_scene: Handle<Scene>,
     ) {
         if let Some(SelectorMessage::Current(Some(index))) = message.data() {
             if message.destination() == self.graphics_quality {
@@ -305,6 +308,9 @@ impl SettingsMenu {
             if message.destination() == self.sound_volume {
                 let mut settings = settings.write();
                 settings.sound_volume = *value;
+                if let Some(scene) = scenes.try_get(game_scene) {
+                    settings.apply_sound_volume(scene);
+                }
             } else if message.destination() == self.music_volume {
                 settings.write().music_volume = *value;
             }
@@ -364,6 +370,7 @@ impl Menu {
         server: &mut Option<Server>,
         client: &mut Option<Client>,
         settings: &mut Settings,
+        game_scene: Handle<Scene>,
     ) {
         self.server_menu.handle_ui_message(ctx, message, server);
         self.settings_menu.handle_ui_message(
@@ -372,6 +379,8 @@ impl Menu {
             ctx.user_interface,
             ctx.graphics_context,
             settings,
+            ctx.scenes,
+            game_scene,
         );
 
         if let Some(ButtonMessage::Click) = message.data() {
@@ -433,6 +442,12 @@ impl Menu {
                 (self.background, !is_client_running),
             ],
         );
+    }
+
+    pub fn is_active(&self, ui: &UserInterface) -> bool {
+        ui.try_get(self.main_menu_root)
+            .map(|n| n.is_globally_visible())
+            .unwrap_or_default()
     }
 
     pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>) {

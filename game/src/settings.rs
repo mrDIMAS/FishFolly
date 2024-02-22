@@ -1,10 +1,4 @@
-use fyrox::{
-    core::{log::Log, pool::Handle},
-    engine::GraphicsContext,
-    plugin::PluginContext,
-    renderer::QualitySettings,
-    scene::Scene,
-};
+use fyrox::{core::log::Log, engine::GraphicsContext, renderer::QualitySettings, scene::Scene};
 use ron::ser::to_string_pretty;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -132,8 +126,8 @@ impl SettingsData {
         Default::default()
     }
 
-    pub fn apply_sound_volume(&self, ctx: &mut PluginContext, scene: Handle<Scene>) {
-        ctx.scenes[scene]
+    pub fn apply_sound_volume(&self, scene: &Scene) {
+        scene
             .graph
             .sound_context
             .state()

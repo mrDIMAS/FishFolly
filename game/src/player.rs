@@ -167,7 +167,12 @@ impl ScriptTrait for Player {
     fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get_mut::<Game>();
 
-        if self.actor.is_remote || game.level.leaderboard.is_finished(ctx.handle) {
+        if self.actor.is_remote
+            || game
+                .menu
+                .as_ref()
+                .map_or(false, |menu| menu.is_active(ctx.user_interface))
+        {
             return;
         }
 
@@ -176,11 +181,13 @@ impl ScriptTrait for Player {
             .input_controller
             .on_os_event(event, &self.pitch_range, ctx.dt)
         {
-            if let Some(client) = game.client.as_mut() {
-                client.send_message_to_server(ClientMessage::Input {
-                    player: this.instance_id(),
-                    input_state: self.input_controller.clone(),
-                })
+            if !game.level.leaderboard.is_finished(ctx.handle) {
+                if let Some(client) = game.client.as_mut() {
+                    client.send_message_to_server(ClientMessage::Input {
+                        player: this.instance_id(),
+                        input_state: self.input_controller.clone(),
+                    })
+                }
             }
         }
     }
@@ -188,12 +195,9 @@ impl ScriptTrait for Player {
     fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get_mut::<Game>();
 
-        if game.is_client() || game.level.leaderboard.is_finished(ctx.handle) {
+        if game.is_client() {
             return;
         }
-
-        let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
-        let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph);
 
         if let Some(camera_controller) = ctx
             .scene
@@ -203,6 +207,13 @@ impl ScriptTrait for Player {
             camera_controller.pitch = self.input_controller.pitch;
             camera_controller.yaw = self.input_controller.yaw;
         }
+
+        if game.level.leaderboard.is_finished(ctx.handle) {
+            return;
+        }
+
+        let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
+        let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph);
 
         self.actor.target_desired_velocity = Vector3::default();
 
