@@ -1,4 +1,4 @@
-use crate::{client::Client, server::Server};
+use crate::{client::Client, server::Server, settings::Settings};
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
@@ -10,13 +10,13 @@ use fyrox::{
         font::Font,
         list_view::{ListView, ListViewMessage},
         message::{MessageDirection, UiMessage},
+        scroll_bar::ScrollBarMessage,
         selector::SelectorMessage,
         text::{TextBuilder, TextMessage},
         widget::{WidgetBuilder, WidgetMessage},
         BuildContext, HorizontalAlignment, Thickness, UiNode, UserInterface, VerticalAlignment,
     },
     plugin::PluginContext,
-    renderer::QualitySettings,
 };
 use std::{ffi::OsStr, fmt::Debug, net::ToSocketAddrs, path::PathBuf};
 
@@ -221,19 +221,18 @@ pub struct SettingsMenu {
     music_volume: Handle<UiNode>,
     back: Handle<UiNode>,
     reset: Handle<UiNode>,
-    graphics_presets: Vec<(String, QualitySettings)>,
 }
 
 impl SettingsMenu {
-    pub fn new(ui: &mut UserInterface, resource_manager: &ResourceManager) -> Self {
-        let graphics_presets = vec![
-            ("Low".to_string(), QualitySettings::low()),
-            ("Medium".to_string(), QualitySettings::medium()),
-            ("High".to_string(), QualitySettings::high()),
-            ("Ultra".to_string(), QualitySettings::ultra()),
-        ];
+    pub fn new(
+        ui: &mut UserInterface,
+        resource_manager: &ResourceManager,
+        settings: &Settings,
+    ) -> Self {
+        let settings = settings.read();
 
-        let items = graphics_presets
+        let items = settings
+            .graphics_presets
             .iter()
             .map(|(name, _)| {
                 make_text_widget(
@@ -256,17 +255,30 @@ impl SettingsMenu {
         ui.send_message(SelectorMessage::current(
             graphics_quality,
             MessageDirection::ToWidget,
-            Some(0),
+            Some(settings.graphics_quality),
+        ));
+
+        let sound_volume = ui.find_handle_by_name_from_root("SettingsSoundVolume");
+        ui.send_message(ScrollBarMessage::value(
+            sound_volume,
+            MessageDirection::ToWidget,
+            settings.sound_volume,
+        ));
+
+        let music_volume = ui.find_handle_by_name_from_root("SettingsMusicVolume");
+        ui.send_message(ScrollBarMessage::value(
+            music_volume,
+            MessageDirection::ToWidget,
+            settings.music_volume,
         ));
 
         Self {
             menu: ui.find_handle_by_name_from_root("SettingsMenu"),
             graphics_quality,
-            sound_volume: ui.find_handle_by_name_from_root("SettingsSoundVolume"),
-            music_volume: ui.find_handle_by_name_from_root("SettingsMusicVolume"),
+            sound_volume,
+            music_volume,
             back: ui.find_handle_by_name_from_root("SettingsBack"),
             reset: ui.find_handle_by_name_from_root("SettingsReset"),
-            graphics_presets,
         }
     }
 
@@ -276,19 +288,25 @@ impl SettingsMenu {
         main_menu: Handle<UiNode>,
         ui: &UserInterface,
         graphics_context: &mut GraphicsContext,
+        settings: &mut Settings,
     ) {
         if let Some(SelectorMessage::Current(Some(index))) = message.data() {
             if message.destination() == self.graphics_quality {
-                if let GraphicsContext::Initialized(graphics_context) = graphics_context {
-                    if let Some((_, settings)) = self.graphics_presets.get(*index) {
-                        Log::verify(graphics_context.renderer.set_quality_settings(settings));
-                    }
-                }
+                let mut settings = settings.write();
+                settings.graphics_quality = *index;
+                settings.apply_graphics_settings(graphics_context);
             }
         } else if let Some(ButtonMessage::Click) = message.data() {
             if message.destination() == self.back {
                 set_visibility(ui, &[(self.menu, false), (main_menu, true)]);
             } else if message.destination() == self.reset {
+            }
+        } else if let Some(ScrollBarMessage::Value(value)) = message.data() {
+            if message.destination() == self.sound_volume {
+                let mut settings = settings.write();
+                settings.sound_volume = *value;
+            } else if message.destination() == self.music_volume {
+                settings.write().music_volume = *value;
             }
         }
     }
@@ -321,7 +339,7 @@ where
 }
 
 impl Menu {
-    pub fn new(ctx: &mut PluginContext) -> Self {
+    pub fn new(ctx: &mut PluginContext, settings: &Settings) -> Self {
         let ui = &mut *ctx.user_interface;
         let main_menu = ui.find_handle_by_name_from_root("MainMenu");
         let server_menu = ui.find_handle_by_name_from_root("ServerMenu");
@@ -335,7 +353,7 @@ impl Menu {
             main_menu_root: ui.find_handle_by_name_from_root("MainMenuRoot"),
             background: ui.find_handle_by_name_from_root("Background"),
             server_menu: ServerMenu::new(server_menu, main_menu, ui, ctx.resource_manager),
-            settings_menu: SettingsMenu::new(ui, ctx.resource_manager),
+            settings_menu: SettingsMenu::new(ui, ctx.resource_manager, settings),
         }
     }
 
@@ -345,6 +363,7 @@ impl Menu {
         message: &UiMessage,
         server: &mut Option<Server>,
         client: &mut Option<Client>,
+        settings: &mut Settings,
     ) {
         self.server_menu.handle_ui_message(ctx, message, server);
         self.settings_menu.handle_ui_message(
@@ -352,6 +371,7 @@ impl Menu {
             self.main_menu,
             ctx.user_interface,
             ctx.graphics_context,
+            settings,
         );
 
         if let Some(ButtonMessage::Click) = message.data() {

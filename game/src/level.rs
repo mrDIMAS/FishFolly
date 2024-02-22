@@ -31,10 +31,7 @@ impl Leaderboard {
             .min_by_key(|(_, v)| v.position)
             .map(|e| e.1.position)
             .unwrap_or_default();
-        let entry = self
-            .entries
-            .entry(actor)
-            .or_insert_with(|| LeaderBoardEntry::default());
+        let entry = self.entries.entry(actor).or_default();
         entry.position = prev_position + 1;
         entry.finished = true;
     }

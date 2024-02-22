@@ -2,7 +2,7 @@
 use crate::{
     bot::Bot, camera::CameraController, cannon::Cannon, client::Client, jumper::Jumper,
     level::Level, menu::Menu, obstacle::RotatorObstacle, player::Player, respawn::Respawner,
-    server::Server, start::StartPoint, target::Target, trigger::Trigger,
+    server::Server, settings::Settings, start::StartPoint, target::Target, trigger::Trigger,
 };
 use fyrox::{
     core::{log::Log, pool::Handle},
@@ -10,7 +10,6 @@ use fyrox::{
     gui::{message::UiMessage, UserInterface},
     keyboard::{KeyCode, PhysicalKey},
     plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
-    renderer::QualitySettings,
     scene::Scene,
 };
 use std::path::Path;
@@ -28,6 +27,7 @@ pub mod obstacle;
 pub mod player;
 pub mod respawn;
 pub mod server;
+pub mod settings;
 pub mod start;
 pub mod target;
 pub mod trigger;
@@ -46,6 +46,7 @@ pub struct Game {
     pub debug_settings: DebugSettings,
     server: Option<Server>,
     client: Option<Client>,
+    settings: Settings,
 }
 
 pub struct GameConstructor;
@@ -84,7 +85,7 @@ impl Game {
             |result, game: &mut Game, ctx| match result {
                 Ok(menu) => {
                     *ctx.user_interface = menu;
-                    game.menu = Some(Menu::new(ctx));
+                    game.menu = Some(Menu::new(ctx, &game.settings));
                 }
                 Err(e) => Log::err(format!("Unable to load main menu! Reason: {:?}", e)),
             },
@@ -96,6 +97,7 @@ impl Game {
             debug_settings: Default::default(),
             server: None,
             client: None,
+            settings: Settings::load(),
         }
     }
 
@@ -165,28 +167,25 @@ impl Plugin for Game {
         }
     }
 
-    fn on_graphics_context_initialized(&mut self, context: PluginContext) {
-        let graphics_context = context.graphics_context.as_initialized_mut();
-
-        graphics_context.window.set_title("Fish Folly");
-
-        let quality_settings = QualitySettings {
-            use_ssao: false,
-            ..Default::default()
-        };
-
-        Log::verify(
-            context
-                .graphics_context
-                .as_initialized_mut()
-                .renderer
-                .set_quality_settings(&quality_settings),
-        );
+    fn on_graphics_context_initialized(&mut self, ctx: PluginContext) {
+        self.settings
+            .read()
+            .apply_graphics_settings(ctx.graphics_context);
+        ctx.graphics_context
+            .as_initialized_mut()
+            .window
+            .set_title("Fish Folly");
     }
 
     fn on_ui_message(&mut self, context: &mut PluginContext, message: &UiMessage) {
         if let Some(menu) = self.menu.as_mut() {
-            menu.handle_ui_message(context, message, &mut self.server, &mut self.client);
+            menu.handle_ui_message(
+                context,
+                message,
+                &mut self.server,
+                &mut self.client,
+                &mut self.settings,
+            );
         }
     }
 
@@ -203,6 +202,8 @@ impl Plugin for Game {
         _data: &[u8],
         ctx: &mut PluginContext,
     ) {
+        self.settings.read().apply_sound_volume(ctx, scene);
+
         self.level = Level {
             scene,
             ..Default::default()
