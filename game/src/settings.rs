@@ -61,6 +61,8 @@ pub struct SettingsData {
     pub sound_volume: f32,
     pub music_volume: f32,
     pub graphics_presets: Vec<(String, QualitySettings)>,
+    pub mouse_sensitivity: f32,
+    pub mouse_smoothness: f32,
 }
 
 impl Default for SettingsData {
@@ -75,6 +77,8 @@ impl Default for SettingsData {
                 ("High".to_string(), QualitySettings::high()),
                 ("Ultra".to_string(), QualitySettings::ultra()),
             ],
+            mouse_sensitivity: 0.5,
+            mouse_smoothness: 0.75,
         }
     }
 }

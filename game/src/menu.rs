@@ -220,6 +220,8 @@ pub struct SettingsMenu {
     graphics_quality: Handle<UiNode>,
     sound_volume: Handle<UiNode>,
     music_volume: Handle<UiNode>,
+    mouse_sens: Handle<UiNode>,
+    mouse_smoothness: Handle<UiNode>,
     back: Handle<UiNode>,
     reset: Handle<UiNode>,
 }
@@ -260,24 +262,29 @@ impl SettingsMenu {
         ));
 
         let sound_volume = ui.find_handle_by_name_from_root("SettingsSoundVolume");
-        ui.send_message(ScrollBarMessage::value(
-            sound_volume,
-            MessageDirection::ToWidget,
-            settings.sound_volume,
-        ));
-
         let music_volume = ui.find_handle_by_name_from_root("SettingsMusicVolume");
-        ui.send_message(ScrollBarMessage::value(
-            music_volume,
-            MessageDirection::ToWidget,
-            settings.music_volume,
-        ));
+        let mouse_sens = ui.find_handle_by_name_from_root("SettingsMouseSens");
+        let mouse_smoothness = ui.find_handle_by_name_from_root("SettingsMouseSmooth");
+
+        fn set_sb_value(ui: &UserInterface, handle: Handle<UiNode>, value: f32) {
+            ui.send_message(ScrollBarMessage::value(
+                handle,
+                MessageDirection::ToWidget,
+                value,
+            ));
+        }
+        set_sb_value(ui, sound_volume, settings.sound_volume);
+        set_sb_value(ui, music_volume, settings.music_volume);
+        set_sb_value(ui, mouse_sens, settings.mouse_sensitivity);
+        set_sb_value(ui, mouse_smoothness, settings.mouse_smoothness);
 
         Self {
             menu: ui.find_handle_by_name_from_root("SettingsMenu"),
             graphics_quality,
             sound_volume,
             music_volume,
+            mouse_sens,
+            mouse_smoothness,
             back: ui.find_handle_by_name_from_root("SettingsBack"),
             reset: ui.find_handle_by_name_from_root("SettingsReset"),
         }
@@ -313,6 +320,10 @@ impl SettingsMenu {
                 }
             } else if message.destination() == self.music_volume {
                 settings.write().music_volume = *value;
+            } else if message.destination() == self.mouse_sens {
+                settings.write().mouse_sensitivity = *value;
+            } else if message.destination() == self.mouse_smoothness {
+                settings.write().mouse_smoothness = *value;
             }
         }
     }

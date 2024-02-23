@@ -5,7 +5,6 @@ use crate::{
     net::ClientMessage,
     CameraController, Event, Game,
 };
-use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -17,6 +16,7 @@ use fyrox::{
         visitor::prelude::*,
     },
     event::{DeviceEvent, ElementState, WindowEvent},
+    graph::SceneGraph,
     keyboard::{KeyCode, PhysicalKey},
     scene::{camera::Camera, node::Node, rigidbody::RigidBody},
     script::{
@@ -33,12 +33,18 @@ pub struct InputController {
     pub move_left: bool,
     pub move_right: bool,
     pub jump: bool,
-    pub pitch: f32,
-    pub yaw: f32,
+    pub target_pitch: f32,
+    pub target_yaw: f32,
 }
 
 impl InputController {
-    pub fn on_os_event(&mut self, event: &Event<()>, pitch_range: &Range<f32>, dt: f32) -> bool {
+    pub fn on_os_event(
+        &mut self,
+        event: &Event<()>,
+        pitch_range: &Range<f32>,
+        dt: f32,
+        mouse_sens: f32,
+    ) -> bool {
         if let Event::WindowEvent {
             event: WindowEvent::KeyboardInput { event, .. },
             ..
@@ -75,8 +81,8 @@ impl InputController {
             ..
         } = event
         {
-            self.yaw -= delta.0 as f32 * dt;
-            self.pitch = (self.pitch + delta.1 as f32 * dt)
+            self.target_yaw -= delta.0 as f32 * mouse_sens * dt;
+            self.target_pitch = (self.target_pitch + delta.1 as f32 * mouse_sens * dt)
                 .clamp(pitch_range.start.to_radians(), pitch_range.end.to_radians());
             return true;
         }
@@ -102,6 +108,12 @@ pub struct Player {
     pub model_angle: SmoothAngle,
     #[reflect(description = "Pitch range for camera")]
     pitch_range: Range<f32>,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    yaw: f32,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    pitch: f32,
 }
 
 impl Default for Player {
@@ -112,11 +124,13 @@ impl Default for Player {
             input_controller: Default::default(),
             actor: Default::default(),
             pitch_range: -90.0f32..90.0f32,
+            yaw: 0.0,
             model_angle: SmoothAngle {
                 angle: 0.0,
                 target: 0.0,
                 speed: 1.5 * std::f32::consts::TAU, // 540 deg/s
             },
+            pitch: 0.0,
         }
     }
 }
@@ -177,10 +191,12 @@ impl ScriptTrait for Player {
         }
 
         let this = &ctx.scene.graph[ctx.handle];
-        if self
-            .input_controller
-            .on_os_event(event, &self.pitch_range, ctx.dt)
-        {
+        if self.input_controller.on_os_event(
+            event,
+            &self.pitch_range,
+            ctx.dt,
+            game.settings.read().mouse_sensitivity,
+        ) {
             if !game.level.leaderboard.is_finished(ctx.handle) {
                 if let Some(client) = game.client.as_mut() {
                     client.send_message_to_server(ClientMessage::Input {
@@ -199,13 +215,17 @@ impl ScriptTrait for Player {
             return;
         }
 
+        let response_speed = (1.0 - game.settings.read().mouse_smoothness).clamp(0.1, 1.0);
+        self.pitch += (self.input_controller.target_pitch - self.pitch) * response_speed;
+        self.yaw += (self.input_controller.target_yaw - self.yaw) * response_speed;
+
         if let Some(camera_controller) = ctx
             .scene
             .graph
             .try_get_script_component_of_mut::<CameraController>(self.camera)
         {
-            camera_controller.pitch = self.input_controller.pitch;
-            camera_controller.yaw = self.input_controller.yaw;
+            camera_controller.pitch = self.pitch;
+            camera_controller.yaw = self.yaw;
         }
 
         if game.level.leaderboard.is_finished(ctx.handle) {
@@ -260,7 +280,7 @@ impl ScriptTrait for Player {
                     .local_transform_mut()
                     .set_rotation(UnitQuaternion::from_axis_angle(
                         &Vector3::y_axis(),
-                        self.input_controller.yaw,
+                        self.input_controller.target_yaw,
                     ));
 
                 // Apply additional rotation to model - it will turn in front of walking direction.
