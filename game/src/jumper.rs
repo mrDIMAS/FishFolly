@@ -33,7 +33,7 @@ impl ScriptTrait for Jumper {
 
             for contact in collider.contacts(&ctx.scene.graph.physics) {
                 for actor in game.level.actors.iter() {
-                    let actor_script = ctx.scene.graph[*actor].script();
+                    let actor_script = ctx.scene.graph[*actor].script(0);
 
                     if let Some(actor_collider) = actor_script
                         .and_then(|s| s.query_component_ref::<Player>().map(|p| p.actor.collider))
