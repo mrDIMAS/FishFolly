@@ -15,8 +15,8 @@ use fyrox::{
         type_traits::prelude::*,
         visitor::prelude::*,
     },
-    event::{DeviceEvent, ElementState, WindowEvent},
-    graph::SceneGraph,
+    event::{DeviceEvent, ElementState, MouseButton, WindowEvent},
+    graph::{BaseSceneGraph, SceneGraph},
     keyboard::{KeyCode, PhysicalKey},
     scene::{camera::Camera, node::Node, rigidbody::RigidBody},
     script::{
@@ -44,37 +44,50 @@ impl InputController {
         pitch_range: &Range<f32>,
         dt: f32,
         mouse_sens: f32,
+        game: &Game,
+        spectator_target: &mut Handle<Node>,
     ) -> bool {
-        if let Event::WindowEvent {
-            event: WindowEvent::KeyboardInput { event, .. },
-            ..
-        } = event
-        {
-            if let PhysicalKey::Code(keycode) = event.physical_key {
-                let state = event.state == ElementState::Pressed;
-                match keycode {
-                    KeyCode::KeyW => {
-                        self.move_forward = state;
-                        return true;
+        if let Event::WindowEvent { event, .. } = event {
+            match event {
+                WindowEvent::KeyboardInput { event, .. } => {
+                    if let PhysicalKey::Code(keycode) = event.physical_key {
+                        let state = event.state == ElementState::Pressed;
+                        match keycode {
+                            KeyCode::KeyW => {
+                                self.move_forward = state;
+                                return true;
+                            }
+                            KeyCode::KeyS => {
+                                self.move_backward = state;
+                                return true;
+                            }
+                            KeyCode::KeyA => {
+                                self.move_left = state;
+                                return true;
+                            }
+                            KeyCode::KeyD => {
+                                self.move_right = state;
+                                return true;
+                            }
+                            KeyCode::Space => {
+                                self.jump = state;
+                                return true;
+                            }
+                            _ => (),
+                        }
                     }
-                    KeyCode::KeyS => {
-                        self.move_backward = state;
-                        return true;
-                    }
-                    KeyCode::KeyA => {
-                        self.move_left = state;
-                        return true;
-                    }
-                    KeyCode::KeyD => {
-                        self.move_right = state;
-                        return true;
-                    }
-                    KeyCode::Space => {
-                        self.jump = state;
-                        return true;
-                    }
-                    _ => (),
                 }
+                WindowEvent::MouseInput { state, button, .. } => {
+                    if *button == MouseButton::Left && *state == ElementState::Pressed {
+                        for actor in &game.level.actors {
+                            if *actor != *spectator_target {
+                                *spectator_target = *actor;
+                                break;
+                            }
+                        }
+                    }
+                }
+                _ => (),
             }
         } else if let Event::DeviceEvent {
             event: DeviceEvent::MouseMotion { delta },
@@ -114,6 +127,9 @@ pub struct Player {
     #[visit(skip)]
     #[reflect(hidden)]
     pitch: f32,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    spectator_target: Handle<Node>,
 }
 
 impl Default for Player {
@@ -131,6 +147,7 @@ impl Default for Player {
                 speed: 1.5 * std::f32::consts::TAU, // 540 deg/s
             },
             pitch: 0.0,
+            spectator_target: Default::default(),
         }
     }
 }
@@ -196,6 +213,8 @@ impl ScriptTrait for Player {
             &self.pitch_range,
             ctx.dt,
             game.settings.read().mouse_sensitivity,
+            game,
+            &mut self.spectator_target,
         ) {
             if !game.level.leaderboard.is_finished(ctx.handle) {
                 if let Some(client) = game.client.as_mut() {
@@ -215,9 +234,22 @@ impl ScriptTrait for Player {
             return;
         }
 
+        let finished = game.level.leaderboard.is_finished(ctx.handle);
         let response_speed = (1.0 - game.settings.read().mouse_smoothness).clamp(0.1, 1.0);
         self.pitch += (self.input_controller.target_pitch - self.pitch) * response_speed;
         self.yaw += (self.input_controller.target_yaw - self.yaw) * response_speed;
+
+        let self_position = ctx.scene.graph[self.actor.rigid_body].global_position();
+        let spectator_target_position = ctx
+            .scene
+            .graph
+            .try_get_script_component_of::<Actor>(self.spectator_target)
+            .and_then(|n| {
+                ctx.scene
+                    .graph
+                    .try_get(n.rigid_body)
+                    .map(|n| n.global_position())
+            });
 
         if let Some(camera_controller) = ctx
             .scene
@@ -226,9 +258,15 @@ impl ScriptTrait for Player {
         {
             camera_controller.pitch = self.pitch;
             camera_controller.yaw = self.yaw;
+            if let (true, Some(spectator_target_position)) = (finished, spectator_target_position) {
+                // Spectate a player.
+                camera_controller.target_position = spectator_target_position;
+            } else {
+                camera_controller.target_position = self_position;
+            }
         }
 
-        if game.level.leaderboard.is_finished(ctx.handle) {
+        if finished {
             return;
         }
 

@@ -15,7 +15,7 @@ use fyrox::{
     scene::{collider::Collider, node::Node},
     script::{ScriptContext, ScriptTrait},
 };
-use strum_macros::{AsRefStr, EnumString, EnumVariantNames};
+use strum_macros::{AsRefStr, EnumString, VariantNames};
 
 #[derive(
     Default,
@@ -27,7 +27,7 @@ use strum_macros::{AsRefStr, EnumString, EnumVariantNames};
     TypeUuidProvider,
     AsRefStr,
     EnumString,
-    EnumVariantNames,
+    VariantNames,
 )]
 #[type_uuid(id = "5b39b359-0eae-4f06-958e-2facf58ce3a2")]
 pub enum RespawnMode {
