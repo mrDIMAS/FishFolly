@@ -19,7 +19,6 @@ use fyrox::{
     resource::model::{Model, ModelResourceExtension},
     scene::{
         node::Node,
-        rigidbody::RigidBody,
         sound::{Sound, Status},
         Scene,
     },
@@ -70,20 +69,11 @@ impl Server {
             };
 
             for (handle, node) in scene.graph.pair_iter() {
-                let current_state =
-                    if let Some(rigid_body) = node.query_component_ref::<RigidBody>() {
-                        NodeState {
-                            node: node.instance_id(),
-                            position: **rigid_body.local_transform().position(),
-                            rotation: **rigid_body.local_transform().rotation(),
-                        }
-                    } else {
-                        NodeState {
-                            node: node.instance_id(),
-                            position: **node.local_transform().position(),
-                            rotation: **node.local_transform().rotation(),
-                        }
-                    };
+                let current_state = NodeState {
+                    node: node.instance_id(),
+                    position: **node.local_transform().position(),
+                    rotation: **node.local_transform().rotation(),
+                };
 
                 // Dead simple delta compression.
                 let prev_state = self
