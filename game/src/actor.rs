@@ -357,7 +357,7 @@ impl Actor {
                 .get_value_mut_silent()
                 .set_parameter(
                     "Run",
-                    Parameter::Rule(self.desired_velocity.xz().norm() > 0.5),
+                    Parameter::Rule(self.desired_velocity.xz().norm() >= 0.75 * self.speed),
                 )
                 .set_parameter("Jump", Parameter::Rule(self.jump));
         }
