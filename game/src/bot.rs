@@ -1,6 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 use crate::{actor::Actor, actor::ActorMessage, utils, Game};
-use fyrox::graph::{BaseSceneGraph, SceneGraph};
+use fyrox::core::parking_lot::Mutex;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
@@ -13,6 +13,7 @@ use fyrox::{
         type_traits::prelude::*,
         visitor::prelude::*,
     },
+    graph::{BaseSceneGraph, SceneGraph},
     scene::{
         collider::{Collider, ColliderShape},
         debug::Line,
@@ -28,12 +29,28 @@ use fyrox::{
 };
 use std::sync::Arc;
 
+#[derive(Clone, Debug, Default)]
+struct DebugData {
+    lines: Vec<Line>,
+}
+
+#[derive(Debug, Default)]
+struct DebugDataWrapper(Mutex<DebugData>);
+
+impl Clone for DebugDataWrapper {
+    fn clone(&self) -> Self {
+        Self(Mutex::new(self.0.lock().clone()))
+    }
+}
+
 #[derive(Clone, Visit, Reflect, Debug, TypeUuidProvider, ComponentProvider)]
 #[type_uuid(id = "85980387-81c0-4115-a74b-f9875084f464")]
 #[visit(optional)]
 pub struct Bot {
-    #[reflect(description = "Handle of an edge probe locator node")]
-    probe_locator: Handle<Node>,
+    #[reflect(description = "Handle of an edge probe locator begin node")]
+    probe_begin: Handle<Node>,
+    #[reflect(description = "Handle of an edge probe locator end node")]
+    probe_end: Handle<Node>,
     #[component(include)]
     pub actor: Actor,
     #[visit(skip)]
@@ -42,17 +59,22 @@ pub struct Bot {
     #[visit(skip)]
     #[reflect(hidden)]
     navmesh: Option<Arc<RwLock<Navmesh>>>,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    debug_data: DebugDataWrapper,
 }
 
 impl Default for Bot {
     fn default() -> Self {
         Self {
             actor: Default::default(),
-            probe_locator: Default::default(),
+            probe_begin: Default::default(),
+            probe_end: Default::default(),
             agent: NavmeshAgentBuilder::new()
                 .with_recalculation_threshold(2.0)
                 .build(),
             navmesh: Default::default(),
+            debug_data: Default::default(),
         }
     }
 }
@@ -89,6 +111,120 @@ fn probe_ground(begin: Vector3<f32>, max_height: f32, graph: &Graph) -> Option<V
     None
 }
 
+fn height_difference<F>(
+    begin: Vector3<f32>,
+    max_height: f32,
+    graph: &Graph,
+    on_intersection: F,
+) -> Option<f32>
+where
+    F: FnOnce(Vector3<f32>),
+{
+    probe_ground(begin, max_height, graph).map(|pos| {
+        on_intersection(pos);
+        pos.metric_distance(&begin)
+    })
+}
+
+fn is_safe_height_difference<F>(
+    begin: Vector3<f32>,
+    max_height: f32,
+    graph: &Graph,
+    on_intersection: F,
+) -> bool
+where
+    F: FnOnce(Vector3<f32>),
+{
+    height_difference(begin, max_height, graph, on_intersection).map_or(false, |diff| diff <= 8.0)
+}
+
+impl Bot {
+    fn debug_draw(&self, ctx: &mut ScriptContext) {
+        let game = ctx.plugins.get::<Game>();
+        if game.debug_settings.show_paths {
+            for pts in self.agent.path().windows(2) {
+                let a = pts[0];
+                let b = pts[1];
+                ctx.scene.drawing_context.add_line(Line {
+                    begin: a,
+                    end: b,
+                    color: Color::RED,
+                })
+            }
+
+            ctx.scene
+                .drawing_context
+                .draw_sphere(self.agent.target(), 16, 16, 0.25, Color::GREEN);
+
+            ctx.scene.drawing_context.draw_sphere(
+                self.agent.position(),
+                16,
+                16,
+                0.25,
+                Color::GREEN,
+            );
+
+            if let Some(navmesh) = self.navmesh.as_ref() {
+                let navmesh = navmesh.read();
+                if let Some(closest) =
+                    navmesh.query_closest(ctx.scene.graph[self.actor.rigid_body].global_position())
+                {
+                    ctx.scene
+                        .drawing_context
+                        .draw_sphere(closest.0, 16, 16, 0.25, Color::BLUE);
+                }
+            }
+
+            let debug_data = self.debug_data.0.lock();
+            for line in debug_data.lines.iter() {
+                ctx.scene.drawing_context.add_line(line.clone());
+                ctx.scene
+                    .drawing_context
+                    .draw_sphere(line.begin, 16, 16, 0.25, line.color);
+
+                ctx.scene
+                    .drawing_context
+                    .draw_sphere(line.end, 16, 16, 0.25, line.color);
+            }
+        }
+    }
+
+    // Checks if there are a gap on the way, that can be jumped over.
+    fn need_jump_over(&self, ctx: &ScriptContext) -> bool {
+        let graph = &ctx.scene.graph;
+
+        let Some(begin) = graph.try_get(self.probe_begin).map(|n| n.global_position()) else {
+            return false;
+        };
+
+        let Some(end) = graph.try_get(self.probe_end).map(|n| n.global_position()) else {
+            return false;
+        };
+
+        let max_height = 10.0;
+
+        // Bot can just jump down and it will be fine.
+        if is_safe_height_difference(begin, max_height, graph, |p| {
+            self.debug_data.0.lock().lines.push(Line {
+                begin,
+                end: p,
+                color: Color::YELLOW,
+            });
+        }) {
+            return false;
+        }
+
+        // If a bot have a platform to jump on right in front of it, then it needs to jump.
+        is_safe_height_difference(end, max_height, graph, |p| {
+            self.debug_data.0.lock().lines.push(Line {
+                begin: end,
+                end: p,
+                color: Color::ORANGE,
+            });
+        })
+    }
+}
+
 impl ScriptTrait for Bot {
     fn on_init(&mut self, ctx: &mut ScriptContext) {
         ctx.plugins
@@ -123,6 +259,8 @@ impl ScriptTrait for Bot {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
+        self.debug_data.0.lock().lines.clear();
+
         let game = ctx.plugins.get::<Game>();
         if game.is_client() {
             return;
@@ -139,48 +277,7 @@ impl ScriptTrait for Bot {
             .cloned()
             .map(|t| ctx.scene.graph[t].global_position());
 
-        if game.debug_settings.show_paths {
-            for pts in self.agent.path().windows(2) {
-                let a = pts[0];
-                let b = pts[1];
-                ctx.scene.drawing_context.add_line(Line {
-                    begin: a,
-                    end: b,
-                    color: Color::RED,
-                })
-            }
-
-            ctx.scene
-                .drawing_context
-                .draw_sphere(self.agent.target(), 16, 16, 0.25, Color::GREEN);
-
-            ctx.scene.drawing_context.draw_sphere(
-                self.agent.position(),
-                16,
-                16,
-                0.25,
-                Color::GREEN,
-            );
-
-            if let Some(navmesh) = self.navmesh.as_ref() {
-                let navmesh = navmesh.read();
-                if let Some(closest) =
-                    navmesh.query_closest(ctx.scene.graph[self.actor.rigid_body].global_position())
-                {
-                    ctx.scene
-                        .drawing_context
-                        .draw_sphere(closest.0, 16, 16, 0.25, Color::BLUE);
-                }
-            }
-        }
-
-        let ground_probe_begin =
-            if let Some(probe_locator) = ctx.scene.graph.try_get(self.probe_locator) {
-                probe_locator.global_position()
-            } else {
-                Log::warn("There is not ground probe locator specified!");
-                Default::default()
-            };
+        let need_jump_over = self.need_jump_over(ctx);
 
         self.actor.target_desired_velocity = Vector3::new(0.0, 0.0, 0.0);
 
@@ -214,18 +311,11 @@ impl ScriptTrait for Bot {
                     && !is_in_jump_state
                     && self.actor.jump_interval <= 0.0
                 {
-                    if let Some(probed_position) =
-                        probe_ground(ground_probe_begin, 10.0, &ctx.scene.graph)
-                    {
-                        if probed_position.metric_distance(&ground_probe_begin) > 8.0 {
-                            self.actor.jump();
-                            self.actor.jump_vel
-                        } else {
-                            0.0
-                        }
-                    } else {
+                    if need_jump_over {
                         self.actor.jump();
                         self.actor.jump_vel
+                    } else {
+                        0.0
                     }
                 } else {
                     0.0
@@ -253,6 +343,8 @@ impl ScriptTrait for Bot {
         }
 
         self.actor.on_update(ctx);
+
+        self.debug_draw(ctx);
     }
 
     fn on_message(
