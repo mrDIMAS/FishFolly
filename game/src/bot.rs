@@ -1,12 +1,13 @@
 //! A simple bot that tries to react Target points on a level.
+
 use crate::{actor::Actor, actor::ActorMessage, utils, Game};
-use fyrox::core::parking_lot::Mutex;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},
         arrayvec::ArrayVec,
         color::Color,
         log::Log,
+        parking_lot::Mutex,
         parking_lot::RwLock,
         pool::Handle,
         reflect::prelude::*,
@@ -36,6 +37,12 @@ struct DebugData {
 
 #[derive(Debug, Default)]
 struct DebugDataWrapper(Mutex<DebugData>);
+
+impl DebugDataWrapper {
+    fn add_line(&self, begin: Vector3<f32>, end: Vector3<f32>, color: Color) {
+        self.0.lock().lines.push(Line { begin, end, color })
+    }
+}
 
 impl Clone for DebugDataWrapper {
     fn clone(&self) -> Self {
@@ -115,27 +122,33 @@ fn height_difference<F>(
     begin: Vector3<f32>,
     max_height: f32,
     graph: &Graph,
-    on_intersection: F,
+    debug: F,
 ) -> Option<f32>
 where
     F: FnOnce(Vector3<f32>),
 {
-    probe_ground(begin, max_height, graph).map(|pos| {
-        on_intersection(pos);
-        pos.metric_distance(&begin)
-    })
+    match probe_ground(begin, max_height, graph) {
+        Some(pos) => {
+            debug(pos);
+            Some(pos.metric_distance(&begin))
+        }
+        None => {
+            debug(begin + Vector3::new(0.0, -max_height, 0.0));
+            None
+        }
+    }
 }
 
 fn is_safe_height_difference<F>(
     begin: Vector3<f32>,
     max_height: f32,
     graph: &Graph,
-    on_intersection: F,
+    debug: F,
 ) -> bool
 where
     F: FnOnce(Vector3<f32>),
 {
-    height_difference(begin, max_height, graph, on_intersection).map_or(false, |diff| diff <= 8.0)
+    height_difference(begin, max_height, graph, debug).map_or(false, |diff| diff <= 8.0)
 }
 
 impl Bot {
@@ -201,26 +214,27 @@ impl Bot {
             return false;
         };
 
+        let middle = (begin + end).scale(0.5);
+
         let max_height = 10.0;
 
         // Bot can just jump down and it will be fine.
         if is_safe_height_difference(begin, max_height, graph, |p| {
-            self.debug_data.0.lock().lines.push(Line {
-                begin,
-                end: p,
-                color: Color::YELLOW,
-            });
+            self.debug_data.add_line(begin, p, Color::YELLOW);
+        }) {
+            return false;
+        }
+
+        // Otherwise there might be a gap between the two probe points.
+        if is_safe_height_difference(middle, max_height, graph, |p| {
+            self.debug_data.add_line(middle, p, Color::PINK);
         }) {
             return false;
         }
 
         // If a bot have a platform to jump on right in front of it, then it needs to jump.
         is_safe_height_difference(end, max_height, graph, |p| {
-            self.debug_data.0.lock().lines.push(Line {
-                begin: end,
-                end: p,
-                color: Color::ORANGE,
-            });
+            self.debug_data.add_line(end, p, Color::ORANGE);
         })
     }
 }
@@ -278,6 +292,7 @@ impl ScriptTrait for Bot {
             .map(|t| ctx.scene.graph[t].global_position());
 
         let need_jump_over = self.need_jump_over(ctx);
+        let has_ground_contact = utils::has_ground_contact(self.actor.collider, &ctx.scene.graph);
 
         self.actor.target_desired_velocity = Vector3::new(0.0, 0.0, 0.0);
 
@@ -307,19 +322,17 @@ impl ScriptTrait for Bot {
                     vel
                 };
 
-                let jump_y_vel = if utils::has_ground_contact(self.actor.collider, &ctx.scene.graph)
-                    && !is_in_jump_state
-                    && self.actor.jump_interval <= 0.0
-                {
-                    if need_jump_over {
-                        self.actor.jump();
-                        self.actor.jump_vel
+                let jump_y_vel =
+                    if has_ground_contact && !is_in_jump_state && self.actor.jump_interval <= 0.0 {
+                        if need_jump_over {
+                            self.actor.jump();
+                            self.actor.jump_vel
+                        } else {
+                            0.0
+                        }
                     } else {
                         0.0
-                    }
-                } else {
-                    0.0
-                };
+                    };
 
                 self.actor.target_desired_velocity =
                     Vector3::new(horizontal_velocity.x, jump_y_vel, horizontal_velocity.z);
