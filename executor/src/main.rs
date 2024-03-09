@@ -1,14 +1,19 @@
 //! Executor runs the game in standalone (production) mode.
 use fish_fall::GameConstructor;
-use fyrox::engine::executor::Executor;
-use fyrox::engine::GraphicsContextParams;
-use fyrox::event_loop::EventLoop;
+use fyrox::{
+    dpi::LogicalSize, engine::executor::Executor, engine::GraphicsContextParams,
+    event_loop::EventLoop, window::WindowAttributes,
+};
 
 fn main() {
+    let mut window_attributes = WindowAttributes::default();
+    window_attributes.inner_size = Some(LogicalSize::new(1366.0, 768.0).into());
+    window_attributes.title = "Fish Folly".to_string();
+
     let mut executor = Executor::from_params(
         EventLoop::new().unwrap(),
         GraphicsContextParams {
-            window_attributes: Default::default(),
+            window_attributes,
             vsync: false,
             msaa_sample_count: Some(4),
         },
