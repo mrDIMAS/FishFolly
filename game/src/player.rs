@@ -311,7 +311,10 @@ impl ScriptTrait for Player {
                 self.actor.target_desired_velocity.y = 0.0;
             }
 
-            let is_moving = rigid_body.lin_vel().xz().norm() > 0.2;
+            let is_moving = self.input_controller.move_left
+                || self.input_controller.move_right
+                || self.input_controller.move_forward
+                || self.input_controller.move_backward;
 
             if is_moving {
                 rigid_body
