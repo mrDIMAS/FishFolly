@@ -89,6 +89,15 @@ pub struct Bot {
     #[visit(skip)]
     #[reflect(hidden)]
     debug_data: DebugDataWrapper,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    backwards_movement_timer: f32,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    target_orientation: UnitQuaternion<f32>,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    orientation: UnitQuaternion<f32>,
 }
 
 impl Default for Bot {
@@ -103,6 +112,9 @@ impl Default for Bot {
             navmesh: Default::default(),
             debug_data: Default::default(),
             obstacle_sensor_collider: Default::default(),
+            backwards_movement_timer: 0.0,
+            target_orientation: Default::default(),
+            orientation: Default::default(),
         }
     }
 }
@@ -172,6 +184,13 @@ where
     height_difference(begin, max_height, graph, debug).map_or(false, |diff| diff <= 8.0)
 }
 
+#[derive(PartialEq, Eq, Copy, Clone)]
+enum GapTestResult {
+    Run,
+    Stop,
+    JumpOver,
+}
+
 impl Bot {
     fn debug_draw(&self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
@@ -230,15 +249,15 @@ impl Bot {
     }
 
     // Checks if there are a gap on the way, that can be jumped over.
-    fn need_jump_over(&self, ctx: &ScriptContext) -> bool {
+    fn gap_test(&self, ctx: &ScriptContext) -> GapTestResult {
         let graph = &ctx.scene.graph;
 
         let Some(begin) = graph.try_get(self.probe_begin).map(|n| n.global_position()) else {
-            return false;
+            return GapTestResult::Run;
         };
 
         let Some(end) = graph.try_get(self.probe_end).map(|n| n.global_position()) else {
-            return false;
+            return GapTestResult::Run;
         };
 
         let middle = (begin + end).scale(0.5);
@@ -249,20 +268,24 @@ impl Bot {
         if is_safe_height_difference(begin, max_height, graph, |p| {
             self.debug_data.add_line(begin, p, Color::YELLOW);
         }) {
-            return false;
+            return GapTestResult::Run;
         }
 
         // Otherwise there might be a gap between the two probe points.
         if is_safe_height_difference(middle, max_height, graph, |p| {
             self.debug_data.add_line(middle, p, Color::PINK);
         }) {
-            return false;
+            return GapTestResult::Run;
         }
 
         // If a bot have a platform to jump on right in front of it, then it needs to jump.
-        is_safe_height_difference(end, max_height, graph, |p| {
+        if is_safe_height_difference(end, max_height, graph, |p| {
             self.debug_data.add_line(end, p, Color::ORANGE);
-        })
+        }) {
+            GapTestResult::JumpOver
+        } else {
+            GapTestResult::Stop
+        }
     }
 
     fn is_any_obstacle_in_front(&self, ctx: &ScriptContext) -> bool {
@@ -360,17 +383,25 @@ impl ScriptTrait for Bot {
             .cloned()
             .map(|t| ctx.scene.graph[t].global_position());
 
-        let need_jump_over = self.need_jump_over(ctx);
+        let gap_test_result = self.gap_test(ctx);
         let is_any_obstacle_in_front = self.is_any_obstacle_in_front(ctx);
         let has_ground_contact = utils::has_ground_contact(self.actor.collider, &ctx.scene.graph);
 
         self.actor.target_desired_velocity = Vector3::new(0.0, 0.0, 0.0);
 
-        let speed = if is_any_obstacle_in_front {
+        if is_any_obstacle_in_front {
+            self.backwards_movement_timer = 0.25;
+        }
+
+        let speed = if gap_test_result == GapTestResult::Stop {
             0.0
+        } else if self.backwards_movement_timer > 0.0 {
+            -self.actor.speed
         } else {
             self.actor.speed
         };
+
+        self.backwards_movement_timer -= ctx.dt;
 
         if let Some(target_pos) = target_pos {
             if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>()
@@ -379,9 +410,20 @@ impl ScriptTrait for Bot {
 
                 if let Some(navmesh) = self.navmesh.as_ref() {
                     let navmesh = navmesh.read();
-                    self.agent.set_speed(speed);
+                    let agent_speed = if self.backwards_movement_timer > 0.0 {
+                        -self.actor.speed
+                    } else {
+                        self.actor.speed
+                    };
+                    self.agent.set_speed(agent_speed);
                     self.agent.set_target(target_pos);
-                    self.agent.set_position(self_position);
+                    let new_position = navmesh
+                        .query_closest(self_position)
+                        .map(|p| p.0)
+                        .unwrap_or(self_position);
+                    if self.agent.position().metric_distance(&new_position) > 1.99 {
+                        self.agent.set_position(new_position);
+                    }
                     let _ = self.agent.update(ctx.dt, &navmesh);
                 }
 
@@ -398,17 +440,15 @@ impl ScriptTrait for Bot {
                     vel
                 };
 
-                let jump_y_vel =
-                    if has_ground_contact && !is_in_jump_state && self.actor.jump_interval <= 0.0 {
-                        if need_jump_over {
-                            self.actor.jump();
-                            self.actor.jump_vel
-                        } else {
-                            0.0
-                        }
-                    } else {
-                        0.0
-                    };
+                let mut jump_y_vel = 0.0;
+                if has_ground_contact
+                    && !is_in_jump_state
+                    && self.actor.jump_interval <= 0.0
+                    && gap_test_result == GapTestResult::JumpOver
+                {
+                    self.actor.jump();
+                    jump_y_vel = self.actor.jump_vel;
+                }
 
                 self.actor.target_desired_velocity =
                     Vector3::new(horizontal_velocity.x, jump_y_vel, horizontal_velocity.z);
@@ -421,13 +461,20 @@ impl ScriptTrait for Bot {
                 let is_running = horizontal_velocity.norm() > 0.1;
 
                 if is_running {
-                    rigid_body
-                        .local_transform_mut()
-                        .set_rotation(UnitQuaternion::face_towards(
-                            &horizontal_velocity,
-                            &Vector3::y_axis(),
-                        ));
+                    let mut look_dir =
+                        self.agent.steering_target().unwrap_or_default() - self_position;
+                    look_dir.y = 0.0;
+                    self.target_orientation =
+                        UnitQuaternion::face_towards(&look_dir, &Vector3::y_axis());
                 }
+
+                self.orientation = self
+                    .orientation
+                    .slerp(&self.target_orientation, 8.0 * ctx.dt);
+
+                rigid_body
+                    .local_transform_mut()
+                    .set_rotation(self.orientation);
             }
         }
 
