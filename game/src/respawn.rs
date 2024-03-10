@@ -5,15 +5,15 @@ use crate::{
     actor::{Actor, ActorMessage},
     Game,
 };
-use fyrox::graph::{BaseSceneGraph, SceneGraph};
 use fyrox::{
     core::{
         math::aabb::AxisAlignedBoundingBox, pool::Handle, reflect::prelude::*,
         type_traits::prelude::*, variable::InheritableVariable, visitor::prelude::*,
     },
+    graph::{BaseSceneGraph, SceneGraph},
     rand::{seq::SliceRandom, thread_rng},
     scene::{collider::Collider, node::Node},
-    script::{ScriptContext, ScriptTrait},
+    script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
 };
 use strum_macros::{AsRefStr, EnumString, VariantNames};
 
@@ -42,10 +42,26 @@ pub enum RespawnMode {
 #[visit(optional)]
 pub struct Respawner {
     mode: InheritableVariable<RespawnMode>,
-    collider: InheritableVariable<Handle<Node>>,
+    pub collider: InheritableVariable<Handle<Node>>,
 }
 
 impl ScriptTrait for Respawner {
+    fn on_start(&mut self, ctx: &mut ScriptContext) {
+        ctx.plugins
+            .get_mut::<Game>()
+            .level
+            .respawners
+            .insert(ctx.handle);
+    }
+
+    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
+        ctx.plugins
+            .get_mut::<Game>()
+            .level
+            .respawners
+            .remove(&ctx.node_handle);
+    }
+
     fn on_update(&mut self, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get::<Game>();
         if game.is_client() {

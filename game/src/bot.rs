@@ -1,14 +1,18 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::{actor::Actor, actor::ActorMessage, utils, Game};
+use crate::{
+    actor::{Actor, ActorMessage},
+    respawn::Respawner,
+    utils, Game,
+};
 use fyrox::{
     core::{
-        algebra::{Point3, UnitQuaternion, Vector3},
+        algebra::{Matrix4, Point3, UnitQuaternion, Vector3},
         arrayvec::ArrayVec,
         color::Color,
         log::Log,
-        parking_lot::Mutex,
-        parking_lot::RwLock,
+        math::aabb::AxisAlignedBoundingBox,
+        parking_lot::{Mutex, RwLock},
         pool::Handle,
         reflect::prelude::*,
         type_traits::prelude::*,
@@ -31,8 +35,16 @@ use fyrox::{
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Default)]
+struct SensorBox {
+    aabb: AxisAlignedBoundingBox,
+    color: Color,
+    transform: Matrix4<f32>,
+}
+
+#[derive(Clone, Debug, Default)]
 struct DebugData {
     lines: Vec<Line>,
+    oobbs: Vec<SensorBox>,
 }
 
 #[derive(Debug, Default)]
@@ -41,6 +53,12 @@ struct DebugDataWrapper(Mutex<DebugData>);
 impl DebugDataWrapper {
     fn add_line(&self, begin: Vector3<f32>, end: Vector3<f32>, color: Color) {
         self.0.lock().lines.push(Line { begin, end, color })
+    }
+
+    fn clear(&self) {
+        let mut data = self.0.lock();
+        data.lines.clear();
+        data.oobbs.clear();
     }
 }
 
@@ -58,6 +76,8 @@ pub struct Bot {
     probe_begin: Handle<Node>,
     #[reflect(description = "Handle of an edge probe locator end node")]
     probe_end: Handle<Node>,
+    #[reflect(description = "Handle of an obstacle sensor collider")]
+    obstacle_sensor_collider: Handle<Node>,
     #[component(include)]
     pub actor: Actor,
     #[visit(skip)]
@@ -82,6 +102,7 @@ impl Default for Bot {
                 .build(),
             navmesh: Default::default(),
             debug_data: Default::default(),
+            obstacle_sensor_collider: Default::default(),
         }
     }
 }
@@ -199,6 +220,12 @@ impl Bot {
                     .drawing_context
                     .draw_sphere(line.end, 16, 16, 0.25, line.color);
             }
+
+            for oobb in debug_data.oobbs.iter() {
+                ctx.scene
+                    .drawing_context
+                    .draw_oob(&oobb.aabb, oobb.transform, oobb.color);
+            }
         }
     }
 
@@ -237,6 +264,48 @@ impl Bot {
             self.debug_data.add_line(end, p, Color::ORANGE);
         })
     }
+
+    fn is_any_obstacle_in_front(&self, ctx: &ScriptContext) -> bool {
+        let game = ctx.plugins.get::<Game>();
+        let graph = &ctx.scene.graph;
+
+        let Some(sensor_collider) =
+            graph.try_get_of_type::<Collider>(self.obstacle_sensor_collider)
+        else {
+            return false;
+        };
+
+        let mut result = false;
+
+        'intersection_loop: for intersection in sensor_collider.intersects(&graph.physics) {
+            for respawner in game.level.respawners.iter() {
+                let Some(respawner) = ctx.scene.graph.try_get_script_of::<Respawner>(*respawner)
+                else {
+                    continue;
+                };
+
+                if intersection.collider1 == *respawner.collider
+                    || intersection.collider2 == *respawner.collider
+                {
+                    result = true;
+                    break 'intersection_loop;
+                }
+            }
+        }
+
+        if let ColliderShape::Cuboid(cuboid) = sensor_collider.shape() {
+            self.debug_data.0.lock().oobbs.push(SensorBox {
+                aabb: AxisAlignedBoundingBox::from_min_max(
+                    -cuboid.half_extents,
+                    cuboid.half_extents,
+                ),
+                color: if result { Color::RED } else { Color::GREEN },
+                transform: sensor_collider.global_transform(),
+            })
+        }
+
+        result
+    }
 }
 
 impl ScriptTrait for Bot {
@@ -273,7 +342,7 @@ impl ScriptTrait for Bot {
     }
 
     fn on_update(&mut self, ctx: &mut ScriptContext) {
-        self.debug_data.0.lock().lines.clear();
+        self.debug_data.clear();
 
         let game = ctx.plugins.get::<Game>();
         if game.is_client() {
@@ -292,9 +361,16 @@ impl ScriptTrait for Bot {
             .map(|t| ctx.scene.graph[t].global_position());
 
         let need_jump_over = self.need_jump_over(ctx);
+        let is_any_obstacle_in_front = self.is_any_obstacle_in_front(ctx);
         let has_ground_contact = utils::has_ground_contact(self.actor.collider, &ctx.scene.graph);
 
         self.actor.target_desired_velocity = Vector3::new(0.0, 0.0, 0.0);
+
+        let speed = if is_any_obstacle_in_front {
+            0.0
+        } else {
+            self.actor.speed
+        };
 
         if let Some(target_pos) = target_pos {
             if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>()
@@ -303,7 +379,7 @@ impl ScriptTrait for Bot {
 
                 if let Some(navmesh) = self.navmesh.as_ref() {
                     let navmesh = navmesh.read();
-                    self.agent.set_speed(self.actor.speed);
+                    self.agent.set_speed(speed);
                     self.agent.set_target(target_pos);
                     self.agent.set_position(self_position);
                     let _ = self.agent.update(ctx.dt, &navmesh);
@@ -317,7 +393,7 @@ impl ScriptTrait for Bot {
                     let mut vel = (self.agent.position() - self_position)
                         .try_normalize(f32::EPSILON)
                         .unwrap_or_default()
-                        .scale(self.actor.speed);
+                        .scale(speed);
                     vel.y = 0.0;
                     vel
                 };

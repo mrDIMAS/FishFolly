@@ -43,5 +43,6 @@ pub struct Level {
     pub targets: HashSet<Handle<Node>>,
     pub start_points: HashSet<Handle<Node>>,
     pub actors: HashSet<Handle<Node>>,
+    pub respawners: HashSet<Handle<Node>>,
     pub leaderboard: Leaderboard,
 }

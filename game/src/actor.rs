@@ -212,7 +212,7 @@ impl Actor {
 
     pub fn jump(&mut self) {
         if self.jump_interval <= 0.0 {
-            self.jump_interval = 0.75;
+            self.jump_interval = 0.5;
             self.jump = true;
         }
     }
