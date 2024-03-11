@@ -1,4 +1,4 @@
-use crate::{client::Client, server::Server, settings::Settings, utils};
+use crate::{client::Client, server::Server, settings::Settings, utils, Game};
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
@@ -17,12 +17,8 @@ use fyrox::{
         BuildContext, HorizontalAlignment, Thickness, UiNode, UserInterface, VerticalAlignment,
     },
     plugin::PluginContext,
-    scene::{
-        base::BaseBuilder,
-        node::Node,
-        sound::{SoundBuffer, SoundBuilder},
-        Scene, SceneContainer,
-    },
+    resource::model::Model,
+    scene::{node::Node, Scene, SceneContainer},
 };
 use std::{ffi::OsStr, fmt::Debug, net::ToSocketAddrs, path::PathBuf};
 
@@ -365,22 +361,21 @@ where
 
 impl Menu {
     pub fn new(ctx: &mut PluginContext, settings: &Settings) -> Self {
-        let mut scene = Scene::new();
-        let click_begin_sound = SoundBuilder::new(BaseBuilder::new())
-            .with_buffer(Some(
-                ctx.resource_manager
-                    .request::<SoundBuffer>("data/sound/click_begin.ogg"),
-            ))
-            .with_spatial_blend_factor(0.0)
-            .build(&mut scene.graph);
-        let click_end_sound = SoundBuilder::new(BaseBuilder::new())
-            .with_buffer(Some(
-                ctx.resource_manager
-                    .request::<SoundBuffer>("data/sound/click_end.ogg"),
-            ))
-            .with_spatial_blend_factor(0.0)
-            .build(&mut scene.graph);
-        let scene = ctx.scenes.add(scene);
+        ctx.task_pool.spawn_plugin_task(
+            ctx.resource_manager
+                .request::<Model>("data/models/menu.rgs"),
+            |result, game: &mut Game, ctx| {
+                if let Ok(model) = result {
+                    let scene = model.data_ref().get_scene().clone_one_to_one().0;
+                    let this = game.menu.as_mut().unwrap();
+                    this.click_begin_sound =
+                        scene.graph.find_handle_by_name_from_root("ClickBeginSound");
+                    this.click_end_sound =
+                        scene.graph.find_handle_by_name_from_root("ClickEndSound");
+                    this.scene = ctx.scenes.add(scene);
+                }
+            },
+        );
 
         let ui = &mut *ctx.user_interface;
         let main_menu = ui.find_handle_by_name_from_root("MainMenu");
@@ -396,9 +391,9 @@ impl Menu {
             background: ui.find_handle_by_name_from_root("Background"),
             server_menu: ServerMenu::new(server_menu, main_menu, ui, ctx.resource_manager),
             settings_menu: SettingsMenu::new(ui, ctx.resource_manager, settings),
-            scene,
-            click_begin_sound,
-            click_end_sound,
+            scene: Default::default(),
+            click_begin_sound: Default::default(),
+            click_end_sound: Default::default(),
         }
     }
 

@@ -65,6 +65,11 @@ pub struct SettingsData {
     pub mouse_smoothness: f32,
 }
 
+fn disable_ssao(mut settings: QualitySettings) -> QualitySettings {
+    settings.use_ssao = false;
+    settings
+}
+
 impl Default for SettingsData {
     fn default() -> Self {
         Self {
@@ -72,10 +77,13 @@ impl Default for SettingsData {
             sound_volume: 100.0,
             music_volume: 100.0,
             graphics_presets: vec![
-                ("Low".to_string(), QualitySettings::low()),
-                ("Medium".to_string(), QualitySettings::medium()),
-                ("High".to_string(), QualitySettings::high()),
-                ("Ultra".to_string(), QualitySettings::ultra()),
+                ("Low".to_string(), disable_ssao(QualitySettings::low())),
+                (
+                    "Medium".to_string(),
+                    disable_ssao(QualitySettings::medium()),
+                ),
+                ("High".to_string(), disable_ssao(QualitySettings::high())),
+                ("Ultra".to_string(), disable_ssao(QualitySettings::ultra())),
             ],
             mouse_sensitivity: 0.5,
             mouse_smoothness: 0.75,

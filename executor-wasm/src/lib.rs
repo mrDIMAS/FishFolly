@@ -1,3 +1,5 @@
+#![cfg(target_arch = "wasm32")]
+
 //! Executor with your game connected to it as a plugin.
 use fish_fall::GameConstructor;
 use fyrox::{
