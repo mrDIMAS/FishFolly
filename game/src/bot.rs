@@ -461,15 +461,10 @@ impl ScriptTrait for Bot {
                     .cast_mut::<RigidBody>()
                     .unwrap();
 
-                let is_running = horizontal_velocity.norm() > 0.1;
-
-                if is_running {
-                    let mut look_dir =
-                        self.agent.steering_target().unwrap_or_default() - self_position;
-                    look_dir.y = 0.0;
-                    self.target_orientation =
-                        UnitQuaternion::face_towards(&look_dir, &Vector3::y_axis());
-                }
+                let mut look_dir = self.agent.steering_target().unwrap_or_default() - self_position;
+                look_dir.y = 0.0;
+                self.target_orientation =
+                    UnitQuaternion::face_towards(&look_dir, &Vector3::y_axis());
 
                 self.orientation = self
                     .orientation
