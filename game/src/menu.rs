@@ -1,3 +1,4 @@
+use crate::level::Level;
 use crate::{client::Client, server::Server, settings::Settings, utils, Game};
 use fyrox::{
     asset::manager::ResourceManager,
@@ -344,6 +345,7 @@ pub struct Menu {
     scene: Handle<Scene>,
     click_begin_sound: Handle<Node>,
     click_end_sound: Handle<Node>,
+    root_scene_node: Handle<Node>,
 }
 
 fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
@@ -372,6 +374,7 @@ impl Menu {
                         scene.graph.find_handle_by_name_from_root("ClickBeginSound");
                     this.click_end_sound =
                         scene.graph.find_handle_by_name_from_root("ClickEndSound");
+                    this.root_scene_node = scene.graph.find_handle_by_name_from_root("Root");
                     this.scene = ctx.scenes.add(scene);
                 }
             },
@@ -394,6 +397,7 @@ impl Menu {
             scene: Default::default(),
             click_begin_sound: Default::default(),
             click_end_sound: Default::default(),
+            root_scene_node: Default::default(),
         }
     }
 
@@ -493,7 +497,7 @@ impl Menu {
             .unwrap_or_default()
     }
 
-    pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>) {
+    pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>, level: &Level) {
         self.server_menu.update(ctx, server);
 
         if let GraphicsContext::Initialized(graphics_context) = ctx.graphics_context {
@@ -503,6 +507,10 @@ impl Menu {
                 MessageDirection::ToWidget,
                 format!("FPS: {fps}"),
             ));
+        }
+
+        if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
+            scene.graph[self.root_scene_node].set_visibility(level.scene.is_none());
         }
     }
 }
