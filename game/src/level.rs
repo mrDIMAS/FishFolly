@@ -3,7 +3,7 @@ use fyrox::{
     fxhash::FxHashMap,
     scene::{node::Node, Scene},
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::mpsc::Sender};
 
 #[derive(Default)]
 pub struct LeaderBoardEntry {
@@ -11,9 +11,14 @@ pub struct LeaderBoardEntry {
     position: usize,
 }
 
+pub enum LeaderBoardEvent {
+    Finished(Handle<Node>),
+}
+
 #[derive(Default)]
 pub struct Leaderboard {
     entries: FxHashMap<Handle<Node>, LeaderBoardEntry>,
+    pub sender: Option<Sender<LeaderBoardEvent>>,
 }
 
 impl Leaderboard {
@@ -32,8 +37,13 @@ impl Leaderboard {
             .map(|e| e.1.position)
             .unwrap_or_default();
         let entry = self.entries.entry(actor).or_default();
-        entry.position = prev_position + 1;
-        entry.finished = true;
+        if !entry.finished {
+            entry.position = prev_position + 1;
+            entry.finished = true;
+            if let Some(sender) = self.sender.as_ref() {
+                sender.send(LeaderBoardEvent::Finished(actor)).unwrap();
+            }
+        }
     }
 }
 

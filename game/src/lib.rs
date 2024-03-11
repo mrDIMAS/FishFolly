@@ -83,7 +83,8 @@ impl Game {
             |result, game: &mut Game, ctx| match result {
                 Ok(menu) => {
                     *ctx.user_interface = menu;
-                    game.menu = Some(Menu::new(ctx, &game.settings));
+                    let menu = Some(Menu::new(ctx, game));
+                    game.menu = menu;
                 }
                 Err(e) => Log::err(format!("Unable to load main menu! Reason: {:?}", e)),
             },
@@ -209,6 +210,7 @@ impl Plugin for Game {
         };
 
         if let Some(menu) = self.menu.as_ref() {
+            self.level.leaderboard.sender = Some(menu.sender.clone());
             menu.set_main_menu_visibility(ctx.user_interface, false);
         }
         if let Some(server) = self.server.as_mut() {

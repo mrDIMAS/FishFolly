@@ -1,3 +1,4 @@
+use crate::level::LeaderBoardEvent;
 use crate::{client::Client, level::Level, server::Server, settings::Settings, utils, Game};
 use fyrox::{
     asset::manager::ResourceManager,
@@ -20,6 +21,8 @@ use fyrox::{
     resource::model::Model,
     scene::{node::Node, Scene, SceneContainer},
 };
+use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
 use std::{ffi::OsStr, fmt::Debug, net::ToSocketAddrs, path::PathBuf};
 
 pub fn make_text_widget(
@@ -350,6 +353,9 @@ pub struct Menu {
     click_begin_sound: Handle<Node>,
     click_end_sound: Handle<Node>,
     root_scene_node: Handle<Node>,
+    finished_sound: Handle<Node>,
+    pub sender: Sender<LeaderBoardEvent>,
+    receiver: Receiver<LeaderBoardEvent>,
 }
 
 fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
@@ -366,7 +372,8 @@ where
 }
 
 impl Menu {
-    pub fn new(ctx: &mut PluginContext, settings: &Settings) -> Self {
+    pub fn new(ctx: &mut PluginContext, game: &mut Game) -> Self {
+        let settings = &game.settings;
         ctx.task_pool.spawn_plugin_task(
             ctx.resource_manager
                 .request::<Model>("data/models/menu.rgs"),
@@ -379,6 +386,7 @@ impl Menu {
                     this.click_end_sound =
                         scene.graph.find_handle_by_name_from_root("ClickEndSound");
                     this.root_scene_node = scene.graph.find_handle_by_name_from_root("Root");
+                    this.finished_sound = scene.graph.find_handle_by_name_from_root("Finished");
                     this.scene = ctx.scenes.add(scene);
                 }
             },
@@ -387,6 +395,7 @@ impl Menu {
         let ui = &mut *ctx.user_interface;
         let main_menu = ui.find_handle_by_name_from_root("MainMenu");
         let server_menu = ui.find_handle_by_name_from_root("ServerMenu");
+        let (sender, receiver) = mpsc::channel();
         Self {
             debug_text: ui.find_handle_by_name_from_root("DebugText"),
             settings: ui.find_handle_by_name_from_root("Settings"),
@@ -402,6 +411,9 @@ impl Menu {
             click_begin_sound: Default::default(),
             click_end_sound: Default::default(),
             root_scene_node: Default::default(),
+            finished_sound: Default::default(),
+            sender,
+            receiver,
         }
     }
 
@@ -516,6 +528,14 @@ impl Menu {
 
         if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
             scene.graph[self.root_scene_node].set_visibility(level.scene.is_none());
+
+            while let Ok(event) = self.receiver.try_recv() {
+                match event {
+                    LeaderBoardEvent::Finished(_) => {
+                        utils::try_play_sound(self.finished_sound, &mut scene.graph);
+                    }
+                }
+            }
         }
     }
 }
