@@ -92,6 +92,7 @@ impl ScriptTrait for Cannon {
                         if let Ok(mut sound) =
                             mbc.try_get_component_of_type_mut::<Sound>(*self.shot_sound)
                         {
+                            sound.set_playback_time(0.0);
                             sound.play();
                         }
                     }

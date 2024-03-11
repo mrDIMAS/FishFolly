@@ -1,8 +1,8 @@
 //! Game project.
 use crate::{
     bot::Bot, camera::CameraController, cannon::Cannon, client::Client, jumper::Jumper,
-    level::Level, menu::Menu, obstacle::RotatorObstacle, player::Player, respawn::Respawner,
-    server::Server, settings::Settings, start::StartPoint, target::Target, trigger::Trigger,
+    level::Level, menu::Menu, player::Player, respawn::Respawner, server::Server,
+    settings::Settings, start::StartPoint, target::Target, trigger::Trigger,
 };
 use fyrox::{
     core::{log::Log, pool::Handle},
@@ -23,7 +23,6 @@ pub mod jumper;
 pub mod level;
 pub mod menu;
 pub mod net;
-pub mod obstacle;
 pub mod player;
 pub mod respawn;
 pub mod server;
@@ -59,7 +58,6 @@ impl PluginConstructor for GameConstructor {
             .add::<CameraController>("Camera Controller")
             .add::<Bot>("Bot")
             .add::<Target>("Target")
-            .add::<RotatorObstacle>("Rotator Obstacle")
             .add::<StartPoint>("Start Point")
             .add::<Respawner>("Respawner")
             .add::<Cannon>("Cannon")
