@@ -262,7 +262,7 @@ impl Bot {
 
         let middle = (begin + end).scale(0.5);
 
-        let max_height = 10.0;
+        let max_height = 20.0;
 
         // Bot can just jump down and it will be fine.
         if is_safe_height_difference(begin, max_height, graph, |p| {
