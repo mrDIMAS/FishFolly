@@ -1,7 +1,7 @@
-use fyrox::graph::BaseSceneGraph;
 use fyrox::{
     core::pool::Handle,
-    scene::{collider::Collider, graph::Graph, node::Node},
+    graph::{BaseSceneGraph, SceneGraph},
+    scene::{collider::Collider, graph::Graph, node::Node, sound::Sound},
 };
 
 pub fn has_ground_contact(collider: Handle<Node>, graph: &Graph) -> bool {
@@ -15,4 +15,10 @@ pub fn has_ground_contact(collider: Handle<Node>, graph: &Graph) -> bool {
         }
     }
     false
+}
+
+pub fn try_play_sound(sound: Handle<Node>, graph: &mut Graph) {
+    if let Some(sound) = graph.try_get_mut_of_type::<Sound>(sound) {
+        sound.try_play();
+    }
 }
