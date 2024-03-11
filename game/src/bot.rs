@@ -300,7 +300,10 @@ impl Bot {
 
         let mut result = false;
 
-        'intersection_loop: for intersection in sensor_collider.intersects(&graph.physics) {
+        'intersection_loop: for intersection in sensor_collider
+            .intersects(&graph.physics)
+            .filter(|i| i.has_any_active_contact)
+        {
             for respawner in game.level.respawners.iter() {
                 let Some(respawner) = ctx.scene.graph.try_get_script_of::<Respawner>(*respawner)
                 else {
@@ -390,7 +393,7 @@ impl ScriptTrait for Bot {
         self.actor.target_desired_velocity = Vector3::new(0.0, 0.0, 0.0);
 
         if is_any_obstacle_in_front {
-            self.backwards_movement_timer = 0.25;
+            self.backwards_movement_timer = 0.1;
         }
 
         let speed = if gap_test_result == GapTestResult::Stop {
