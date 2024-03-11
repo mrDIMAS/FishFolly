@@ -65,8 +65,9 @@ pub struct SettingsData {
     pub mouse_smoothness: f32,
 }
 
-fn disable_ssao(mut settings: QualitySettings) -> QualitySettings {
+fn adjust_settings(mut settings: QualitySettings) -> QualitySettings {
     settings.use_ssao = false;
+    settings.use_parallax_mapping = false;
     settings
 }
 
@@ -77,13 +78,16 @@ impl Default for SettingsData {
             sound_volume: 100.0,
             music_volume: 100.0,
             graphics_presets: vec![
-                ("Low".to_string(), disable_ssao(QualitySettings::low())),
+                ("Low".to_string(), adjust_settings(QualitySettings::low())),
                 (
                     "Medium".to_string(),
-                    disable_ssao(QualitySettings::medium()),
+                    adjust_settings(QualitySettings::medium()),
                 ),
-                ("High".to_string(), disable_ssao(QualitySettings::high())),
-                ("Ultra".to_string(), disable_ssao(QualitySettings::ultra())),
+                ("High".to_string(), adjust_settings(QualitySettings::high())),
+                (
+                    "Ultra".to_string(),
+                    adjust_settings(QualitySettings::ultra()),
+                ),
             ],
             mouse_sensitivity: 0.5,
             mouse_smoothness: 0.75,
@@ -146,6 +150,18 @@ impl SettingsData {
             .bus_graph_mut()
             .primary_bus_mut()
             .set_gain((self.sound_volume / 100.0).clamp(0.0, 1.0));
+    }
+
+    pub fn apply_music_volume(&self, scene: &Scene) {
+        let name = "Music";
+        let mut sound_context = scene.graph.sound_context.state();
+        for bus in sound_context.bus_graph_mut().buses_iter_mut() {
+            if bus.name() == name {
+                bus.set_gain((self.music_volume / 100.0).clamp(0.0, 1.0));
+                return;
+            }
+        }
+        Log::warn(format!("There's no {name} audio bus!"));
     }
 
     pub fn apply_graphics_settings(&self, graphics_context: &mut GraphicsContext) {

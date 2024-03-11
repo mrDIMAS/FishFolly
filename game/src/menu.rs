@@ -1,5 +1,4 @@
-use crate::level::Level;
-use crate::{client::Client, server::Server, settings::Settings, utils, Game};
+use crate::{client::Client, level::Level, server::Server, settings::Settings, utils, Game};
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
@@ -301,6 +300,7 @@ impl SettingsMenu {
         settings: &mut Settings,
         scenes: &SceneContainer,
         game_scene: Handle<Scene>,
+        menu_scene: Handle<Scene>,
     ) {
         if let Some(SelectorMessage::Current(Some(index))) = message.data() {
             if message.destination() == self.graphics_quality {
@@ -321,7 +321,11 @@ impl SettingsMenu {
                     settings.apply_sound_volume(scene);
                 }
             } else if message.destination() == self.music_volume {
-                settings.write().music_volume = *value;
+                let mut settings = settings.write();
+                if let Some(scene) = scenes.try_get(menu_scene) {
+                    settings.apply_music_volume(scene);
+                }
+                settings.music_volume = *value;
             } else if message.destination() == self.mouse_sens {
                 settings.write().mouse_sensitivity = *value;
             } else if message.destination() == self.mouse_smoothness {
@@ -419,6 +423,7 @@ impl Menu {
             settings,
             ctx.scenes,
             game_scene,
+            self.scene,
         );
 
         if let Some(ButtonMessage::Click) = message.data() {
