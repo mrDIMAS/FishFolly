@@ -3,11 +3,8 @@
 use crate::{Bot, Game, Player};
 use fyrox::{
     core::{
-        algebra::Vector3,
-        reflect::prelude::*,
-        type_traits::prelude::*,
-        uuid::{uuid, Uuid},
-        visitor::prelude::*,
+        algebra::Vector3, reflect::prelude::*, type_traits::prelude::*,
+        variable::InheritableVariable, visitor::prelude::*,
     },
     scene::{collider::Collider, rigidbody::RigidBody},
     script::{ScriptContext, ScriptTrait},
@@ -18,7 +15,7 @@ use std::collections::HashSet;
 #[type_uuid(id = "be8a29af-c10a-4518-a78b-955c8f48a8cd")]
 #[visit(optional)]
 pub struct Jumper {
-    push_force: f32,
+    push_force: InheritableVariable<f32>,
 }
 
 impl ScriptTrait for Jumper {
@@ -61,7 +58,7 @@ impl ScriptTrait for Jumper {
                     .and_then(|p| p.cast_mut::<RigidBody>())
                 {
                     let lin_vel = rigid_body.lin_vel();
-                    rigid_body.set_lin_vel(Vector3::new(lin_vel.x, self.push_force, lin_vel.z));
+                    rigid_body.set_lin_vel(Vector3::new(lin_vel.x, *self.push_force, lin_vel.z));
                 }
             }
         }
