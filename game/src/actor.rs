@@ -335,6 +335,13 @@ impl Actor {
                 self.set_ragdoll_enabled(&mut ctx.scene.graph, true);
             }
         }
+        let finished = game.level.leaderboard.is_finished(ctx.handle);
+        if finished {
+            // Stand still.
+            self.target_desired_velocity.x = 0.0;
+            self.target_desired_velocity.z = 0.0;
+        }
+
         if self.has_serious_impact(ctx) {
             self.in_air_time = 999.0;
         }

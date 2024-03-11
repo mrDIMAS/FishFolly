@@ -266,30 +266,28 @@ impl ScriptTrait for Player {
             }
         }
 
-        if finished {
-            return;
-        }
-
         let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
         let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph);
 
         self.actor.target_desired_velocity = Vector3::default();
 
         if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>() {
-            let forward_vec = rigid_body.look_vector();
-            let side_vec = rigid_body.side_vector();
+            if !finished {
+                let forward_vec = rigid_body.look_vector();
+                let side_vec = rigid_body.side_vector();
 
-            if self.input_controller.move_forward {
-                self.actor.target_desired_velocity += forward_vec;
-            }
-            if self.input_controller.move_backward {
-                self.actor.target_desired_velocity -= forward_vec;
-            }
-            if self.input_controller.move_left {
-                self.actor.target_desired_velocity += side_vec;
-            }
-            if self.input_controller.move_right {
-                self.actor.target_desired_velocity -= side_vec;
+                if self.input_controller.move_forward {
+                    self.actor.target_desired_velocity += forward_vec;
+                }
+                if self.input_controller.move_backward {
+                    self.actor.target_desired_velocity -= forward_vec;
+                }
+                if self.input_controller.move_left {
+                    self.actor.target_desired_velocity += side_vec;
+                }
+                if self.input_controller.move_right {
+                    self.actor.target_desired_velocity -= side_vec;
+                }
             }
 
             self.actor.target_desired_velocity = self
@@ -299,7 +297,8 @@ impl ScriptTrait for Player {
                 .map(|v| v.scale(self.actor.speed))
                 .unwrap_or_default();
 
-            if self.input_controller.jump
+            if !finished
+                && self.input_controller.jump
                 && has_ground_contact
                 && !is_in_jump_state
                 && self.actor.jump_interval <= 0.0
