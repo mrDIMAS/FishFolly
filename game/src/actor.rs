@@ -342,7 +342,7 @@ impl Actor {
         let y_vel = self.target_desired_velocity.y;
         self.desired_velocity.follow(
             &self.target_desired_velocity,
-            if has_ground_contact { 0.2 } else { 0.075 },
+            if has_ground_contact { 0.2 } else { 0.1 },
         );
         self.desired_velocity.y = y_vel;
 
