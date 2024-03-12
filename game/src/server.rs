@@ -1,8 +1,9 @@
-use crate::actor::ActorKind;
 use crate::{
+    actor::ActorKind,
+    level::Level,
     net::{
-        ClientMessage, InstanceDescriptor, NodeState, PlayerDescriptor, ServerMessage, SoundState,
-        UpdateTickMessage,
+        ClientMessage, InstanceDescriptor, LeaderBoardMessage, NodeState, PlayerDescriptor,
+        ServerMessage, SoundState, UpdateTickMessage,
     },
     player::Player,
     start::StartPoint,
@@ -62,8 +63,18 @@ impl Server {
         });
     }
 
-    pub fn update(&mut self, scene: Handle<Scene>, ctx: &mut PluginContext) {
-        if let Some(scene) = ctx.scenes.try_get_mut(scene) {
+    pub fn update(&mut self, level: &mut Level, ctx: &mut PluginContext) {
+        level.update(ctx);
+
+        if let Some(scene) = ctx.scenes.try_get_mut(level.scene) {
+            if level.is_match_ended() {
+                self.broadcast_message_to_clients(ServerMessage::EndMatch);
+            }
+
+            self.broadcast_message_to_clients(ServerMessage::LeaderBoard(LeaderBoardMessage {
+                players: level.leaderboard.entries.values().cloned().collect(),
+            }));
+
             let mut tick_data = UpdateTickMessage {
                 nodes: Default::default(),
                 sounds: Default::default(),

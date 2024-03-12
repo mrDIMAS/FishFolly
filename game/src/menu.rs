@@ -1,13 +1,11 @@
-use crate::actor::ActorKind;
 use crate::{
-    actor::Actor,
+    actor::{Actor, ActorKind},
     client::Client,
     level::{LeaderBoardEvent, Level},
     server::Server,
     settings::Settings,
     utils, Game,
 };
-use fyrox::scene::graph::Graph;
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
@@ -28,7 +26,7 @@ use fyrox::{
     },
     plugin::PluginContext,
     resource::model::Model,
-    scene::{node::Node, Scene, SceneContainer},
+    scene::{graph::Graph, node::Node, Scene, SceneContainer},
 };
 use std::{
     ffi::OsStr,
@@ -476,6 +474,8 @@ pub struct Menu {
     receiver: Receiver<LeaderBoardEvent>,
     in_game_menu: InGameMenu,
     clock_ticking: Handle<Node>,
+    win_camera: Handle<Node>,
+    main_camera: Handle<Node>,
 }
 
 fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
@@ -508,6 +508,8 @@ impl Menu {
                     this.root_scene_node = scene.graph.find_handle_by_name_from_root("Root");
                     this.finished_sound = scene.graph.find_handle_by_name_from_root("Finished");
                     this.clock_ticking = scene.graph.find_handle_by_name_from_root("ClockTicking");
+                    this.main_camera = scene.graph.find_handle_by_name_from_root("Camera");
+                    this.win_camera = scene.graph.find_handle_by_name_from_root("WinCamera");
                     this.scene = ctx.scenes.add(scene);
                 }
             },
@@ -537,6 +539,8 @@ impl Menu {
             receiver,
             in_game_menu: InGameMenu::new(ui),
             clock_ticking: Default::default(),
+            win_camera: Default::default(),
+            main_camera: Default::default(),
         }
     }
 
@@ -610,9 +614,17 @@ impl Menu {
         }
     }
 
-    pub fn set_main_menu_visibility(&self, ui: &UserInterface, visible: bool) {
+    pub fn set_menu_visibility(&self, ui: &UserInterface, visible: bool) {
         ui.send_message(WidgetMessage::visibility(
             self.main_menu_root,
+            MessageDirection::ToWidget,
+            visible,
+        ));
+    }
+
+    pub fn set_main_menu_visibility(&self, ui: &UserInterface, visible: bool) {
+        ui.send_message(WidgetMessage::visibility(
+            self.main_menu,
             MessageDirection::ToWidget,
             visible,
         ));
@@ -637,7 +649,13 @@ impl Menu {
             .unwrap_or_default()
     }
 
-    pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>, level: &mut Level) {
+    pub fn update(
+        &self,
+        ctx: &mut PluginContext,
+        server: &Option<Server>,
+        client: &Option<Client>,
+        level: &mut Level,
+    ) {
         self.server_menu.update(ctx, server);
 
         if let GraphicsContext::Initialized(graphics_context) = ctx.graphics_context {
@@ -651,6 +669,14 @@ impl Menu {
 
         if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
             scene.graph[self.root_scene_node].set_visibility(level.scene.is_none());
+
+            let mut is_in_win_state = false;
+            if let Some(client) = client {
+                is_in_win_state = client.win_context.is_some();
+            }
+
+            scene.graph[self.win_camera].set_enabled(is_in_win_state);
+            scene.graph[self.main_camera].set_enabled(!is_in_win_state);
         }
 
         self.in_game_menu.update(

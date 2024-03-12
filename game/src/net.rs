@@ -1,5 +1,5 @@
-use crate::actor::ActorKind;
-use crate::player::InputController;
+use crate::level::LeaderBoardEntry;
+use crate::{actor::ActorKind, player::InputController};
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -45,6 +45,11 @@ pub struct UpdateTickMessage {
     pub sounds: Vec<SoundState>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LeaderBoardMessage {
+    pub players: Vec<LeaderBoardEntry>,
+}
+
 /// A message sent from the server to a client.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ServerMessage {
@@ -52,6 +57,8 @@ pub enum ServerMessage {
     UpdateTick(UpdateTickMessage),
     AddPlayers(Vec<PlayerDescriptor>),
     Instantiate(Vec<InstanceDescriptor>),
+    EndMatch,
+    LeaderBoard(LeaderBoardMessage),
 }
 
 /// A message sent from a client to the server.

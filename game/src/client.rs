@@ -1,19 +1,31 @@
+use crate::menu::Menu;
 use crate::{
     actor::Actor,
+    level::Level,
     net::{ClientMessage, InstanceDescriptor, PlayerDescriptor, ServerMessage},
     Game,
 };
 use fyrox::{
-    core::net::NetStream,
-    core::{log::Log, pool::Handle},
+    core::{log::Log, net::NetStream, pool::Handle},
     plugin::PluginContext,
     resource::model::{Model, ModelResourceExtension},
     scene::{rigidbody::RigidBody, Scene},
 };
 use std::{fmt::Debug, io, net::ToSocketAddrs};
 
+pub struct FinishedPlayer {
+    pub name: String,
+    pub place: usize,
+}
+
+pub struct WinContext {
+    pub timer: f32,
+    pub players: Vec<FinishedPlayer>,
+}
+
 pub struct Client {
     connection: NetStream,
+    pub win_context: Option<WinContext>,
 }
 
 fn instantiate_objects(instances: Vec<InstanceDescriptor>, ctx: &mut PluginContext) {
@@ -87,6 +99,7 @@ impl Client {
     {
         Ok(Self {
             connection: NetStream::connect(server_addr)?,
+            win_context: None,
         })
     }
 
@@ -97,13 +110,18 @@ impl Client {
         }
     }
 
-    pub fn read_messages(&mut self, scene: Handle<Scene>, ctx: &mut PluginContext) {
+    pub fn read_messages(
+        &mut self,
+        level: &mut Level,
+        menu: Option<&Menu>,
+        ctx: &mut PluginContext,
+    ) {
         self.connection.process_input(|msg| match msg {
             ServerMessage::LoadLevel { path } => {
                 ctx.async_scene_loader.request(path);
             }
             ServerMessage::UpdateTick(data) => {
-                if let Some(scene) = ctx.scenes.try_get_mut(scene) {
+                if let Some(scene) = ctx.scenes.try_get_mut(level.scene) {
                     for entry in data.nodes {
                         if let Some((_, node)) = scene.graph.node_by_id_mut(entry.node) {
                             let transform = node.local_transform_mut();
@@ -121,7 +139,54 @@ impl Client {
                 instantiate_objects(instances, ctx);
             }
             ServerMessage::AddPlayers(players) => add_players(players, ctx),
+            ServerMessage::EndMatch => {
+                if let Some(scene) = ctx.scenes.try_get(level.scene) {
+                    let mut players = level
+                        .leaderboard
+                        .entries
+                        .values()
+                        .map(|e| {
+                            let actor = scene
+                                .graph
+                                .try_get_script_component_of::<Actor>(e.actor)
+                                .unwrap();
+
+                            FinishedPlayer {
+                                name: actor.name.clone(),
+                                place: e.finished_position,
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    players.sort_by_key(|e| e.place);
+
+                    self.win_context = Some(WinContext {
+                        timer: 10.0,
+                        players,
+                    });
+
+                    if let Some(menu) = menu {
+                        menu.set_menu_visibility(ctx.user_interface, true);
+                        menu.set_main_menu_visibility(ctx.user_interface, true);
+                    }
+
+                    ctx.scenes.remove(level.scene);
+                    level.scene = Handle::NONE;
+                }
+            }
+            ServerMessage::LeaderBoard(msg) => {
+                level.leaderboard.entries = msg.players.into_iter().map(|e| (e.actor, e)).collect();
+            }
         })
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        if let Some(win_context) = self.win_context.as_mut() {
+            win_context.timer -= dt;
+
+            if win_context.timer <= 0.0 {
+                self.win_context.take();
+            }
+        }
     }
 
     pub fn on_scene_loaded(

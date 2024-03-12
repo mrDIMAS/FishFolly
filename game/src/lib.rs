@@ -115,11 +115,12 @@ impl Plugin for Game {
             server.accept_connections();
 
             server.read_messages(self.level.scene, ctx);
-            server.update(self.level.scene, ctx);
+            server.update(&mut self.level, ctx);
         }
 
         if let Some(client) = self.client.as_mut() {
-            client.read_messages(self.level.scene, ctx);
+            client.read_messages(&mut self.level, self.menu.as_ref(), ctx);
+            client.update(ctx.dt);
         }
 
         if let Some(scene) = ctx.scenes.try_get_mut(self.level.scene) {
@@ -130,10 +131,8 @@ impl Plugin for Game {
             }
         }
 
-        self.level.update(ctx);
-
         if let Some(menu) = self.menu.as_mut() {
-            menu.update(ctx, &self.server, &mut self.level);
+            menu.update(ctx, &self.server, &self.client, &mut self.level);
         }
     }
 
@@ -160,6 +159,9 @@ impl Plugin for Game {
                             if let Some(menu) = self.menu.as_ref() {
                                 menu.switch_visibility(ctx.user_interface, self.client.is_some());
                             }
+                        }
+                        KeyCode::F4 => {
+                            self.level.match_timer = 3.0;
                         }
                         _ => (),
                     }
@@ -213,7 +215,7 @@ impl Plugin for Game {
 
         if let Some(menu) = self.menu.as_ref() {
             self.level.leaderboard.sender = Some(menu.sender.clone());
-            menu.set_main_menu_visibility(ctx.user_interface, false);
+            menu.set_menu_visibility(ctx.user_interface, false);
         }
         if let Some(server) = self.server.as_mut() {
             server.on_scene_loaded(scene, ctx);

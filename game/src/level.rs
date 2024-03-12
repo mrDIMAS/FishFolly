@@ -6,10 +6,12 @@ use fyrox::{
     plugin::PluginContext,
     scene::{graph::Graph, node::Node, Scene},
 };
+use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, collections::HashSet, sync::mpsc::Sender};
 
-#[derive(Default, Debug)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct LeaderBoardEntry {
+    pub actor: Handle<Node>,
     pub finished: bool,
     pub real_time_position: usize,
     pub finished_position: usize,
@@ -41,7 +43,13 @@ impl Leaderboard {
             .min_by_key(|(_, v)| v.finished_position)
             .map(|e| e.1.finished_position)
             .unwrap_or_default();
-        let entry = self.entries.entry(actor).or_default();
+        let entry = self
+            .entries
+            .entry(actor)
+            .or_insert_with(|| LeaderBoardEntry {
+                actor,
+                ..Default::default()
+            });
         if !entry.finished {
             let place = prev_position + 1;
             entry.finished_position = place;
@@ -77,7 +85,13 @@ impl Leaderboard {
             .sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
 
         for (position, (handle, _)) in self.temp_array.iter().enumerate() {
-            let entry = self.entries.entry(*handle).or_default();
+            let entry = self
+                .entries
+                .entry(*handle)
+                .or_insert_with(|| LeaderBoardEntry {
+                    actor: *handle,
+                    ..Default::default()
+                });
             entry.real_time_position = position;
         }
     }
