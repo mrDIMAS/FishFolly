@@ -20,10 +20,18 @@ use fyrox::{
     },
     script::{ScriptContext, ScriptMessageContext, ScriptMessagePayload},
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum ActorMessage {
     RespawnAt(Vector3<f32>),
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum ActorKind {
+    Bot,
+    Player,
+    RemotePlayer,
 }
 
 /// A marker that indicates that an object is an actor (player or bot).
@@ -33,14 +41,14 @@ pub struct Actor {
     pub name: String,
     #[visit(skip)]
     #[reflect(hidden)]
-    pub is_remote: bool,
+    pub kind: ActorKind,
     #[visit(skip)]
     #[reflect(hidden)]
     pub in_air_time: f32,
     #[reflect(
         description = "Amount of time that the bot will be lying on the ground with active ragdoll."
     )]
-    max_in_air_time: f32,
+    pub max_in_air_time: f32,
     #[visit(skip)]
     #[reflect(hidden)]
     pub stand_up_timer: f32,
@@ -48,10 +56,10 @@ pub struct Actor {
     #[reflect(hidden)]
     pub stand_up_interval: f32,
     #[reflect(description = "A handle of the ragdoll")]
-    ragdoll: Handle<Node>,
+    pub ragdoll: Handle<Node>,
     #[visit(skip)]
     #[reflect(hidden)]
-    jump: bool,
+    pub jump: bool,
     #[reflect(description = "Handle to actor's collider.")]
     pub collider: Handle<Node>,
     #[reflect(description = "Handle to actor's rigid body.")]
@@ -67,7 +75,7 @@ pub struct Actor {
     #[reflect(hidden)]
     pub desired_velocity: Vector3<f32>,
     #[reflect(description = "Handle of animation state machine.")]
-    absm: Handle<Node>,
+    pub absm: Handle<Node>,
     #[visit(skip)]
     #[reflect(hidden)]
     pub jump_interval: f32,
@@ -80,7 +88,7 @@ impl Default for Actor {
     fn default() -> Self {
         Self {
             name: "Player".to_string(),
-            is_remote: false,
+            kind: ActorKind::Player,
             in_air_time: 0.0,
             max_in_air_time: 1.1,
             stand_up_timer: 0.0,

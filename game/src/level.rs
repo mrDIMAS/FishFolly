@@ -1,14 +1,18 @@
+use crate::actor::Actor;
 use fyrox::{
     core::pool::Handle,
     fxhash::FxHashMap,
-    scene::{node::Node, Scene},
+    graph::BaseSceneGraph,
+    plugin::PluginContext,
+    scene::{graph::Graph, node::Node, Scene},
 };
-use std::{collections::HashSet, sync::mpsc::Sender};
+use std::{cmp::Ordering, collections::HashSet, sync::mpsc::Sender};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LeaderBoardEntry {
-    finished: bool,
-    position: usize,
+    pub finished: bool,
+    pub real_time_position: usize,
+    pub finished_position: usize,
 }
 
 pub enum LeaderBoardEvent {
@@ -17,8 +21,9 @@ pub enum LeaderBoardEvent {
 
 #[derive(Default)]
 pub struct Leaderboard {
-    entries: FxHashMap<Handle<Node>, LeaderBoardEntry>,
+    pub entries: FxHashMap<Handle<Node>, LeaderBoardEntry>,
     pub sender: Option<Sender<LeaderBoardEvent>>,
+    temp_array: Vec<(Handle<Node>, f32)>,
 }
 
 impl Leaderboard {
@@ -33,19 +38,47 @@ impl Leaderboard {
         let prev_position = self
             .entries
             .iter()
-            .min_by_key(|(_, v)| v.position)
-            .map(|e| e.1.position)
+            .min_by_key(|(_, v)| v.finished_position)
+            .map(|e| e.1.finished_position)
             .unwrap_or_default();
         let entry = self.entries.entry(actor).or_default();
         if !entry.finished {
             let place = prev_position + 1;
-            entry.position = place;
+            entry.finished_position = place;
             entry.finished = true;
             if let Some(sender) = self.sender.as_ref() {
                 sender
                     .send(LeaderBoardEvent::Finished { actor, place })
                     .unwrap();
             }
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        actors: &HashSet<Handle<Node>>,
+        finish_point: Handle<Node>,
+        graph: &Graph,
+    ) {
+        let Some(finish_point) = graph.try_get(finish_point).map(|n| n.global_position()) else {
+            return;
+        };
+
+        self.temp_array.clear();
+        for actor in actors {
+            if let Some(actor_ref) = graph.try_get_script_component_of::<Actor>(*actor) {
+                let position = graph[actor_ref.rigid_body].global_position();
+                self.temp_array
+                    .push((*actor, position.metric_distance(&finish_point)));
+            }
+        }
+
+        self.temp_array
+            .sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
+
+        for (position, (handle, _)) in self.temp_array.iter().enumerate() {
+            let entry = self.entries.entry(*handle).or_default();
+            entry.real_time_position = position;
         }
     }
 }
@@ -75,9 +108,15 @@ impl Default for Level {
 }
 
 impl Level {
-    pub fn update(&mut self, dt: f32) {
-        if self.scene.is_some() {
-            self.match_timer = (self.match_timer - dt).max(0.0);
+    pub fn update(&mut self, ctx: &PluginContext) {
+        if let Some(scene) = ctx.scenes.try_get(self.scene) {
+            self.match_timer = (self.match_timer - ctx.dt).max(0.0);
+
+            self.leaderboard.update(
+                &self.actors,
+                self.targets.iter().next().cloned().unwrap_or_default(),
+                &scene.graph,
+            );
         }
     }
 

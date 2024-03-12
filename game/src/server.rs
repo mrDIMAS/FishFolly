@@ -1,3 +1,4 @@
+use crate::actor::ActorKind;
 use crate::{
     net::{
         ClientMessage, InstanceDescriptor, NodeState, PlayerDescriptor, ServerMessage, SoundState,
@@ -159,7 +160,11 @@ impl Server {
                                 velocity: Default::default(),
                                 ids: ids.clone(),
                             },
-                            is_remote: player_num != connection_num,
+                            kind: if player_num != connection_num {
+                                ActorKind::RemotePlayer
+                            } else {
+                                ActorKind::Player
+                            },
                         }]))
                         .unwrap();
                 }
@@ -184,7 +189,7 @@ impl Server {
                                     velocity: Default::default(),
                                     ids: ids.clone(),
                                 },
-                                is_remote: false,
+                                kind: ActorKind::Bot,
                             }]))
                             .unwrap();
                     }

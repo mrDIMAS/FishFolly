@@ -1,5 +1,6 @@
 //! Main player (host) script.
 
+use crate::actor::ActorKind;
 use crate::{
     actor::{Actor, ActorMessage},
     net::ClientMessage,
@@ -178,7 +179,7 @@ impl ScriptTrait for Player {
         {
             let camera = camera_controller.camera;
             if let Some(camera) = ctx.scene.graph.try_get_mut_of_type::<Camera>(camera) {
-                camera.set_enabled(!self.actor.is_remote);
+                camera.set_enabled(self.actor.kind == ActorKind::Player);
             }
         }
     }
@@ -198,7 +199,7 @@ impl ScriptTrait for Player {
     fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {
         let game = ctx.plugins.get_mut::<Game>();
 
-        if self.actor.is_remote
+        if self.actor.kind == ActorKind::RemotePlayer
             || game
                 .menu
                 .as_ref()

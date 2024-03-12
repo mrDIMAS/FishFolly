@@ -1,3 +1,4 @@
+use crate::actor::ActorKind;
 use crate::{
     actor::Actor,
     client::Client,
@@ -6,6 +7,7 @@ use crate::{
     settings::Settings,
     utils, Game,
 };
+use fyrox::scene::graph::Graph;
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
@@ -350,18 +352,22 @@ impl SettingsMenu {
 }
 
 struct InGameMenu {
+    root: Handle<UiNode>,
     finished_text: Handle<UiNode>,
     finished_text_animation: Handle<UiNode>,
     match_timer_text: Handle<UiNode>,
+    player_position: Handle<UiNode>,
 }
 
 impl InGameMenu {
     fn new(ui: &UserInterface) -> Self {
         Self {
+            root: ui.find_handle_by_name_from_root("InGameMenuRoot"),
             finished_text: ui.find_handle_by_name_from_root("FinishedText"),
             match_timer_text: ui.find_handle_by_name_from_root("MatchTimer"),
             finished_text_animation: ui
                 .find_handle_by_name_from_root("FinishedTextAnimationPlayer"),
+            player_position: ui.find_handle_by_name_from_root("PlayerPosition"),
         }
     }
 
@@ -377,10 +383,16 @@ impl InGameMenu {
                     .graph
                     .try_get_script_component_of::<Actor>(*actor)
                 {
+                    let suffix = match place {
+                        1 => "st",
+                        2 => "nd",
+                        3 => "d",
+                        _ => "th",
+                    };
                     ui.send_message(TextMessage::text(
                         self.finished_text,
                         MessageDirection::ToWidget,
-                        format!("Player {} finished {}th", actor.name, place),
+                        format!("{} finished {place}{suffix}", actor.name),
                     ));
 
                     ui.send_message(AnimationPlayerMessage::enable_animation(
@@ -407,14 +419,40 @@ impl InGameMenu {
         }
     }
 
-    fn update(&self, ui: &UserInterface, level: &Level) {
+    fn update(&self, ui: &UserInterface, graph: Option<&Graph>, level: &Level) {
         let minutes = (level.match_timer / 60.0) as u32;
         let seconds = (level.match_timer % 60.0) as u32;
         ui.send_message(TextMessage::text(
             self.match_timer_text,
             MessageDirection::ToWidget,
             format!("{minutes}:{seconds}"),
-        ))
+        ));
+
+        ui.send_message(WidgetMessage::visibility(
+            self.root,
+            MessageDirection::ToWidget,
+            level.scene.is_some(),
+        ));
+
+        if let Some(graph) = graph {
+            for (actor, entry) in &level.leaderboard.entries {
+                if let Some(actor_ref) = graph.try_get_script_component_of::<Actor>(*actor) {
+                    if actor_ref.kind == ActorKind::Player {
+                        ui.send_message(TextMessage::text(
+                            self.player_position,
+                            MessageDirection::ToWidget,
+                            format!(
+                                "Place: {} of {}",
+                                entry.real_time_position + 1,
+                                level.actors.len()
+                            ),
+                        ));
+
+                        break;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -615,7 +653,11 @@ impl Menu {
             scene.graph[self.root_scene_node].set_visibility(level.scene.is_none());
         }
 
-        self.in_game_menu.update(ctx.user_interface, level);
+        self.in_game_menu.update(
+            ctx.user_interface,
+            ctx.scenes.try_get_mut(level.scene).map(|s| &s.graph),
+            level,
+        );
 
         while let Ok(event) = self.receiver.try_recv() {
             if let Some(game_scene) = ctx.scenes.try_get_mut(level.scene) {

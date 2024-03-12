@@ -1,5 +1,6 @@
 //! A simple bot that tries to react Target points on a level.
 
+use crate::actor::ActorKind;
 use crate::{
     actor::{Actor, ActorMessage},
     respawn::Respawner,
@@ -103,7 +104,10 @@ pub struct Bot {
 impl Default for Bot {
     fn default() -> Self {
         Self {
-            actor: Default::default(),
+            actor: Actor {
+                kind: ActorKind::Bot,
+                ..Default::default()
+            },
             probe_begin: Default::default(),
             probe_end: Default::default(),
             agent: NavmeshAgentBuilder::new()

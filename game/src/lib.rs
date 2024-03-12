@@ -130,7 +130,7 @@ impl Plugin for Game {
             }
         }
 
-        self.level.update(ctx.dt);
+        self.level.update(ctx);
 
         if let Some(menu) = self.menu.as_mut() {
             menu.update(ctx, &self.server, &mut self.level);

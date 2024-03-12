@@ -59,7 +59,7 @@ fn add_players(players: Vec<PlayerDescriptor>, ctx: &mut PluginContext) {
                         .finish();
                     if let Some(actor) = scene.graph.try_get_script_component_of_mut::<Actor>(root)
                     {
-                        actor.is_remote = player.is_remote;
+                        actor.kind = player.kind;
                         let rigid_body = actor.rigid_body;
                         if let Some(rigid_body) = scene.graph.try_get_mut(rigid_body) {
                             rigid_body

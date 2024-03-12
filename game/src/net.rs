@@ -1,3 +1,4 @@
+use crate::actor::ActorKind;
 use crate::player::InputController;
 use fyrox::{
     core::{
@@ -29,7 +30,7 @@ pub struct InstanceDescriptor {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerDescriptor {
     pub instance: InstanceDescriptor,
-    pub is_remote: bool,
+    pub kind: ActorKind,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]

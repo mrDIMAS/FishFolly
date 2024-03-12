@@ -1,4 +1,5 @@
 //! Editor with your game connected to it as a plugin.
+use fish_fall::actor::ActorKind;
 use fish_fall::{actor::Actor, respawn::RespawnMode, trigger::Action, GameConstructor};
 use fyrox::{
     event_loop::EventLoop,
@@ -25,6 +26,11 @@ fn main() {
         .inspector
         .property_editors
         .register_inheritable_enum::<Action, _>();
+    editor
+        .inspector
+        .property_editors
+        .register_inheritable_enum::<ActorKind, _>();
+
     editor.add_game_plugin(GameConstructor);
     editor.run(event_loop)
 }
