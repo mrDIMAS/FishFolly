@@ -1,12 +1,12 @@
 //! Object marker components.
 
 use crate::{utils, Game};
-use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{
         algebra::Vector3, math::Vector3Ext, pool::Handle, pool::MultiBorrowContext,
         reflect::prelude::*, variable::InheritableVariable, visitor::prelude::*,
     },
+    graph::SceneGraph,
     rand::{prelude::SliceRandom, thread_rng},
     resource::model::{ModelResource, ModelResourceExtension},
     scene::{
@@ -30,6 +30,7 @@ pub enum ActorMessage {
 #[derive(Clone, Debug, Visit, Reflect)]
 #[visit(optional)]
 pub struct Actor {
+    pub name: String,
     #[visit(skip)]
     #[reflect(hidden)]
     pub is_remote: bool,
@@ -78,6 +79,7 @@ pub struct Actor {
 impl Default for Actor {
     fn default() -> Self {
         Self {
+            name: "Player".to_string(),
             is_remote: false,
             in_air_time: 0.0,
             max_in_air_time: 1.1,

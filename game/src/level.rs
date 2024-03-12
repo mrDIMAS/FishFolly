@@ -12,7 +12,7 @@ pub struct LeaderBoardEntry {
 }
 
 pub enum LeaderBoardEvent {
-    Finished(Handle<Node>),
+    Finished { actor: Handle<Node>, place: usize },
 }
 
 #[derive(Default)]
@@ -38,10 +38,13 @@ impl Leaderboard {
             .unwrap_or_default();
         let entry = self.entries.entry(actor).or_default();
         if !entry.finished {
-            entry.position = prev_position + 1;
+            let place = prev_position + 1;
+            entry.position = place;
             entry.finished = true;
             if let Some(sender) = self.sender.as_ref() {
-                sender.send(LeaderBoardEvent::Finished(actor)).unwrap();
+                sender
+                    .send(LeaderBoardEvent::Finished { actor, place })
+                    .unwrap();
             }
         }
     }

@@ -1,11 +1,18 @@
-use crate::level::LeaderBoardEvent;
-use crate::{client::Client, level::Level, server::Server, settings::Settings, utils, Game};
+use crate::{
+    actor::Actor,
+    client::Client,
+    level::{LeaderBoardEvent, Level},
+    server::Server,
+    settings::Settings,
+    utils, Game,
+};
 use fyrox::{
     asset::manager::ResourceManager,
     core::{log::Log, pool::Handle},
     engine::GraphicsContext,
     graph::{BaseSceneGraph, SceneGraph},
     gui::{
+        animation::AnimationPlayerMessage,
         button::ButtonMessage,
         check_box::CheckBoxMessage,
         font::Font,
@@ -21,9 +28,13 @@ use fyrox::{
     resource::model::Model,
     scene::{node::Node, Scene, SceneContainer},
 };
-use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
-use std::{ffi::OsStr, fmt::Debug, net::ToSocketAddrs, path::PathBuf};
+use std::{
+    ffi::OsStr,
+    fmt::Debug,
+    net::ToSocketAddrs,
+    path::PathBuf,
+    sync::mpsc::{self, Receiver, Sender},
+};
 
 pub fn make_text_widget(
     ctx: &mut BuildContext,
@@ -338,6 +349,63 @@ impl SettingsMenu {
     }
 }
 
+struct InGameMenu {
+    finished_text: Handle<UiNode>,
+    finished_text_animation: Handle<UiNode>,
+}
+
+impl InGameMenu {
+    fn new(ui: &UserInterface) -> Self {
+        Self {
+            finished_text: ui.find_handle_by_name_from_root("FinishedText"),
+            finished_text_animation: ui
+                .find_handle_by_name_from_root("FinishedTextAnimationPlayer"),
+        }
+    }
+
+    fn on_leaderboard_event(
+        &self,
+        ui: &mut UserInterface,
+        game_scene: &Scene,
+        event: &LeaderBoardEvent,
+    ) {
+        match event {
+            LeaderBoardEvent::Finished { actor, place } => {
+                if let Some(actor) = game_scene
+                    .graph
+                    .try_get_script_component_of::<Actor>(*actor)
+                {
+                    ui.send_message(TextMessage::text(
+                        self.finished_text,
+                        MessageDirection::ToWidget,
+                        format!("Player {} finished {}th", actor.name, place),
+                    ));
+
+                    ui.send_message(AnimationPlayerMessage::enable_animation(
+                        self.finished_text_animation,
+                        MessageDirection::ToWidget,
+                        "Animation".to_string(),
+                        true,
+                    ));
+
+                    let id = "Animation".to_string();
+                    ui.send_message(AnimationPlayerMessage::enable_animation(
+                        self.finished_text_animation,
+                        MessageDirection::ToWidget,
+                        id.clone(),
+                        true,
+                    ));
+                    ui.send_message(AnimationPlayerMessage::rewind_animation(
+                        self.finished_text_animation,
+                        MessageDirection::ToWidget,
+                        id,
+                    ));
+                }
+            }
+        }
+    }
+}
+
 pub struct Menu {
     debug_text: Handle<UiNode>,
     settings: Handle<UiNode>,
@@ -356,6 +424,7 @@ pub struct Menu {
     finished_sound: Handle<Node>,
     pub sender: Sender<LeaderBoardEvent>,
     receiver: Receiver<LeaderBoardEvent>,
+    in_game_menu: InGameMenu,
 }
 
 fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
@@ -414,6 +483,7 @@ impl Menu {
             finished_sound: Default::default(),
             sender,
             receiver,
+            in_game_menu: InGameMenu::new(ui),
         }
     }
 
@@ -528,10 +598,17 @@ impl Menu {
 
         if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
             scene.graph[self.root_scene_node].set_visibility(level.scene.is_none());
+        }
 
-            while let Ok(event) = self.receiver.try_recv() {
-                match event {
-                    LeaderBoardEvent::Finished(_) => {
+        while let Ok(event) = self.receiver.try_recv() {
+            if let Some(game_scene) = ctx.scenes.try_get_mut(level.scene) {
+                self.in_game_menu
+                    .on_leaderboard_event(ctx.user_interface, game_scene, &event);
+            }
+
+            match event {
+                LeaderBoardEvent::Finished { .. } => {
+                    if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
                         utils::try_play_sound(self.finished_sound, &mut scene.graph);
                     }
                 }
