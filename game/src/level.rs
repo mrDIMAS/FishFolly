@@ -50,7 +50,6 @@ impl Leaderboard {
     }
 }
 
-#[derive(Default)]
 pub struct Level {
     pub scene: Handle<Scene>,
     pub targets: HashSet<Handle<Node>>,
@@ -58,4 +57,41 @@ pub struct Level {
     pub actors: HashSet<Handle<Node>>,
     pub respawners: HashSet<Handle<Node>>,
     pub leaderboard: Leaderboard,
+    pub match_timer: f32,
+}
+
+impl Default for Level {
+    fn default() -> Self {
+        Self {
+            scene: Default::default(),
+            targets: Default::default(),
+            start_points: Default::default(),
+            actors: Default::default(),
+            respawners: Default::default(),
+            leaderboard: Default::default(),
+            match_timer: 15.0 * 60.0,
+        }
+    }
+}
+
+impl Level {
+    pub fn update(&mut self, dt: f32) {
+        if self.scene.is_some() {
+            self.match_timer = (self.match_timer - dt).max(0.0);
+        }
+    }
+
+    pub fn sudden_death(&mut self) {
+        if self.match_timer > 60.0 {
+            self.match_timer = 60.0;
+        }
+    }
+
+    pub fn is_time_critical(&self) -> bool {
+        self.match_timer <= 60.0
+    }
+
+    pub fn is_match_ended(&self) -> bool {
+        self.match_timer <= 0.0
+    }
 }

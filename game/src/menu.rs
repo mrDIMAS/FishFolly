@@ -352,12 +352,14 @@ impl SettingsMenu {
 struct InGameMenu {
     finished_text: Handle<UiNode>,
     finished_text_animation: Handle<UiNode>,
+    match_timer_text: Handle<UiNode>,
 }
 
 impl InGameMenu {
     fn new(ui: &UserInterface) -> Self {
         Self {
             finished_text: ui.find_handle_by_name_from_root("FinishedText"),
+            match_timer_text: ui.find_handle_by_name_from_root("MatchTimer"),
             finished_text_animation: ui
                 .find_handle_by_name_from_root("FinishedTextAnimationPlayer"),
         }
@@ -404,6 +406,16 @@ impl InGameMenu {
             }
         }
     }
+
+    fn update(&self, ui: &UserInterface, level: &Level) {
+        let minutes = (level.match_timer / 60.0) as u32;
+        let seconds = (level.match_timer % 60.0) as u32;
+        ui.send_message(TextMessage::text(
+            self.match_timer_text,
+            MessageDirection::ToWidget,
+            format!("{minutes}:{seconds}"),
+        ))
+    }
 }
 
 pub struct Menu {
@@ -425,6 +437,7 @@ pub struct Menu {
     pub sender: Sender<LeaderBoardEvent>,
     receiver: Receiver<LeaderBoardEvent>,
     in_game_menu: InGameMenu,
+    clock_ticking: Handle<Node>,
 }
 
 fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
@@ -456,6 +469,7 @@ impl Menu {
                         scene.graph.find_handle_by_name_from_root("ClickEndSound");
                     this.root_scene_node = scene.graph.find_handle_by_name_from_root("Root");
                     this.finished_sound = scene.graph.find_handle_by_name_from_root("Finished");
+                    this.clock_ticking = scene.graph.find_handle_by_name_from_root("ClockTicking");
                     this.scene = ctx.scenes.add(scene);
                 }
             },
@@ -484,6 +498,7 @@ impl Menu {
             sender,
             receiver,
             in_game_menu: InGameMenu::new(ui),
+            clock_ticking: Default::default(),
         }
     }
 
@@ -584,7 +599,7 @@ impl Menu {
             .unwrap_or_default()
     }
 
-    pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>, level: &Level) {
+    pub fn update(&self, ctx: &mut PluginContext, server: &Option<Server>, level: &mut Level) {
         self.server_menu.update(ctx, server);
 
         if let GraphicsContext::Initialized(graphics_context) = ctx.graphics_context {
@@ -600,6 +615,8 @@ impl Menu {
             scene.graph[self.root_scene_node].set_visibility(level.scene.is_none());
         }
 
+        self.in_game_menu.update(ctx.user_interface, level);
+
         while let Ok(event) = self.receiver.try_recv() {
             if let Some(game_scene) = ctx.scenes.try_get_mut(level.scene) {
                 self.in_game_menu
@@ -608,8 +625,14 @@ impl Menu {
 
             match event {
                 LeaderBoardEvent::Finished { .. } => {
+                    level.sudden_death();
+
                     if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
                         utils::try_play_sound(self.finished_sound, &mut scene.graph);
+
+                        if level.is_time_critical() {
+                            utils::try_play_sound(self.clock_ticking, &mut scene.graph);
+                        }
                     }
                 }
             }
