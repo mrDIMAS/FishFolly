@@ -6,8 +6,6 @@ resolver = "2"
 opt-level = 3
 
 [workspace.dependencies.fyrox]
-# git = "https://github.com/FyroxEngine/Fyrox"
-path = "../fyrox"
+git = "https://github.com/FyroxEngine/Fyrox"
 [workspace.dependencies.fyroxed_base]
-path = "../fyrox/editor"
-# git = "https://github.com/FyroxEngine/Fyrox"
+git = "https://github.com/FyroxEngine/Fyrox"
