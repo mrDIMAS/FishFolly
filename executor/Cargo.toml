@@ -4,7 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-fish_fall = { path = "../game" }
-
-[dependencies.fyrox]
-workspace = true
+fyrox = { version = "0.33.1", path = "../../Fyrox/fyrox", default-features = false,  features = ["dylib"] }

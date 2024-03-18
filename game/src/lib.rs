@@ -4,12 +4,13 @@ use crate::{
     level::Level, menu::Menu, player::Player, respawn::Respawner, server::Server,
     settings::Settings, start::StartPoint, target::Target, trigger::Trigger,
 };
+use fyrox::window::Fullscreen;
 use fyrox::{
     core::{log::Log, pool::Handle},
     event::{ElementState, Event, WindowEvent},
     gui::{message::UiMessage, UserInterface},
     keyboard::{KeyCode, PhysicalKey},
-    plugin::{Plugin, PluginConstructor, PluginContext, PluginRegistrationContext},
+    plugin::{Plugin, PluginContext, PluginRegistrationContext},
     scene::Scene,
 };
 use std::path::Path;
@@ -32,6 +33,11 @@ pub mod target;
 pub mod trigger;
 pub mod utils;
 
+#[no_mangle]
+pub fn fyrox_plugin() -> Box<dyn Plugin> {
+    Box::new(Game::new())
+}
+
 #[derive(Default)]
 pub struct DebugSettings {
     pub show_paths: bool,
@@ -48,48 +54,8 @@ pub struct Game {
     settings: Settings,
 }
 
-pub struct GameConstructor;
-
-impl PluginConstructor for GameConstructor {
-    fn register(&self, context: PluginRegistrationContext) {
-        let script_constructors = &context.serialization_context.script_constructors;
-        script_constructors
-            .add::<Player>("Player")
-            .add::<CameraController>("Camera Controller")
-            .add::<Bot>("Bot")
-            .add::<Target>("Target")
-            .add::<StartPoint>("Start Point")
-            .add::<Respawner>("Respawner")
-            .add::<Cannon>("Cannon")
-            .add::<Trigger>("Trigger")
-            .add::<Jumper>("Jumper");
-    }
-
-    fn create_instance(
-        &self,
-        override_scene: Option<&str>,
-        context: PluginContext,
-    ) -> Box<dyn Plugin> {
-        Box::new(Game::new(override_scene, context))
-    }
-}
-
 impl Game {
-    fn new(_override_scene: Option<&str>, ctx: PluginContext) -> Self {
-        Log::info("Game started!");
-
-        ctx.task_pool.spawn_plugin_task(
-            UserInterface::load_from_file("data/menu.ui", ctx.resource_manager.clone()),
-            |result, game: &mut Game, ctx| match result {
-                Ok(menu) => {
-                    *ctx.user_interface = menu;
-                    let menu = Some(Menu::new(ctx, game));
-                    game.menu = menu;
-                }
-                Err(e) => Log::err(format!("Unable to load main menu! Reason: {:?}", e)),
-            },
-        );
-
+    pub fn new() -> Self {
         Self {
             menu: None,
             level: Default::default(),
@@ -106,6 +72,36 @@ impl Game {
 }
 
 impl Plugin for Game {
+    fn register(&self, context: PluginRegistrationContext) {
+        let script_constructors = &context.serialization_context.script_constructors;
+        script_constructors
+            .add::<Player>("Player")
+            .add::<CameraController>("Camera Controller")
+            .add::<Bot>("Bot")
+            .add::<Target>("Target")
+            .add::<StartPoint>("Start Point")
+            .add::<Respawner>("Respawner")
+            .add::<Cannon>("Cannon")
+            .add::<Trigger>("Trigger")
+            .add::<Jumper>("Jumper");
+    }
+
+    fn init(&mut self, scene_path: Option<&str>, ctx: PluginContext) {
+        Log::info("Game started!");
+
+        ctx.task_pool.spawn_plugin_task(
+            UserInterface::load_from_file("data/menu.ui", ctx.resource_manager.clone()),
+            |result, game: &mut Game, ctx| match result {
+                Ok(menu) => {
+                    *ctx.user_interface = menu;
+                    let menu = Some(Menu::new(ctx, game));
+                    game.menu = menu;
+                }
+                Err(e) => Log::err(format!("Unable to load main menu! Reason: {:?}", e)),
+            },
+        );
+    }
+
     fn on_deinit(&mut self, _context: PluginContext) {
         Log::info("Game stopped!");
     }
@@ -178,6 +174,13 @@ impl Plugin for Game {
             .as_initialized_mut()
             .window
             .set_title("Fish Folly");
+
+        if false {
+            ctx.graphics_context
+                .as_initialized_mut()
+                .window
+                .set_fullscreen(Some(Fullscreen::Borderless(None)));
+        }
     }
 
     fn on_ui_message(&mut self, context: &mut PluginContext, message: &UiMessage) {

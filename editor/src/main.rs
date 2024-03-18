@@ -1,7 +1,7 @@
 //! Editor with your game connected to it as a plugin.
 
-use fish_fall::{actor::Actor, respawn::RespawnMode, trigger::Action, GameConstructor};
-use fyrox::{
+use fish_fall::{actor::Actor, respawn::RespawnMode, trigger::Action, Game};
+use fyroxed_base::fyrox::{
     event_loop::EventLoop,
     gui::inspector::editors::inspectable::InspectablePropertyEditorDefinition,
 };
@@ -27,6 +27,6 @@ fn main() {
         .property_editors
         .register_inheritable_enum::<Action, _>();
 
-    editor.add_game_plugin(GameConstructor);
+    editor.add_game_plugin(Game::new());
     editor.run(event_loop)
 }
