@@ -1,4 +1,7 @@
-use fyrox::{core::log::Log, engine::GraphicsContext, renderer::QualitySettings, scene::Scene};
+use fyrox::{
+    core::log::Log, core::visitor::prelude::*, engine::GraphicsContext, renderer::QualitySettings,
+    scene::Scene,
+};
 use ron::ser::to_string_pretty;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -7,6 +10,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+#[derive(Visit)]
 pub struct Settings(SettingsData);
 
 impl Settings {
@@ -55,11 +59,12 @@ impl<'a> Drop for SettingsDataRefMut<'a> {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Visit)]
 pub struct SettingsData {
     pub graphics_quality: usize,
     pub sound_volume: f32,
     pub music_volume: f32,
+    #[visit(skip)] // TODO
     pub graphics_presets: Vec<(String, QualitySettings)>,
     pub mouse_sensitivity: f32,
     pub mouse_smoothness: f32,

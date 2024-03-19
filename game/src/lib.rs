@@ -6,6 +6,7 @@ use crate::{
 };
 use fyrox::window::Fullscreen;
 use fyrox::{
+    core::visitor::prelude::*,
     core::{log::Log, pool::Handle},
     event::{ElementState, Event, WindowEvent},
     gui::{message::UiMessage, UserInterface},
@@ -38,19 +39,24 @@ pub fn fyrox_plugin() -> Box<dyn Plugin> {
     Box::new(Game::new())
 }
 
-#[derive(Default)]
+#[derive(Default, Visit)]
 pub struct DebugSettings {
     pub show_paths: bool,
     pub show_physics: bool,
     pub disable_ragdoll: bool,
 }
 
+#[derive(Visit)]
+#[visit(optional)]
 pub struct Game {
     pub menu: Option<Menu>,
     pub level: Level,
     pub debug_settings: DebugSettings,
+    #[visit(skip)]
     server: Option<Server>,
+    #[visit(skip)]
     client: Option<Client>,
+    #[visit(skip)]
     settings: Settings,
 }
 
@@ -86,7 +92,7 @@ impl Plugin for Game {
             .add::<Jumper>("Jumper");
     }
 
-    fn init(&mut self, scene_path: Option<&str>, ctx: PluginContext) {
+    fn init(&mut self, _scene_path: Option<&str>, ctx: PluginContext) {
         Log::info("Game started!");
 
         ctx.task_pool.spawn_plugin_task(
