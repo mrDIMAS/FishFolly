@@ -27,7 +27,7 @@ use fyrox::{
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Visit, Serialize, Deserialize)]
 pub struct InputController {
     pub move_forward: bool,
     pub move_backward: bool,
@@ -112,23 +112,18 @@ pub struct Player {
     model: Handle<Node>,
     #[reflect(description = "Handle to a node with camera controller.")]
     camera: Handle<Node>,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub input_controller: InputController,
     #[component(include)]
     pub actor: Actor,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub model_angle: SmoothAngle,
     #[reflect(description = "Pitch range for camera")]
     pitch_range: Range<f32>,
-    #[visit(skip)]
     #[reflect(hidden)]
     yaw: f32,
-    #[visit(skip)]
     #[reflect(hidden)]
     pitch: f32,
-    #[visit(skip)]
     #[reflect(hidden)]
     spectator_target: Handle<Node>,
 }

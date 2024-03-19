@@ -81,7 +81,6 @@ pub struct Bot {
     obstacle_sensor_collider: Handle<Node>,
     #[component(include)]
     pub actor: Actor,
-    #[visit(skip)]
     #[reflect(hidden)]
     agent: NavmeshAgent,
     #[visit(skip)]
@@ -90,13 +89,10 @@ pub struct Bot {
     #[visit(skip)]
     #[reflect(hidden)]
     debug_data: DebugDataWrapper,
-    #[visit(skip)]
     #[reflect(hidden)]
     backwards_movement_timer: f32,
-    #[visit(skip)]
     #[reflect(hidden)]
     target_orientation: UnitQuaternion<f32>,
-    #[visit(skip)]
     #[reflect(hidden)]
     orientation: UnitQuaternion<f32>,
 }
@@ -346,17 +342,18 @@ impl ScriptTrait for Bot {
             .actors
             .insert(ctx.handle);
         Log::info(format!("Bot {:?} created!", ctx.handle));
+    }
+
+    fn on_start(&mut self, ctx: &mut ScriptContext) {
+        ctx.message_dispatcher
+            .subscribe_to::<ActorMessage>(ctx.handle);
+
         self.navmesh = ctx
             .scene
             .graph
             .find_from_root(&mut |n| n.is_navigational_mesh())
             .and_then(|(_, n)| n.cast::<NavigationalMesh>())
             .map(|n| n.navmesh());
-    }
-
-    fn on_start(&mut self, ctx: &mut ScriptContext) {
-        ctx.message_dispatcher
-            .subscribe_to::<ActorMessage>(ctx.handle);
 
         self.agent
             .set_position(ctx.scene.graph[ctx.handle].global_position());

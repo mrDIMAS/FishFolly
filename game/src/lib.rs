@@ -46,18 +46,41 @@ pub struct DebugSettings {
     pub disable_ragdoll: bool,
 }
 
-#[derive(Visit)]
-#[visit(optional)]
 pub struct Game {
     pub menu: Option<Menu>,
     pub level: Level,
     pub debug_settings: DebugSettings,
-    #[visit(skip)]
     server: Option<Server>,
-    #[visit(skip)]
     client: Option<Client>,
-    #[visit(skip)]
     settings: Settings,
+}
+
+impl Visit for Game {
+    fn visit(&mut self, name: &str, visitor: &mut Visitor) -> VisitResult {
+        let mut region = visitor.enter_region(name)?;
+
+        let _ = self.menu.visit("Menu", &mut region);
+        let _ = self.level.visit("Level", &mut region);
+        let _ = self.debug_settings.visit("DebugSettings", &mut region);
+
+        if self.server.as_ref().map_or(0, |s| s.connections().len()) > 1 {
+            Log::warn("Hot reloading is not possible when there's more than one client!");
+        }
+
+        let mut server_address = self.server.as_ref().map(|s| s.address().to_string());
+        let _ = server_address.visit("ServerAddress", &mut region);
+
+        if region.is_reading() {
+            if let Some(address) = server_address {
+                self.server = Some(Server::new(address.clone()).unwrap());
+                self.client = Some(Client::try_connect(address).unwrap());
+            }
+
+            self.settings = Settings::load();
+        }
+
+        Ok(())
+    }
 }
 
 impl Game {

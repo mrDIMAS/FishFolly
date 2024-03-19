@@ -25,6 +25,7 @@ use fyrox::{
         Scene,
     },
 };
+use std::net::SocketAddr;
 use std::{io, net::ToSocketAddrs, path::Path};
 
 pub struct Server {
@@ -207,6 +208,10 @@ impl Server {
                 }
             }
         }
+    }
+
+    pub fn address(&self) -> SocketAddr {
+        self.listener.local_address().unwrap()
     }
 
     pub fn connections(&self) -> &[NetStream] {
