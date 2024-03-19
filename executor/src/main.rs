@@ -18,6 +18,13 @@ fn main() {
         },
     );
 
-    executor.add_dynamic_plugin("fish_fall.dll").unwrap(); // TODO: Windows-only
+    executor
+        .add_dynamic_plugin(
+            // TODO: Windows-only
+            "fish_fall.dll",
+            true,
+            true,
+        )
+        .unwrap();
     executor.run()
 }
