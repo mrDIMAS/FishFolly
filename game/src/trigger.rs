@@ -32,6 +32,8 @@ pub enum Action {
 #[visit(optional)]
 pub struct Trigger {
     action: InheritableVariable<Action>,
+    lulw: i32,
+    azaza: i32,
 }
 
 impl ScriptTrait for Trigger {

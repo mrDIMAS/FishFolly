@@ -3,9 +3,6 @@ name = "fish_fall"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-crate-type = ["cdylib"]
-
 [dependencies]
 strum = "0.26.1"
 strum_macros = "0.26.1"

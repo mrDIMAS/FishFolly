@@ -1,20 +1,28 @@
 //! Game project.
-use crate::{
-    bot::Bot, camera::CameraController, cannon::Cannon, client::Client, jumper::Jumper,
-    level::Level, menu::Menu, player::Player, respawn::Respawner, server::Server,
-    settings::Settings, start::StartPoint, target::Target, trigger::Trigger,
-};
-use fyrox::window::Fullscreen;
 use fyrox::{
-    core::visitor::prelude::*,
-    core::{log::Log, pool::Handle},
+    core::{log::Log, pool::Handle, visitor::prelude::*},
     event::{ElementState, Event, WindowEvent},
-    gui::{message::UiMessage, UserInterface},
+    gui::{
+        inspector::editors::{
+            inspectable::InspectablePropertyEditorDefinition, PropertyEditorDefinitionContainer,
+        },
+        message::UiMessage,
+        UserInterface,
+    },
     keyboard::{KeyCode, PhysicalKey},
     plugin::{Plugin, PluginContext, PluginRegistrationContext},
     scene::Scene,
+    window::Fullscreen,
 };
 use std::path::Path;
+
+use crate::{
+    actor::Actor, bot::Bot, camera::CameraController, cannon::Cannon, client::Client,
+    jumper::Jumper, level::Level, menu::Menu, player::Player, respawn::RespawnMode,
+    respawn::Respawner, server::Server, settings::Settings, start::StartPoint, target::Target,
+    trigger::Action, trigger::Trigger,
+};
+pub use fyrox;
 
 pub mod actor;
 pub mod bot;
@@ -33,11 +41,6 @@ pub mod start;
 pub mod target;
 pub mod trigger;
 pub mod utils;
-
-#[no_mangle]
-pub fn fyrox_plugin() -> Box<dyn Plugin> {
-    Box::new(Game::new())
-}
 
 #[derive(Default, Visit)]
 pub struct DebugSettings {
@@ -113,6 +116,14 @@ impl Plugin for Game {
             .add::<Cannon>("Cannon")
             .add::<Trigger>("Trigger")
             .add::<Jumper>("Jumper");
+    }
+
+    fn register_property_editors(&self) -> PropertyEditorDefinitionContainer {
+        let container = PropertyEditorDefinitionContainer::empty();
+        container.insert(InspectablePropertyEditorDefinition::<Actor>::new());
+        container.register_inheritable_enum::<RespawnMode, _>();
+        container.register_inheritable_enum::<Action, _>();
+        container
     }
 
     fn init(&mut self, _scene_path: Option<&str>, ctx: PluginContext) {

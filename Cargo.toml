@@ -1,5 +1,5 @@
 [workspace]
-members = ["editor", "executor", "game", "executor-wasm"]
+members = ["editor", "executor", "game", "executor-wasm", "game-dylib"]
 resolver = "2"
 
 [profile.dev.package."*"]

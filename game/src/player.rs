@@ -1,11 +1,14 @@
 //! Main player (host) script.
 
 use crate::actor::ActorKind;
+use crate::net::{InstanceDescriptor, ServerMessage};
 use crate::{
     actor::{Actor, ActorMessage},
     net::ClientMessage,
     CameraController, Event, Game,
 };
+use fyrox::core::futures::executor::block_on;
+use fyrox::resource::model::{Model, ModelResourceExtension};
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -203,6 +206,33 @@ impl ScriptTrait for Player {
             return;
         }
 
+        // Spawn a ball on left mouse button click.
+        if let Event::WindowEvent { event, .. } = event {
+            if let WindowEvent::MouseInput { button, state, .. } = event {
+                if *button == MouseButton::Left && *state == ElementState::Pressed {
+                    if let Some(server) = game.server.as_mut() {
+                        if let Ok(ball_prefab) = block_on(
+                            ctx.resource_manager
+                                .request::<Model>("data/models/cannon_ball.rgs"),
+                        ) {
+                            let rigid_body = &ctx.scene.graph[self.actor.rigid_body];
+                            let forward_vec = rigid_body.look_vector();
+                            let self_position = rigid_body.global_position();
+                            server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
+                                InstanceDescriptor {
+                                    path: ball_prefab.kind().path().unwrap().to_path_buf(),
+                                    position: self_position + forward_vec,
+                                    rotation: Default::default(),
+                                    velocity: Default::default(),
+                                    ids: ball_prefab.generate_ids(),
+                                },
+                            ]));
+                        }
+                    }
+                }
+            }
+        }
+
         let this = &ctx.scene.graph[ctx.handle];
         if self.input_controller.on_os_event(
             event,
@@ -346,6 +376,7 @@ impl ScriptTrait for Player {
 
                 ctx.scene.graph[self.model]
                     .local_transform_mut()
+                    .set_scale(Vector3::repeat(0.01))
                     .set_rotation(UnitQuaternion::from_axis_angle(
                         &Vector3::y_axis(),
                         180.0f32.to_radians() + self.model_angle.angle(),

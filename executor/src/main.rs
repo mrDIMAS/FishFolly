@@ -18,13 +18,21 @@ fn main() {
         },
     );
 
+    #[cfg(feature = "dylib")]
     executor
         .add_dynamic_plugin(
             // TODO: Windows-only
-            "fish_fall.dll",
+            "fish_fall_dylib.dll",
             true,
             true,
         )
         .unwrap();
+
+    #[cfg(not(feature = "dylib"))]
+    {
+        use fish_fall::Game;
+        executor.add_plugin(Game::new());
+    }
+
     executor.run()
 }

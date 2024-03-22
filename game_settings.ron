@@ -1,7 +1,7 @@
 (
     graphics_quality: 3,
     sound_volume: 100.0,
-    music_volume: 100.0,
+    music_volume: 0.0,
     graphics_presets: [
         ("Low", (
             point_shadow_map_size: 1,
