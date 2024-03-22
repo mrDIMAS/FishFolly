@@ -1,11 +1,11 @@
 [workspace]
-members = ["editor", "executor", "game", "executor-wasm"]
+members = ["editor", "executor", "game", "executor-wasm", "game-dylib"]
 resolver = "2"
 
 [profile.dev.package."*"]
 opt-level = 3
 
 [workspace.dependencies.fyrox]
-git = "https://github.com/FyroxEngine/Fyrox"
+path = "../Fyrox/fyrox"
 [workspace.dependencies.fyroxed_base]
-git = "https://github.com/FyroxEngine/Fyrox"
+path = "../Fyrox/editor"

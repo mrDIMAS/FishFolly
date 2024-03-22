@@ -1,6 +1,6 @@
 use crate::actor::Actor;
 use fyrox::{
-    core::pool::Handle,
+    core::{pool::Handle, visitor::prelude::*},
     fxhash::FxHashMap,
     graph::BaseSceneGraph,
     plugin::PluginContext,
@@ -9,7 +9,7 @@ use fyrox::{
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, collections::HashSet, sync::mpsc::Sender};
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, Visit)]
 pub struct LeaderBoardEntry {
     pub actor: Handle<Node>,
     pub finished: bool,
@@ -21,10 +21,12 @@ pub enum LeaderBoardEvent {
     Finished { actor: Handle<Node>, place: usize },
 }
 
-#[derive(Default)]
+#[derive(Default, Visit)]
 pub struct Leaderboard {
     pub entries: FxHashMap<Handle<Node>, LeaderBoardEntry>,
+    #[visit(skip)]
     pub sender: Option<Sender<LeaderBoardEvent>>,
+    #[visit(skip)]
     temp_array: Vec<(Handle<Node>, f32)>,
 }
 
@@ -97,6 +99,7 @@ impl Leaderboard {
     }
 }
 
+#[derive(Visit)]
 pub struct Level {
     pub scene: Handle<Scene>,
     pub targets: HashSet<Handle<Node>>,

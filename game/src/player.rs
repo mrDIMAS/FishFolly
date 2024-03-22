@@ -1,11 +1,14 @@
 //! Main player (host) script.
 
 use crate::actor::ActorKind;
+use crate::net::{InstanceDescriptor, ServerMessage};
 use crate::{
     actor::{Actor, ActorMessage},
     net::ClientMessage,
     CameraController, Event, Game,
 };
+use fyrox::core::futures::executor::block_on;
+use fyrox::resource::model::{Model, ModelResourceExtension};
 use fyrox::{
     core::{
         algebra::{UnitQuaternion, Vector3},
@@ -27,7 +30,7 @@ use fyrox::{
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Visit, Serialize, Deserialize)]
 pub struct InputController {
     pub move_forward: bool,
     pub move_backward: bool,
@@ -112,23 +115,18 @@ pub struct Player {
     model: Handle<Node>,
     #[reflect(description = "Handle to a node with camera controller.")]
     camera: Handle<Node>,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub input_controller: InputController,
     #[component(include)]
     pub actor: Actor,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub model_angle: SmoothAngle,
     #[reflect(description = "Pitch range for camera")]
     pitch_range: Range<f32>,
-    #[visit(skip)]
     #[reflect(hidden)]
     yaw: f32,
-    #[visit(skip)]
     #[reflect(hidden)]
     pitch: f32,
-    #[visit(skip)]
     #[reflect(hidden)]
     spectator_target: Handle<Node>,
 }
@@ -206,6 +204,33 @@ impl ScriptTrait for Player {
                 .map_or(false, |menu| menu.is_active(ctx.user_interface))
         {
             return;
+        }
+
+        // Spawn a ball on left mouse button click.
+        if let Event::WindowEvent { event, .. } = event {
+            if let WindowEvent::MouseInput { button, state, .. } = event {
+                if *button == MouseButton::Left && *state == ElementState::Pressed {
+                    if let Some(server) = game.server.as_mut() {
+                        if let Ok(ball_prefab) = block_on(
+                            ctx.resource_manager
+                                .request::<Model>("data/models/cannon_ball.rgs"),
+                        ) {
+                            let rigid_body = &ctx.scene.graph[self.actor.rigid_body];
+                            let forward_vec = rigid_body.look_vector();
+                            let self_position = rigid_body.global_position();
+                            server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
+                                InstanceDescriptor {
+                                    path: ball_prefab.kind().path().unwrap().to_path_buf(),
+                                    position: self_position + forward_vec,
+                                    rotation: Default::default(),
+                                    velocity: Default::default(),
+                                    ids: ball_prefab.generate_ids(),
+                                },
+                            ]));
+                        }
+                    }
+                }
+            }
         }
 
         let this = &ctx.scene.graph[ctx.handle];
@@ -351,6 +376,7 @@ impl ScriptTrait for Player {
 
                 ctx.scene.graph[self.model]
                     .local_transform_mut()
+                    .set_scale(Vector3::repeat(0.01))
                     .set_rotation(UnitQuaternion::from_axis_angle(
                         &Vector3::y_axis(),
                         180.0f32.to_radians() + self.model_angle.angle(),

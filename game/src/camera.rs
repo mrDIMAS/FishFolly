@@ -31,16 +31,10 @@ pub struct CameraController {
     probe_radius: f32,
     #[reflect(description = "A collider that should be ignored by ray casting.")]
     pub collider_to_ignore: Handle<Node>,
-
-    #[visit(skip)]
     #[reflect(hidden)]
     pub target_position: Vector3<f32>,
-
-    #[visit(skip)]
     #[reflect(hidden)]
     pub pitch: f32,
-
-    #[visit(skip)]
     #[reflect(hidden)]
     pub yaw: f32,
 }

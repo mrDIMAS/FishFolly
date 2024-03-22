@@ -1,5 +1,4 @@
 //! Executor runs the game in standalone (production) mode.
-use fish_fall::GameConstructor;
 use fyrox::{
     dpi::LogicalSize, engine::executor::Executor, engine::GraphicsContextParams,
     event_loop::EventLoop, window::WindowAttributes,
@@ -19,6 +18,21 @@ fn main() {
         },
     );
 
-    executor.add_plugin_constructor(GameConstructor);
+    #[cfg(feature = "dylib")]
+    executor
+        .add_dynamic_plugin(
+            // TODO: Windows-only
+            "fish_fall_dylib.dll",
+            true,
+            true,
+        )
+        .unwrap();
+
+    #[cfg(not(feature = "dylib"))]
+    {
+        use fish_fall::Game;
+        executor.add_plugin(Game::new());
+    }
+
     executor.run()
 }

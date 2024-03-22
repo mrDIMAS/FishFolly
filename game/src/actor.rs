@@ -27,7 +27,7 @@ pub enum ActorMessage {
     RespawnAt(Vector3<f32>),
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Visit, Serialize, Deserialize)]
 pub enum ActorKind {
     Bot,
     Player,
@@ -39,25 +39,20 @@ pub enum ActorKind {
 #[visit(optional)]
 pub struct Actor {
     pub name: String,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub kind: ActorKind,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub in_air_time: f32,
     #[reflect(
         description = "Amount of time that the bot will be lying on the ground with active ragdoll."
     )]
     pub max_in_air_time: f32,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub stand_up_timer: f32,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub stand_up_interval: f32,
     #[reflect(description = "A handle of the ragdoll")]
     pub ragdoll: Handle<Node>,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub jump: bool,
     #[reflect(description = "Handle to actor's collider.")]
@@ -68,15 +63,12 @@ pub struct Actor {
     pub speed: f32,
     #[reflect(description = "Jump speed of the actor.")]
     pub jump_vel: f32,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub target_desired_velocity: Vector3<f32>,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub desired_velocity: Vector3<f32>,
     #[reflect(description = "Handle of animation state machine.")]
     pub absm: Handle<Node>,
-    #[visit(skip)]
     #[reflect(hidden)]
     pub jump_interval: f32,
     pub footsteps: InheritableVariable<Vec<Handle<Node>>>,

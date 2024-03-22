@@ -8,6 +8,7 @@ use crate::{
 };
 use fyrox::{
     asset::manager::ResourceManager,
+    core::visitor::prelude::*,
     core::{log::Log, pool::Handle},
     engine::GraphicsContext,
     graph::{BaseSceneGraph, SceneGraph},
@@ -61,7 +62,7 @@ fn set_visibility(ui: &UserInterface, pairs: &[(Handle<UiNode>, bool)]) {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Visit)]
 struct ServerMenu {
     self_handle: Handle<UiNode>,
     main_menu: Handle<UiNode>,
@@ -230,6 +231,7 @@ impl ServerMenu {
     }
 }
 
+#[derive(Visit, Default)]
 pub struct SettingsMenu {
     menu: Handle<UiNode>,
     graphics_quality: Handle<UiNode>,
@@ -349,6 +351,7 @@ impl SettingsMenu {
     }
 }
 
+#[derive(Visit, Default)]
 struct InGameMenu {
     root: Handle<UiNode>,
     finished_text: Handle<UiNode>,
@@ -454,6 +457,7 @@ impl InGameMenu {
     }
 }
 
+#[derive(Visit)]
 pub struct Menu {
     debug_text: Handle<UiNode>,
     settings: Handle<UiNode>,
@@ -470,12 +474,43 @@ pub struct Menu {
     click_end_sound: Handle<Node>,
     root_scene_node: Handle<Node>,
     finished_sound: Handle<Node>,
+    #[visit(skip)]
     pub sender: Sender<LeaderBoardEvent>,
+    #[visit(skip)]
     receiver: Receiver<LeaderBoardEvent>,
     in_game_menu: InGameMenu,
     clock_ticking: Handle<Node>,
     win_camera: Handle<Node>,
     main_camera: Handle<Node>,
+}
+
+impl Default for Menu {
+    fn default() -> Self {
+        let (sender, receiver) = mpsc::channel();
+        Self {
+            debug_text: Default::default(),
+            settings: Default::default(),
+            exit: Default::default(),
+            start_as_server: Default::default(),
+            start_as_client: Default::default(),
+            main_menu: Default::default(),
+            main_menu_root: Default::default(),
+            background: Default::default(),
+            server_menu: Default::default(),
+            settings_menu: Default::default(),
+            scene: Default::default(),
+            click_begin_sound: Default::default(),
+            click_end_sound: Default::default(),
+            root_scene_node: Default::default(),
+            finished_sound: Default::default(),
+            sender,
+            receiver,
+            in_game_menu: Default::default(),
+            clock_ticking: Default::default(),
+            win_camera: Default::default(),
+            main_camera: Default::default(),
+        }
+    }
 }
 
 fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
