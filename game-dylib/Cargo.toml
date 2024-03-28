@@ -1,5 +1,5 @@
 [package]
-name = "fish_fall_dylib"
+name = "game_dylib"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,4 +7,8 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-fish_fall = { path = "../game" }
+fish_fall = { path = "../game", default-features = false }
+
+[features]
+default = ["fish_fall/default"]
+dylib-engine = ["fish_fall/dylib-engine"]

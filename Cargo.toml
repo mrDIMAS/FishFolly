@@ -2,10 +2,21 @@
 members = ["editor", "executor", "game", "executor-wasm", "game-dylib"]
 resolver = "2"
 
+# Separate build profiles for hot reloading. These profiles ensures that build artifacts for
+# hot reloading will be placed into their own folders and does not interfere with standard (static)
+# linking.
+[profile.dev-hot-reload]
+inherits = "dev"
+[profile.release-hot-reload]
+inherits = "release"
+
 [profile.dev.package."*"]
 opt-level = 3
 
 [workspace.dependencies.fyrox]
 path = "../Fyrox/fyrox"
+default-features = false
 [workspace.dependencies.fyroxed_base]
 path = "../Fyrox/editor"
+default-features = false
+

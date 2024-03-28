@@ -4,13 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-fish_fall = { path = "../game",optional = true }
+fish_fall = { path = "../game", optional = true }
 
 [dependencies.fyroxed_base]
-version = "0.20.1"
-path = "../../Fyrox/editor"
-features = ["dylib_engine"]
+workspace = true
 
 [features]
-default = ["fish_fall"]
-dylib = []
+default = ["fish_fall", "fyroxed_base/default"]
+dylib = ["fyroxed_base/dylib_engine"]

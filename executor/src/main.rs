@@ -19,14 +19,15 @@ fn main() {
     );
 
     #[cfg(feature = "dylib")]
-    executor
-        .add_dynamic_plugin(
-            // TODO: Windows-only
-            "fish_fall_dylib.dll",
-            true,
-            true,
-        )
-        .unwrap();
+    {
+        #[cfg(target_os = "windows")]
+        let file_name = "game_dylib.dll";
+        #[cfg(target_os = "linux")]
+        let file_name = "libgame_dylib.so";
+        #[cfg(target_os = "macos")]
+        let file_name = "libgame_dylib.dylib";
+        executor.add_dynamic_plugin(file_name, true, true).unwrap();
+    }
 
     #[cfg(not(feature = "dylib"))]
     {

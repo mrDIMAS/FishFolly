@@ -9,4 +9,8 @@ strum_macros = "0.26.1"
 serde = { version = "1.0.174", features = ["derive"] }
 walkdir = "2.4.0"
 ron = "0.8.1"
-fyrox = { version = "0.33.1", path = "../../Fyrox/fyrox", default-features = false, features = ["dylib"] }
+fyrox = { workspace = true }
+
+[features]
+default = ["fyrox/default"]
+dylib-engine = ["fyrox/dylib"]
