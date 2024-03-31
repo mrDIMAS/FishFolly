@@ -198,7 +198,7 @@ impl ScriptTrait for Player {
             || game
                 .menu
                 .as_ref()
-                .map_or(false, |menu| menu.is_active(ctx.user_interface))
+                .map_or(false, |menu| menu.is_active(ctx.user_interfaces.first()))
         {
             return;
         }

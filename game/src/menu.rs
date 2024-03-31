@@ -143,9 +143,11 @@ impl ServerMenu {
         message: &UiMessage,
         server: &mut Option<Server>,
     ) {
+        let ui = ctx.user_interfaces.first();
+
         if let Some(ButtonMessage::Click) = message.data() {
             if message.destination() == self.start {
-                ctx.user_interface.send_message(WidgetMessage::visibility(
+                ui.send_message(WidgetMessage::visibility(
                     self.self_handle,
                     MessageDirection::ToWidget,
                     false,
@@ -157,12 +159,12 @@ impl ServerMenu {
                     }
                 }
             } else if message.destination() == self.back {
-                ctx.user_interface.send_message(WidgetMessage::visibility(
+                ui.send_message(WidgetMessage::visibility(
                     self.self_handle,
                     MessageDirection::ToWidget,
                     false,
                 ));
-                ctx.user_interface.send_message(WidgetMessage::visibility(
+                ui.send_message(WidgetMessage::visibility(
                     self.main_menu,
                     MessageDirection::ToWidget,
                     true,
@@ -198,7 +200,8 @@ impl ServerMenu {
         };
 
         let player_entries_count = ctx
-            .user_interface
+            .user_interfaces
+            .first()
             .node(self.players_list)
             .query_component::<ListView>()
             .unwrap()
@@ -211,7 +214,7 @@ impl ServerMenu {
                 .enumerate()
                 .map(|(n, e)| {
                     make_text_widget(
-                        &mut ctx.user_interface.build_ctx(),
+                        &mut ctx.user_interfaces.first_mut().build_ctx(),
                         &format!(
                             "{} - {}",
                             e.string_peer_address(),
@@ -222,11 +225,13 @@ impl ServerMenu {
                     )
                 })
                 .collect::<Vec<_>>();
-            ctx.user_interface.send_message(ListViewMessage::items(
-                self.players_list,
-                MessageDirection::ToWidget,
-                new_player_entries,
-            ));
+            ctx.user_interfaces
+                .first()
+                .send_message(ListViewMessage::items(
+                    self.players_list,
+                    MessageDirection::ToWidget,
+                    new_player_entries,
+                ));
         }
     }
 }
@@ -550,7 +555,7 @@ impl Menu {
             },
         );
 
-        let ui = &mut *ctx.user_interface;
+        let ui = ctx.user_interfaces.first_mut();
         let main_menu = ui.find_handle_by_name_from_root("MainMenu");
         let server_menu = ui.find_handle_by_name_from_root("ServerMenu");
         let (sender, receiver) = mpsc::channel();
@@ -592,7 +597,7 @@ impl Menu {
         self.settings_menu.handle_ui_message(
             message,
             self.main_menu,
-            ctx.user_interface,
+            ctx.user_interfaces.first(),
             ctx.graphics_context,
             settings,
             ctx.scenes,
@@ -607,13 +612,13 @@ impl Menu {
                 }
             } else if message.destination() == self.start_as_server {
                 set_visibility(
-                    ctx.user_interface,
+                    ctx.user_interfaces.first(),
                     &[
                         (self.server_menu.self_handle, true),
                         (self.main_menu, false),
                     ],
                 );
-                ctx.user_interface.send_message(TextMessage::text(
+                ctx.user_interfaces.first().send_message(TextMessage::text(
                     self.server_menu.server_address_input,
                     MessageDirection::ToWidget,
                     Server::LOCALHOST.to_string(),
@@ -633,7 +638,7 @@ impl Menu {
                 *client = try_connect_to_server(&self.server_menu.server_address);
             } else if message.destination() == self.settings {
                 set_visibility(
-                    ctx.user_interface,
+                    ctx.user_interfaces.first(),
                     &[(self.settings_menu.menu, true), (self.main_menu, false)],
                 );
             }
@@ -695,7 +700,7 @@ impl Menu {
 
         if let GraphicsContext::Initialized(graphics_context) = ctx.graphics_context {
             let fps = graphics_context.renderer.get_statistics().frames_per_second;
-            ctx.user_interface.send_message(TextMessage::text(
+            ctx.user_interfaces.first().send_message(TextMessage::text(
                 self.debug_text,
                 MessageDirection::ToWidget,
                 format!("FPS: {fps}"),
@@ -715,15 +720,18 @@ impl Menu {
         }
 
         self.in_game_menu.update(
-            ctx.user_interface,
+            ctx.user_interfaces.first(),
             ctx.scenes.try_get_mut(level.scene).map(|s| &s.graph),
             level,
         );
 
         while let Ok(event) = self.receiver.try_recv() {
             if let Some(game_scene) = ctx.scenes.try_get_mut(level.scene) {
-                self.in_game_menu
-                    .on_leaderboard_event(ctx.user_interface, game_scene, &event);
+                self.in_game_menu.on_leaderboard_event(
+                    ctx.user_interfaces.first_mut(),
+                    game_scene,
+                    &event,
+                );
             }
 
             match event {

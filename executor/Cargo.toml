@@ -6,8 +6,7 @@ edition = "2021"
 [dependencies]
 fyrox = { version = "0.33.1", path = "../../Fyrox/fyrox", default-features = false, features = ["dylib"] }
 fish_fall = { path = "../game", optional = true }
-game_dylib = { path = "../game-dylib", optional = true }
 
 [features]
 default = ["fish_fall"]
-dylib = ["game_dylib"]
+dylib = []

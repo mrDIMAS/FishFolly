@@ -133,7 +133,7 @@ impl Plugin for Game {
             UserInterface::load_from_file("data/menu.ui", ctx.resource_manager.clone()),
             |result, game: &mut Game, ctx| match result {
                 Ok(menu) => {
-                    *ctx.user_interface = menu;
+                    *ctx.user_interfaces.first_mut() = menu;
                     let menu = Some(Menu::new(ctx, game));
                     game.menu = menu;
                 }
@@ -193,7 +193,10 @@ impl Plugin for Game {
                         }
                         KeyCode::Escape => {
                             if let Some(menu) = self.menu.as_ref() {
-                                menu.switch_visibility(ctx.user_interface, self.client.is_some());
+                                menu.switch_visibility(
+                                    ctx.user_interfaces.first(),
+                                    self.client.is_some(),
+                                );
                             }
                         }
                         KeyCode::F4 => {
@@ -258,7 +261,7 @@ impl Plugin for Game {
 
         if let Some(menu) = self.menu.as_ref() {
             self.level.leaderboard.sender = Some(menu.sender.clone());
-            menu.set_menu_visibility(ctx.user_interface, false);
+            menu.set_menu_visibility(ctx.user_interfaces.first(), false);
         }
         if let Some(server) = self.server.as_mut() {
             server.on_scene_loaded(scene, ctx);

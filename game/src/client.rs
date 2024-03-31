@@ -165,8 +165,8 @@ impl Client {
                     });
 
                     if let Some(menu) = menu {
-                        menu.set_menu_visibility(ctx.user_interface, true);
-                        menu.set_main_menu_visibility(ctx.user_interface, true);
+                        menu.set_menu_visibility(ctx.user_interfaces.first(), true);
+                        menu.set_main_menu_visibility(ctx.user_interfaces.first(), true);
                     }
 
                     ctx.scenes.remove(level.scene);
