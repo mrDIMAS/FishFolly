@@ -1,5 +1,5 @@
 [workspace]
-members = ["editor", "executor", "game", "executor-wasm", "game-dylib"]
+members = ["editor", "executor", "game", "executor-wasm", "executor-android", "game-dylib"]
 resolver = "2"
 
 # Separate build profiles for hot reloading. These profiles ensures that build artifacts for

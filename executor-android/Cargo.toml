@@ -1,0 +1,24 @@
+[package]
+name = "executor-android"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.android]
+assets = "assets"
+strip = "strip"
+
+[package.metadata.android.sdk]
+min_sdk_version = 26
+target_sdk_version = 30
+max_sdk_version = 29
+
+[package.metadata.android.signing.release]
+path = "release.keystore"
+keystore_password = "fyrox-template"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+fyrox = { workspace = true }
+fish_fall = { path = "../game" }

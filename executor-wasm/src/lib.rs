@@ -1,7 +1,7 @@
 #![cfg(target_arch = "wasm32")]
 
 //! Executor with your game connected to it as a plugin.
-use fish_fall::GameConstructor;
+use fish_fall::Game;
 use fyrox::{
     core::wasm_bindgen::{self, prelude::*},
     dpi::LogicalSize,
@@ -58,6 +58,6 @@ pub fn main() {
             msaa_sample_count: None,
         },
     );
-    executor.add_plugin_constructor(GameConstructor);
+    executor.add_plugin(Game::new());
     executor.run()
 }
