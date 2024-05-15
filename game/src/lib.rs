@@ -1,6 +1,6 @@
 //! Game project.
 use fyrox::{
-    core::{log::Log, pool::Handle, visitor::prelude::*},
+    core::{log::Log, pool::Handle, reflect::prelude::*, visitor::prelude::*},
     event::{ElementState, Event, WindowEvent},
     gui::{
         inspector::editors::{
@@ -42,13 +42,15 @@ pub mod target;
 pub mod trigger;
 pub mod utils;
 
-#[derive(Default, Visit)]
+#[derive(Default, Visit, Debug)]
 pub struct DebugSettings {
     pub show_paths: bool,
     pub show_physics: bool,
     pub disable_ragdoll: bool,
 }
 
+#[derive(Reflect, Debug)]
+#[reflect(hide_all)]
 pub struct Game {
     pub menu: Option<Menu>,
     pub level: Level,

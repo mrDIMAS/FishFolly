@@ -11,6 +11,7 @@ use fyrox::{
     resource::model::{Model, ModelResourceExtension},
     scene::{rigidbody::RigidBody, Scene},
 };
+use std::fmt::Formatter;
 use std::{fmt::Debug, io, net::ToSocketAddrs};
 
 pub struct FinishedPlayer {
@@ -26,6 +27,12 @@ pub struct WinContext {
 pub struct Client {
     connection: NetStream,
     pub win_context: Option<WinContext>,
+}
+
+impl Debug for Client {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Server")
+    }
 }
 
 fn instantiate_objects(instances: Vec<InstanceDescriptor>, ctx: &mut PluginContext) {

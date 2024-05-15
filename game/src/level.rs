@@ -17,11 +17,12 @@ pub struct LeaderBoardEntry {
     pub finished_position: usize,
 }
 
+#[derive(Debug)]
 pub enum LeaderBoardEvent {
     Finished { actor: Handle<Node>, place: usize },
 }
 
-#[derive(Default, Visit)]
+#[derive(Default, Visit, Debug)]
 pub struct Leaderboard {
     pub entries: FxHashMap<Handle<Node>, LeaderBoardEntry>,
     #[visit(skip)]
@@ -99,7 +100,7 @@ impl Leaderboard {
     }
 }
 
-#[derive(Visit)]
+#[derive(Visit, Debug)]
 pub struct Level {
     pub scene: Handle<Scene>,
     pub targets: HashSet<Handle<Node>>,

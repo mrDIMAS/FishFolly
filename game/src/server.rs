@@ -25,6 +25,7 @@ use fyrox::{
         Scene,
     },
 };
+use std::fmt::{Debug, Formatter};
 use std::net::SocketAddr;
 use std::{io, net::ToSocketAddrs, path::Path};
 
@@ -34,6 +35,12 @@ pub struct Server {
     previous_node_states: FxHashMap<Handle<Node>, NodeState>,
     previous_sound_states: FxHashMap<Handle<Node>, SoundState>,
     pub add_bots: bool,
+}
+
+impl Debug for Server {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Server")
+    }
 }
 
 impl Server {

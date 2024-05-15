@@ -10,7 +10,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-#[derive(Visit)]
+#[derive(Visit, Debug)]
 pub struct Settings(SettingsData);
 
 impl Settings {
@@ -59,7 +59,7 @@ impl<'a> Drop for SettingsDataRefMut<'a> {
     }
 }
 
-#[derive(Serialize, Deserialize, Visit)]
+#[derive(Debug, Serialize, Deserialize, Visit)]
 pub struct SettingsData {
     pub graphics_quality: usize,
     pub sound_volume: f32,

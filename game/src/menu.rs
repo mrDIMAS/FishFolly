@@ -62,7 +62,7 @@ fn set_visibility(ui: &UserInterface, pairs: &[(Handle<UiNode>, bool)]) {
     }
 }
 
-#[derive(Default, Visit)]
+#[derive(Default, Visit, Debug)]
 struct ServerMenu {
     self_handle: Handle<UiNode>,
     main_menu: Handle<UiNode>,
@@ -236,7 +236,7 @@ impl ServerMenu {
     }
 }
 
-#[derive(Visit, Default)]
+#[derive(Visit, Default, Debug)]
 pub struct SettingsMenu {
     menu: Handle<UiNode>,
     graphics_quality: Handle<UiNode>,
@@ -356,7 +356,7 @@ impl SettingsMenu {
     }
 }
 
-#[derive(Visit, Default)]
+#[derive(Visit, Default, Debug)]
 struct InGameMenu {
     root: Handle<UiNode>,
     finished_text: Handle<UiNode>,
@@ -462,7 +462,7 @@ impl InGameMenu {
     }
 }
 
-#[derive(Visit)]
+#[derive(Visit, Debug)]
 pub struct Menu {
     debug_text: Handle<UiNode>,
     settings: Handle<UiNode>,

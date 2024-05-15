@@ -346,6 +346,7 @@ impl ScriptTrait for Player {
 
                 ctx.scene.graph[self.model]
                     .local_transform_mut()
+                    .set_scale(Vector3::new(2.0, 1.0, 1.0))
                     .set_rotation(UnitQuaternion::from_axis_angle(
                         &Vector3::y_axis(),
                         180.0f32.to_radians() + self.model_angle.angle(),
