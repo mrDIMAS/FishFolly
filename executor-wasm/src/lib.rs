@@ -56,6 +56,7 @@ pub fn main() {
             window_attributes,
             vsync: false,
             msaa_sample_count: None,
+            graphics_server_constructor: Default::default(),
         },
     );
     executor.add_plugin(Game::new());

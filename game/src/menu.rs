@@ -48,7 +48,7 @@ pub fn make_text_widget(
         .with_horizontal_text_alignment(horizontal_alignment)
         .with_text(name)
         .with_font(resource_manager.request::<Font>("data/font.ttf"))
-        .with_font_size(28.0)
+        .with_font_size(28.0.into())
         .build(ctx)
 }
 

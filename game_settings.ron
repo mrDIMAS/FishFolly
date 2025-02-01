@@ -28,6 +28,8 @@
             fxaa: false,
             use_parallax_mapping: false,
             use_bloom: false,
+            use_occlusion_culling: false,
+            use_light_occlusion_culling: false,
         )),
         ("Medium", (
             point_shadow_map_size: 512,
@@ -54,6 +56,8 @@
             fxaa: true,
             use_parallax_mapping: false,
             use_bloom: true,
+            use_occlusion_culling: false,
+            use_light_occlusion_culling: false,
         )),
         ("High", (
             point_shadow_map_size: 1024,
@@ -80,6 +84,8 @@
             fxaa: true,
             use_parallax_mapping: false,
             use_bloom: true,
+            use_occlusion_culling: false,
+            use_light_occlusion_culling: false,
         )),
         ("Ultra", (
             point_shadow_map_size: 2048,
@@ -106,6 +112,8 @@
             fxaa: true,
             use_parallax_mapping: false,
             use_bloom: true,
+            use_occlusion_culling: false,
+            use_light_occlusion_culling: false,
         )),
     ],
     mouse_sensitivity: 0.5,

@@ -106,7 +106,7 @@ impl Actor {
     fn is_ragdoll_has_ground_contact(&self, graph: &Graph) -> bool {
         let mut result = false;
         if let Some(ragdoll) = graph.try_get_of_type::<Ragdoll>(self.ragdoll) {
-            ragdoll.root_limb().iterate_recursive(&mut |limb| {
+            ragdoll.root_limb.iterate_recursive(&mut |limb| {
                 if let Some(rigid_body) = graph.try_get_of_type::<RigidBody>(limb.physical_bone) {
                     for child in rigid_body.children() {
                         if utils::has_ground_contact(*child, graph) {
@@ -126,13 +126,13 @@ impl Actor {
 
     pub fn set_ragdoll_enabled(&mut self, graph: &mut Graph, enabled: bool) {
         if let Some(ragdoll) = graph.try_get_mut_of_type::<Ragdoll>(self.ragdoll) {
-            ragdoll.set_active(enabled);
+            ragdoll.is_active.set_value_and_mark_modified(enabled);
         }
     }
 
     pub fn is_ragdoll_enabled(&self, graph: &Graph) -> bool {
         if let Some(ragdoll) = graph.try_get_of_type::<Ragdoll>(self.ragdoll) {
-            ragdoll.is_active()
+            *ragdoll.is_active
         } else {
             false
         }
@@ -181,7 +181,7 @@ impl Actor {
             func(&mut rigid_body)
         }
         if let Ok(ragdoll) = mbc.try_get_component_of_type::<Ragdoll>(self.ragdoll) {
-            ragdoll.root_limb().iterate_recursive(&mut |limb| {
+            ragdoll.root_limb.iterate_recursive(&mut |limb| {
                 if let Ok(mut rigid_body) =
                     mbc.try_get_component_of_type_mut::<RigidBody>(limb.physical_bone)
                 {

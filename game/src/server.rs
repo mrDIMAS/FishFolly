@@ -8,6 +8,7 @@ use crate::{
     player::Player,
     start::StartPoint,
 };
+use fyrox::graph::SceneGraphNode;
 use fyrox::{
     core::{
         futures::executor::block_on,
@@ -106,7 +107,7 @@ impl Server {
                     *prev_state = current_state;
                 }
 
-                if let Some(sound) = node.query_component_ref::<Sound>() {
+                if let Some(sound) = node.component_ref::<Sound>() {
                     let current_state = SoundState {
                         node: sound.instance_id(),
                         is_playing: sound.status() == Status::Playing,
