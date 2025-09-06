@@ -68,7 +68,7 @@ impl ScriptTrait for Cannon {
                         if let Some(ball_prefab) = self.ball_prefab.as_ref() {
                             server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
                                 InstanceDescriptor {
-                                    path: ball_prefab.kind().path().unwrap().to_path_buf(),
+                                    path: ctx.resource_manager.resource_path(ball_prefab).unwrap(),
                                     position: self_position,
                                     rotation: Default::default(),
                                     velocity: shooting_dir.scale(*self.shooting_force),
@@ -80,7 +80,7 @@ impl ScriptTrait for Cannon {
                         if let Some(shot_effect) = self.shot_effect.as_ref() {
                             server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
                                 InstanceDescriptor {
-                                    path: shot_effect.kind().path().unwrap().to_path_buf(),
+                                    path: ctx.resource_manager.resource_path(shot_effect).unwrap(),
                                     position: self_position,
                                     rotation: vector_to_quat(shooting_dir),
                                     ids: shot_effect.generate_ids(),

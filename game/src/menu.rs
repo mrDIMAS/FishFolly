@@ -607,9 +607,7 @@ impl Menu {
 
         if let Some(ButtonMessage::Click) = message.data() {
             if message.destination() == self.exit {
-                if let Some(window_target) = ctx.window_target {
-                    window_target.exit();
-                }
+                ctx.loop_controller.exit();
             } else if message.destination() == self.start_as_server {
                 set_visibility(
                     ctx.user_interfaces.first(),

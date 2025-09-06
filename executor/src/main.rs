@@ -10,12 +10,13 @@ fn main() {
     window_attributes.title = "Fish Folly".to_string();
 
     let mut executor = Executor::from_params(
-        EventLoop::new().unwrap(),
+        EventLoop::new().ok(),
         GraphicsContextParams {
             window_attributes,
             vsync: false,
             msaa_sample_count: Some(4),
             graphics_server_constructor: Default::default(),
+            named_objects: false,
         },
     );
 

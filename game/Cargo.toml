@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-strum = "0.26.1"
-strum_macros = "0.26.1"
+strum = "0.27"
+strum_macros = "0.27"
 serde = { version = "1.0.174", features = ["derive"] }
 walkdir = "2.4.0"
 ron = "0.8.1"

@@ -108,9 +108,9 @@ impl InputController {
 #[type_uuid(id = "deb77c1d-668d-4716-a8f7-04ed09b0b9f6")]
 #[visit(optional)]
 pub struct Player {
-    #[reflect(description = "Handle to player's model.")]
+    /// Handle to player's model.
     model: Handle<Node>,
-    #[reflect(description = "Handle to a node with camera controller.")]
+    /// Handle to a node with camera controller.
     camera: Handle<Node>,
     #[reflect(hidden)]
     pub input_controller: InputController,
@@ -118,7 +118,7 @@ pub struct Player {
     pub actor: Actor,
     #[reflect(hidden)]
     pub model_angle: SmoothAngle,
-    #[reflect(description = "Pitch range for camera")]
+    /// Pitch range for camera
     pitch_range: Range<f32>,
     #[reflect(hidden)]
     yaw: f32,

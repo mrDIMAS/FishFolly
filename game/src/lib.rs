@@ -50,7 +50,7 @@ pub struct DebugSettings {
 }
 
 #[derive(Reflect, Debug)]
-#[reflect(hide_all)]
+#[reflect(hide_all, non_cloneable)]
 pub struct Game {
     pub menu: Option<Menu>,
     pub level: Level,

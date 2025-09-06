@@ -22,7 +22,7 @@ use fyrox::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, ScriptMessagePayload)]
 pub enum ActorMessage {
     RespawnAt(Vector3<f32>),
 }
@@ -43,31 +43,29 @@ pub struct Actor {
     pub kind: ActorKind,
     #[reflect(hidden)]
     pub in_air_time: f32,
-    #[reflect(
-        description = "Amount of time that the bot will be lying on the ground with active ragdoll."
-    )]
+    /// Amount of time that the bot will be lying on the ground with active ragdoll
     pub max_in_air_time: f32,
     #[reflect(hidden)]
     pub stand_up_timer: f32,
     #[reflect(hidden)]
     pub stand_up_interval: f32,
-    #[reflect(description = "A handle of the ragdoll")]
+    /// A handle of the ragdoll
     pub ragdoll: Handle<Node>,
     #[reflect(hidden)]
     pub jump: bool,
-    #[reflect(description = "Handle to actor's collider.")]
+    /// Handle to actor's collider.
     pub collider: Handle<Node>,
-    #[reflect(description = "Handle to actor's rigid body.")]
+    /// Handle to actor's rigid body.
     pub rigid_body: Handle<Node>,
-    #[reflect(description = "Speed of the actor.")]
+    /// Speed of the actor.
     pub speed: f32,
-    #[reflect(description = "Jump speed of the actor.")]
+    /// Jump speed of the actor.
     pub jump_vel: f32,
     #[reflect(hidden)]
     pub target_desired_velocity: Vector3<f32>,
     #[reflect(hidden)]
     pub desired_velocity: Vector3<f32>,
-    #[reflect(description = "Handle of animation state machine.")]
+    /// Handle of animation state machine.
     pub absm: Handle<Node>,
     #[reflect(hidden)]
     pub jump_interval: f32,

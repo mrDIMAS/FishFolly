@@ -21,15 +21,15 @@ use fyrox::{
 #[type_uuid(id = "0c45d21f-878e-4aa5-b4e1-097aaa44f314")]
 #[visit(optional)]
 pub struct CameraController {
-    #[reflect(description = "Default distance from the hinge to the camera.")]
+    /// Default distance from the hinge to the camera.
     default_distance: f32,
-    #[reflect(description = "Handle of camera hinge.")]
+    /// Handle of camera hinge.
     hinge: Handle<Node>,
-    #[reflect(description = "Handle of Camera node.")]
+    /// Handle of Camera node.
     pub camera: Handle<Node>,
-    #[reflect(description = "Distance from first blocker that in the way of camera.")]
+    /// Distance from first blocker that in the way of camera.
     probe_radius: f32,
-    #[reflect(description = "A collider that should be ignored by ray casting.")]
+    /// A collider that should be ignored by ray casting.
     pub collider_to_ignore: Handle<Node>,
     #[reflect(hidden)]
     pub target_position: Vector3<f32>,

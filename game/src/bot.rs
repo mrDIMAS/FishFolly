@@ -73,11 +73,11 @@ impl Clone for DebugDataWrapper {
 #[type_uuid(id = "85980387-81c0-4115-a74b-f9875084f464")]
 #[visit(optional)]
 pub struct Bot {
-    #[reflect(description = "Handle of an edge probe locator begin node")]
+    /// Handle of an edge probe locator begin node
     probe_begin: Handle<Node>,
-    #[reflect(description = "Handle of an edge probe locator end node")]
+    /// Handle of an edge probe locator end node
     probe_end: Handle<Node>,
-    #[reflect(description = "Handle of an obstacle sensor collider")]
+    /// Handle of an obstacle sensor collider
     obstacle_sensor_collider: Handle<Node>,
     #[component(include)]
     pub actor: Actor,
