@@ -17,7 +17,7 @@ use fyrox::{
         visitor::prelude::*,
     },
     event::{DeviceEvent, ElementState, MouseButton, WindowEvent},
-    graph::{BaseSceneGraph, SceneGraph},
+    graph::SceneGraph,
     keyboard::{KeyCode, PhysicalKey},
     scene::{camera::Camera, node::Node, rigidbody::RigidBody},
     script::{

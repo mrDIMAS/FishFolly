@@ -1,6 +1,6 @@
 use fyrox::{
     core::pool::Handle,
-    graph::{BaseSceneGraph, SceneGraph},
+    graph::SceneGraph,
     scene::{collider::Collider, graph::Graph, node::Node, sound::Sound},
 };
 

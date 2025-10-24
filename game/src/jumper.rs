@@ -10,6 +10,7 @@ use fyrox::{
     script::{ScriptContext, ScriptTrait},
 };
 use std::collections::HashSet;
+use fyrox::graph::SceneGraph;
 
 #[derive(Clone, Default, Debug, Visit, Reflect, TypeUuidProvider, ComponentProvider)]
 #[type_uuid(id = "be8a29af-c10a-4518-a78b-955c8f48a8cd")]

@@ -10,7 +10,7 @@ use fyrox::{
         math::aabb::AxisAlignedBoundingBox, pool::Handle, reflect::prelude::*,
         type_traits::prelude::*, variable::InheritableVariable, visitor::prelude::*,
     },
-    graph::{BaseSceneGraph, SceneGraph},
+    graph::SceneGraph,
     rand::{seq::SliceRandom, thread_rng},
     scene::{collider::Collider, node::Node},
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},

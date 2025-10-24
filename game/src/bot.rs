@@ -19,7 +19,7 @@ use fyrox::{
         type_traits::prelude::*,
         visitor::prelude::*,
     },
-    graph::{BaseSceneGraph, SceneGraph},
+    graph::SceneGraph,
     scene::{
         collider::{Collider, ColliderShape},
         debug::Line,

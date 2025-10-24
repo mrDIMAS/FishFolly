@@ -228,7 +228,12 @@ impl Plugin for Game {
         }
     }
 
-    fn on_ui_message(&mut self, context: &mut PluginContext, message: &UiMessage) {
+    fn on_ui_message(
+        &mut self,
+        context: &mut PluginContext,
+        message: &UiMessage,
+        _ui_handle: Handle<UserInterface>,
+    ) {
         if let Some(menu) = self.menu.as_mut() {
             menu.handle_ui_message(
                 context,

@@ -2,7 +2,7 @@
 //! avoiding functionality.
 
 use crate::Game;
-use fyrox::graph::{BaseSceneGraph, SceneGraph};
+use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{
         algebra::{Point3, UnitQuaternion, Vector3},

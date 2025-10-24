@@ -1,8 +1,8 @@
 use crate::actor::Actor;
+use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{pool::Handle, visitor::prelude::*},
     fxhash::FxHashMap,
-    graph::BaseSceneGraph,
     plugin::PluginContext,
     scene::{graph::Graph, node::Node, Scene},
 };

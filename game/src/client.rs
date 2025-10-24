@@ -5,6 +5,7 @@ use crate::{
     net::{ClientMessage, InstanceDescriptor, PlayerDescriptor, ServerMessage},
     Game,
 };
+use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{log::Log, net::NetStream, pool::Handle},
     plugin::PluginContext,

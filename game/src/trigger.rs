@@ -1,5 +1,5 @@
 use crate::{actor::Actor, Game};
-use fyrox::graph::BaseSceneGraph;
+use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{
         math::aabb::AxisAlignedBoundingBox, reflect::prelude::*, type_traits::prelude::*,
