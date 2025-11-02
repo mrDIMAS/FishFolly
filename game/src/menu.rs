@@ -54,11 +54,7 @@ pub fn make_text_widget(
 
 fn set_visibility(ui: &UserInterface, pairs: &[(Handle<UiNode>, bool)]) {
     for (widget, visibility) in pairs {
-        ui.send_message(WidgetMessage::visibility(
-            *widget,
-            MessageDirection::ToWidget,
-            *visibility,
-        ));
+        ui.send(*widget, WidgetMessage::Visibility(*visibility));
     }
 }
 
@@ -109,18 +105,15 @@ impl ServerMenu {
             .collect::<Vec<_>>();
 
         if !levels_list_items.is_empty() {
-            ui.send_message(SelectorMessage::current(
-                level_selector,
-                MessageDirection::ToWidget,
-                Some(0),
-            ))
+            ui.send(level_selector, SelectorMessage::Current(Some(0)))
         }
-        ui.send_message(SelectorMessage::set_items(
+        ui.send(
             level_selector,
-            MessageDirection::ToWidget,
-            levels_list_items,
-            true,
-        ));
+            SelectorMessage::SetItems {
+                items: levels_list_items,
+                remove_previous: true,
+            },
+        );
 
         Self {
             self_handle,
@@ -147,28 +140,15 @@ impl ServerMenu {
 
         if let Some(ButtonMessage::Click) = message.data() {
             if message.destination() == self.start {
-                ui.send_message(WidgetMessage::visibility(
-                    self.self_handle,
-                    MessageDirection::ToWidget,
-                    false,
-                ));
-
+                ui.send(self.self_handle, WidgetMessage::Visibility(false));
                 if let Some(selected_level) = self.selected_level {
                     if let Some(server) = server.as_mut() {
                         server.start_game(&self.available_levels[selected_level]);
                     }
                 }
             } else if message.destination() == self.back {
-                ui.send_message(WidgetMessage::visibility(
-                    self.self_handle,
-                    MessageDirection::ToWidget,
-                    false,
-                ));
-                ui.send_message(WidgetMessage::visibility(
-                    self.main_menu,
-                    MessageDirection::ToWidget,
-                    true,
-                ));
+                ui.send(self.self_handle, WidgetMessage::Visibility(false));
+                ui.send(self.main_menu, WidgetMessage::Visibility(true));
                 *server = None;
             }
         } else if let Some(TextMessage::Text(text)) = message.data() {
@@ -225,13 +205,10 @@ impl ServerMenu {
                     )
                 })
                 .collect::<Vec<_>>();
-            ctx.user_interfaces
-                .first()
-                .send_message(ListViewMessage::items(
-                    self.players_list,
-                    MessageDirection::ToWidget,
-                    new_player_entries,
-                ));
+            ctx.user_interfaces.first().send(
+                self.players_list,
+                ListViewMessage::Items(new_player_entries),
+            );
         }
     }
 }
@@ -271,17 +248,17 @@ impl SettingsMenu {
 
         let graphics_quality = ui.find_handle_by_name_from_root("SettingsGraphicsQuality");
 
-        ui.send_message(SelectorMessage::set_items(
+        ui.send(
             graphics_quality,
-            MessageDirection::ToWidget,
-            items,
-            true,
-        ));
-        ui.send_message(SelectorMessage::current(
+            SelectorMessage::SetItems {
+                items,
+                remove_previous: true,
+            },
+        );
+        ui.send(
             graphics_quality,
-            MessageDirection::ToWidget,
-            Some(settings.graphics_quality),
-        ));
+            SelectorMessage::Current(Some(settings.graphics_quality)),
+        );
 
         let sound_volume = ui.find_handle_by_name_from_root("SettingsSoundVolume");
         let music_volume = ui.find_handle_by_name_from_root("SettingsMusicVolume");
@@ -289,11 +266,7 @@ impl SettingsMenu {
         let mouse_smoothness = ui.find_handle_by_name_from_root("SettingsMouseSmooth");
 
         fn set_sb_value(ui: &UserInterface, handle: Handle<UiNode>, value: f32) {
-            ui.send_message(ScrollBarMessage::value(
-                handle,
-                MessageDirection::ToWidget,
-                value,
-            ));
+            ui.send(handle, ScrollBarMessage::Value(value));
         }
         set_sb_value(ui, sound_volume, settings.sound_volume);
         set_sb_value(ui, music_volume, settings.music_volume);
@@ -395,31 +368,27 @@ impl InGameMenu {
                         3 => "d",
                         _ => "th",
                     };
-                    ui.send_message(TextMessage::text(
+                    ui.send(
                         self.finished_text,
-                        MessageDirection::ToWidget,
-                        format!("{} finished {place}{suffix}", actor.name),
-                    ));
+                        TextMessage::Text(format!("{} finished {place}{suffix}", actor.name)),
+                    );
 
-                    ui.send_message(AnimationPlayerMessage::enable_animation(
-                        self.finished_text_animation,
-                        MessageDirection::ToWidget,
-                        "Animation".to_string(),
-                        true,
-                    ));
-
+                    fn enable_animation(ui: &UserInterface, widget: Handle<UiNode>, name: &str) {
+                        ui.send(
+                            widget,
+                            AnimationPlayerMessage::EnableAnimation {
+                                animation: name.to_string(),
+                                enabled: true,
+                            },
+                        );
+                    }
                     let id = "Animation".to_string();
-                    ui.send_message(AnimationPlayerMessage::enable_animation(
+                    enable_animation(ui, self.finished_text_animation, "Animation");
+                    enable_animation(ui, self.finished_text_animation, &id);
+                    ui.send(
                         self.finished_text_animation,
-                        MessageDirection::ToWidget,
-                        id.clone(),
-                        true,
-                    ));
-                    ui.send_message(AnimationPlayerMessage::rewind_animation(
-                        self.finished_text_animation,
-                        MessageDirection::ToWidget,
-                        id,
-                    ));
+                        AnimationPlayerMessage::RewindAnimation { animation: id },
+                    );
                 }
             }
         }
@@ -428,31 +397,24 @@ impl InGameMenu {
     fn update(&self, ui: &UserInterface, graph: Option<&Graph>, level: &Level) {
         let minutes = (level.match_timer / 60.0) as u32;
         let seconds = (level.match_timer % 60.0) as u32;
-        ui.send_message(TextMessage::text(
+        ui.send(
             self.match_timer_text,
-            MessageDirection::ToWidget,
-            format!("{minutes}:{seconds}"),
-        ));
-
-        ui.send_message(WidgetMessage::visibility(
-            self.root,
-            MessageDirection::ToWidget,
-            level.scene.is_some(),
-        ));
+            TextMessage::Text(format!("{minutes}:{seconds}")),
+        );
+        ui.send(self.root, WidgetMessage::Visibility(level.scene.is_some()));
 
         if let Some(graph) = graph {
             for (actor, entry) in &level.leaderboard.entries {
                 if let Some(actor_ref) = graph.try_get_script_component_of::<Actor>(*actor) {
                     if actor_ref.kind == ActorKind::Player {
-                        ui.send_message(TextMessage::text(
+                        ui.send(
                             self.player_position,
-                            MessageDirection::ToWidget,
-                            format!(
+                            TextMessage::Text(format!(
                                 "Place: {} of {}",
                                 entry.real_time_position + 1,
                                 level.actors.len()
-                            ),
-                        ));
+                            )),
+                        );
 
                         break;
                     }
@@ -616,11 +578,10 @@ impl Menu {
                         (self.main_menu, false),
                     ],
                 );
-                ctx.user_interfaces.first().send_message(TextMessage::text(
+                ctx.user_interfaces.first().send(
                     self.server_menu.server_address_input,
-                    MessageDirection::ToWidget,
-                    Server::LOCALHOST.to_string(),
-                ));
+                    TextMessage::Text(Server::LOCALHOST.to_string()),
+                );
 
                 // Try to start the server and the client.
                 match Server::new(&self.server_menu.server_address) {
@@ -653,19 +614,11 @@ impl Menu {
     }
 
     pub fn set_menu_visibility(&self, ui: &UserInterface, visible: bool) {
-        ui.send_message(WidgetMessage::visibility(
-            self.main_menu_root,
-            MessageDirection::ToWidget,
-            visible,
-        ));
+        ui.send(self.main_menu_root, WidgetMessage::Visibility(visible));
     }
 
     pub fn set_main_menu_visibility(&self, ui: &UserInterface, visible: bool) {
-        ui.send_message(WidgetMessage::visibility(
-            self.main_menu,
-            MessageDirection::ToWidget,
-            visible,
-        ));
+        ui.send(self.main_menu, WidgetMessage::Visibility(visible));
     }
 
     pub fn switch_visibility(&self, ui: &UserInterface, is_client_running: bool) {
@@ -698,11 +651,9 @@ impl Menu {
 
         if let GraphicsContext::Initialized(graphics_context) = ctx.graphics_context {
             let fps = graphics_context.renderer.get_statistics().frames_per_second;
-            ctx.user_interfaces.first().send_message(TextMessage::text(
-                self.debug_text,
-                MessageDirection::ToWidget,
-                format!("FPS: {fps}"),
-            ));
+            ctx.user_interfaces
+                .first()
+                .send(self.debug_text, TextMessage::Text(format!("FPS: {fps}")));
         }
 
         if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {

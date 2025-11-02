@@ -1,7 +1,7 @@
 FTAX:2;
 __ROOT__[]
 {
-	Ui[ScreenSize<vec2f32:1262; 938>VisualDebug<bool:false>CursorPosition<vec2f32:0; 0>DoubleClickTimeSlice<f32:0.5>TooltipAppearDelay<f32:0.55>]
+	Ui[ScreenSize<vec2f32:627; 926>VisualDebug<bool:false>CursorPosition<vec2f32:0; 0>DoubleClickTimeSlice<f32:0.5>TooltipAppearDelay<f32:0.55>]
 	{
 		Nodes[]
 		{
@@ -61,7 +61,7 @@ __ROOT__[]
 							{
 								Border[]
 								{
-									Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:6a90d81d-cc74-44dc-a5d2-12caf0a873c7>IsResourceInstanceRoot<bool:false>]
+									Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 38; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:6a90d81d-cc74-44dc-a5d2-12caf0a873c7>IsResourceInstanceRoot<bool:false>]
 									{
 										Handle[Index<u32:11>Generation<u32:1>]{}
 										DesiredLocalPosition[Value<vec2f32:0; 0>Flags<u8:1>]{}
@@ -173,7 +173,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:8b1b947b-0582-4768-be87-eb0ec3736008>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 38; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:8b1b947b-0582-4768-be87-eb0ec3736008>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:12>Generation<u32:1>]{}
 									DesiredLocalPosition[Value<vec2f32:0; 0>Flags<u8:1>]{}
@@ -248,7 +248,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:e466f513-953e-46af-beec-d5122538dc87>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 2; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:e466f513-953e-46af-beec-d5122538dc87>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:13>Generation<u32:1>]{}
 									DesiredLocalPosition[Value<vec2f32:0; 0>Flags<u8:1>]{}
@@ -327,15 +327,15 @@ __ROOT__[]
 								{
 									Value[Length<u32:3>]
 									{
-										Item0[DesiredSize<f32:0>ActualSize<f32:36>Location<f32:0>]
+										Item0[DesiredSize<f32:36>ActualSize<f32:36>Location<f32:0>]
 										{
 											SizeMode[Id<u32:1>]{}
 										}
-										Item1[DesiredSize<f32:0>ActualSize<f32:1186>Location<f32:36>]
+										Item1[DesiredSize<f32:0>ActualSize<f32:551>Location<f32:36>]
 										{
 											SizeMode[Id<u32:2>]{}
 										}
-										Item2[DesiredSize<f32:0>ActualSize<f32:36>Location<f32:1222>]
+										Item2[DesiredSize<f32:36>ActualSize<f32:36>Location<f32:587>]
 										{
 											SizeMode[Id<u32:1>]{}
 										}
@@ -355,7 +355,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:575d80c0-e06e-4d2a-b334-56edac7befb7>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 443; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:575d80c0-e06e-4d2a-b334-56edac7befb7>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:14>Generation<u32:1>]{}
 									DesiredLocalPosition[Value<vec2f32:0; 0>Flags<u8:1>]{}
@@ -436,7 +436,7 @@ __ROOT__[]
 						{
 							WidgetData[IsDragging<bool:false>Offset<vec2f32:0; 0>]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:6b06de56-8cc1-437c-8232-da89cc96268a>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 443; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:6b06de56-8cc1-437c-8232-da89cc96268a>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:15>Generation<u32:1>]{}
 									DesiredLocalPosition[Value<vec2f32:0; 0>Flags<u8:1>]{}
@@ -544,7 +544,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:f1f3f7c5-e014-4a5c-b3e4-300858b81cf6>IsResourceInstanceRoot<bool:true>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 2; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:f1f3f7c5-e014-4a5c-b3e4-300858b81cf6>IsResourceInstanceRoot<bool:true>]
 								{
 									Handle[Index<u32:17>Generation<u32:1>]{}
 									Width[Value<f32:36>Flags<u8:1>]{}
@@ -582,7 +582,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:8e7e73de-55ab-4b72-acaa-f5ebf3f94824>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 2; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:8e7e73de-55ab-4b72-acaa-f5ebf3f94824>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:18>Generation<u32:1>]{}
 									Children[Length<u32:1>]
@@ -611,7 +611,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:bc968ce9-059d-440b-aa1e-3e808a3376da>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 2; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:bc968ce9-059d-440b-aa1e-3e808a3376da>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:19>Generation<u32:1>]{}
 									Children[Length<u32:1>]
@@ -640,7 +640,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:c773d1e2-9de3-44e8-847b-d3b1188f2ea4>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 4; 447; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:c773d1e2-9de3-44e8-847b-d3b1188f2ea4>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:20>Generation<u32:1>]{}
 									Children[Length<u32:0>]{}
@@ -681,7 +681,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:true>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:76b290ff-521f-4d32-8c7d-20dd6995bb28>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 2; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:true>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:76b290ff-521f-4d32-8c7d-20dd6995bb28>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:21>Generation<u32:1>]{}
 									Children[Length<u32:0>]{}
@@ -707,7 +707,7 @@ __ROOT__[]
 						{
 							WidgetData[AutoApply<bool:false>]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:true>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:daf76575-131f-4046-84f9-bb3740b5d9b1>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 2; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:true>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:daf76575-131f-4046-84f9-bb3740b5d9b1>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:22>Generation<u32:1>]{}
 									Children[Length<u32:0>]{}
@@ -733,7 +733,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:aecc2ca0-8467-405e-b5ad-e6272b48e466>IsResourceInstanceRoot<bool:true>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 589; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:aecc2ca0-8467-405e-b5ad-e6272b48e466>IsResourceInstanceRoot<bool:true>]
 								{
 									Handle[Index<u32:23>Generation<u32:1>]{}
 									Width[Value<f32:36>Flags<u8:1>]{}
@@ -772,7 +772,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:34805799-652f-4b31-be76-1cab5573b3c0>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 589; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:34805799-652f-4b31-be76-1cab5573b3c0>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:24>Generation<u32:1>]{}
 									Children[Length<u32:1>]
@@ -801,7 +801,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:772469b5-c7ed-451b-ad94-1975c600a3ea>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 589; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:772469b5-c7ed-451b-ad94-1975c600a3ea>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:25>Generation<u32:1>]{}
 									Children[Length<u32:1>]
@@ -830,7 +830,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:3b624b46-6dbc-44af-a90c-2c6ec669818c>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 591; 447; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:3b624b46-6dbc-44af-a90c-2c6ec669818c>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:26>Generation<u32:1>]{}
 									Children[Length<u32:0>]{}
@@ -871,7 +871,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:true>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:f409ad44-b9ae-4a41-8f32-4909c5d408af>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 589; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:true>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:f409ad44-b9ae-4a41-8f32-4909c5d408af>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:27>Generation<u32:1>]{}
 									Children[Length<u32:0>]{}
@@ -897,7 +897,7 @@ __ROOT__[]
 						{
 							WidgetData[AutoApply<bool:false>]
 							{
-								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:true>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:0f5810dc-74fd-4ef0-944c-0e63b0efe923>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 589; 445; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:true>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:0f5810dc-74fd-4ef0-944c-0e63b0efe923>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:28>Generation<u32:1>]{}
 									Children[Length<u32:0>]{}
@@ -923,7 +923,7 @@ __ROOT__[]
 						{
 							WidgetData[]
 							{
-								Widget[Name<str:"Text">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:b66e6a7b-0c2d-425a-9f9b-ab03cc96bacb>IsResourceInstanceRoot<bool:false>]
+								Widget[Name<str:"Text">GlobalVisibility<bool:true>IsMouseDirectlyOver<bool:false>TooltipTime<f32:0.1>LayoutTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>RenderTransform<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>VisualTransform<mat3:1; 0; 0; 0; 1; 0; 56; 449; 1>PreviewMessages<bool:false>HandleOsEvents<bool:false>NeedUpdate<bool:false>IgnoreLayoutRounding<bool:false>AcceptsInput<bool:false>Id<uuid:b66e6a7b-0c2d-425a-9f9b-ab03cc96bacb>IsResourceInstanceRoot<bool:false>]
 								{
 									Handle[Index<u32:29>Generation<u32:1>]{}
 									DesiredLocalPosition[Value<vec2f32:0; 0>Flags<u8:1>]{}
@@ -987,7 +987,10 @@ __ROOT__[]
 								{
 									Font[Flags<u8:1>]
 									{
-										Value[Uuid<uuid:c73fa01b-433b-4edd-bd3d-7313093353c9>]{}
+										Value[IsSome<u8:1>]
+										{
+											Data[Uuid<uuid:c73fa01b-433b-4edd-bd3d-7313093353c9>]{}
+										}
 									}
 									Text[Flags<u8:1>]
 									{
