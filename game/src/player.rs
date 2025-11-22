@@ -8,13 +8,8 @@ use crate::{
 };
 use fyrox::{
     core::{
-        algebra::{UnitQuaternion, Vector3},
-        log::Log,
-        math::SmoothAngle,
-        pool::Handle,
-        reflect::prelude::*,
-        type_traits::prelude::*,
-        visitor::prelude::*,
+        algebra::Vector3, log::Log, math::SmoothAngle, pool::Handle, reflect::prelude::*,
+        type_traits::prelude::*, visitor::prelude::*,
     },
     event::{DeviceEvent, ElementState, MouseButton, WindowEvent},
     graph::SceneGraph,
@@ -312,12 +307,7 @@ impl ScriptTrait for Player {
                 || self.input_controller.move_backward;
 
             if is_moving {
-                rigid_body
-                    .local_transform_mut()
-                    .set_rotation(UnitQuaternion::from_axis_angle(
-                        &Vector3::y_axis(),
-                        self.input_controller.target_yaw,
-                    ));
+                rigid_body.set_rotation_y(self.input_controller.target_yaw);
 
                 // Apply additional rotation to model - it will turn in front of walking direction.
                 let angle: f32 = if self.input_controller.move_left {
@@ -345,11 +335,7 @@ impl ScriptTrait for Player {
                 self.model_angle.set_target(angle.to_radians());
 
                 ctx.scene.graph[self.model]
-                    .local_transform_mut()
-                    .set_rotation(UnitQuaternion::from_axis_angle(
-                        &Vector3::y_axis(),
-                        180.0f32.to_radians() + self.model_angle.angle(),
-                    ));
+                    .set_rotation_y(180.0f32.to_radians() + self.model_angle.angle());
             }
         }
 

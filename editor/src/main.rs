@@ -7,6 +7,7 @@ fn main() {
     let mut editor = Editor::new(Some(StartupData {
         working_directory: Default::default(),
         scenes: vec!["data/maps/drake.rgs".into()],
+        named_objects: false,
     }));
 
     #[cfg(feature = "dylib")]

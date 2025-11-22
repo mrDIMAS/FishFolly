@@ -5,7 +5,7 @@ use crate::Game;
 use fyrox::graph::SceneGraph;
 use fyrox::{
     core::{
-        algebra::{Point3, UnitQuaternion, Vector3},
+        algebra::{Point3, Vector3},
         arrayvec::ArrayVec,
         pool::Handle,
         reflect::prelude::*,
@@ -103,9 +103,7 @@ impl CameraController {
             }
         }
 
-        context.scene.graph[self.camera]
-            .local_transform_mut()
-            .set_position(Vector3::new(0.0, 0.0, -distance + self.probe_radius));
+        context.scene.graph[self.camera].set_position_xyz(0.0, 0.0, -distance + self.probe_radius);
     }
 }
 
@@ -120,20 +118,11 @@ impl ScriptTrait for CameraController {
         let local_transform = controller.local_transform_mut();
         let new_position = **local_transform.position()
             + (self.target_position - **local_transform.position()) * 0.1;
-        local_transform.set_rotation(UnitQuaternion::from_axis_angle(
-            &Vector3::y_axis(),
-            self.yaw,
-        ));
         local_transform.set_position(new_position);
+        controller.set_rotation_y(self.yaw);
 
         if let Some(hinge) = ctx.scene.graph.try_get_mut(self.hinge) {
-            hinge
-                .local_transform_mut()
-                .set_rotation(UnitQuaternion::from_axis_angle(
-                    &Vector3::x_axis(),
-                    self.pitch,
-                ));
-
+            hinge.set_rotation_x(self.pitch);
             let hinge_position = hinge.global_position();
             if let Some(camera) = ctx.scene.graph.try_get(self.camera) {
                 self.check_for_obstacles(

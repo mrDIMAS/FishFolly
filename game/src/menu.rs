@@ -18,7 +18,7 @@ use fyrox::{
         check_box::CheckBoxMessage,
         font::Font,
         list_view::{ListView, ListViewMessage},
-        message::{MessageDirection, UiMessage},
+        message::UiMessage,
         scroll_bar::ScrollBarMessage,
         selector::SelectorMessage,
         text::{TextBuilder, TextMessage},
@@ -151,25 +151,17 @@ impl ServerMenu {
                 ui.send(self.main_menu, WidgetMessage::Visibility(true));
                 *server = None;
             }
-        } else if let Some(TextMessage::Text(text)) = message.data() {
-            if message.destination() == self.server_address_input
-                && message.direction() == MessageDirection::FromWidget
-            {
-                self.server_address = text.clone();
-            }
-        } else if let Some(SelectorMessage::Current(selected)) = message.data() {
-            if message.destination() == self.level_selector
-                && message.direction() == MessageDirection::FromWidget
-            {
-                self.selected_level = *selected;
-            }
-        } else if let Some(CheckBoxMessage::Check(Some(value))) = message.data() {
-            if message.destination() == self.add_bots_check_box
-                && message.direction() == MessageDirection::FromWidget
-            {
-                if let Some(server) = server {
-                    server.add_bots = *value;
-                }
+        } else if let Some(TextMessage::Text(text)) = message.data_from(self.server_address_input) {
+            self.server_address = text.clone();
+        } else if let Some(SelectorMessage::Current(selected)) =
+            message.data_from(self.level_selector)
+        {
+            self.selected_level = *selected;
+        } else if let Some(CheckBoxMessage::Check(Some(value))) =
+            message.data_from(self.add_bots_check_box)
+        {
+            if let Some(server) = server {
+                server.add_bots = *value;
             }
         }
     }
