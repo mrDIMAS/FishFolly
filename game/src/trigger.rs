@@ -1,5 +1,6 @@
 use crate::{actor::Actor, Game};
 use fyrox::graph::SceneGraph;
+use fyrox::plugin::error::GameResult;
 use fyrox::{
     core::{
         math::aabb::AxisAlignedBoundingBox, reflect::prelude::*, type_traits::prelude::*,
@@ -35,30 +36,26 @@ pub struct Trigger {
 }
 
 impl ScriptTrait for Trigger {
-    fn on_update(&mut self, ctx: &mut ScriptContext) {
+    fn on_update(&mut self, ctx: &mut ScriptContext) -> GameResult {
         let game = ctx.plugins.get_mut::<Game>();
         if game.is_client() {
-            return;
+            return Ok(());
         }
 
         let this = &ctx.scene.graph[ctx.handle];
         let self_bounds = AxisAlignedBoundingBox::unit().transform(&this.global_transform());
 
         for actor_handle in game.level.actors.iter() {
-            if let Some(actor_script) = ctx
-                .scene
-                .graph
-                .try_get_script_component_of::<Actor>(*actor_handle)
-            {
-                let rigid_body = actor_script.rigid_body;
-                if let Some(rigid_body) = ctx.scene.graph.try_get(rigid_body) {
-                    if self_bounds.is_contains_point(rigid_body.global_position()) {
-                        match *self.action {
-                            Action::Finish => game.level.leaderboard.finish(*actor_handle),
-                        }
-                    }
+            let graph = &ctx.scene.graph;
+            let actor_script = graph.try_get_script_component_of::<Actor>(*actor_handle)?;
+            let rigid_body = graph.try_get(actor_script.rigid_body)?;
+            if self_bounds.is_contains_point(rigid_body.global_position()) {
+                match *self.action {
+                    Action::Finish => game.level.leaderboard.finish(*actor_handle),
                 }
             }
         }
+
+        Ok(())
     }
 }

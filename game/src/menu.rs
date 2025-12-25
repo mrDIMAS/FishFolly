@@ -6,6 +6,7 @@ use crate::{
     settings::Settings,
     utils, Game,
 };
+use fyrox::plugin::error::GameResult;
 use fyrox::{
     asset::manager::ResourceManager,
     core::visitor::prelude::*,
@@ -287,7 +288,7 @@ impl SettingsMenu {
         scenes: &SceneContainer,
         game_scene: Handle<Scene>,
         menu_scene: Handle<Scene>,
-    ) {
+    ) -> GameResult {
         if let Some(SelectorMessage::Current(Some(index))) = message.data() {
             if message.destination() == self.graphics_quality {
                 let mut settings = settings.write();
@@ -303,14 +304,10 @@ impl SettingsMenu {
             if message.destination() == self.sound_volume {
                 let mut settings = settings.write();
                 settings.sound_volume = *value;
-                if let Some(scene) = scenes.try_get(game_scene) {
-                    settings.apply_sound_volume(scene);
-                }
+                settings.apply_sound_volume(scenes.try_get(game_scene)?);
             } else if message.destination() == self.music_volume {
                 let mut settings = settings.write();
-                if let Some(scene) = scenes.try_get(menu_scene) {
-                    settings.apply_music_volume(scene);
-                }
+                settings.apply_music_volume(scenes.try_get(menu_scene)?);
                 settings.music_volume = *value;
             } else if message.destination() == self.mouse_sens {
                 settings.write().mouse_sensitivity = *value;
@@ -318,6 +315,7 @@ impl SettingsMenu {
                 settings.write().mouse_smoothness = *value;
             }
         }
+        Ok(())
     }
 }
 
@@ -347,46 +345,46 @@ impl InGameMenu {
         ui: &mut UserInterface,
         game_scene: &Scene,
         event: &LeaderBoardEvent,
-    ) {
+    ) -> GameResult {
         match event {
             LeaderBoardEvent::Finished { actor, place } => {
-                if let Some(actor) = game_scene
+                let actor = game_scene
                     .graph
-                    .try_get_script_component_of::<Actor>(*actor)
-                {
-                    let suffix = match place {
-                        1 => "st",
-                        2 => "nd",
-                        3 => "d",
-                        _ => "th",
-                    };
-                    ui.send(
-                        self.finished_text,
-                        TextMessage::Text(format!("{} finished {place}{suffix}", actor.name)),
-                    );
+                    .try_get_script_component_of::<Actor>(*actor)?;
 
-                    fn enable_animation(ui: &UserInterface, widget: Handle<UiNode>, name: &str) {
-                        ui.send(
-                            widget,
-                            AnimationPlayerMessage::EnableAnimation {
-                                animation: name.to_string(),
-                                enabled: true,
-                            },
-                        );
-                    }
-                    let id = "Animation".to_string();
-                    enable_animation(ui, self.finished_text_animation, "Animation");
-                    enable_animation(ui, self.finished_text_animation, &id);
+                let suffix = match place {
+                    1 => "st",
+                    2 => "nd",
+                    3 => "d",
+                    _ => "th",
+                };
+                ui.send(
+                    self.finished_text,
+                    TextMessage::Text(format!("{} finished {place}{suffix}", actor.name)),
+                );
+
+                fn enable_animation(ui: &UserInterface, widget: Handle<UiNode>, name: &str) {
                     ui.send(
-                        self.finished_text_animation,
-                        AnimationPlayerMessage::RewindAnimation { animation: id },
+                        widget,
+                        AnimationPlayerMessage::EnableAnimation {
+                            animation: name.to_string(),
+                            enabled: true,
+                        },
                     );
                 }
+                let id = "Animation".to_string();
+                enable_animation(ui, self.finished_text_animation, "Animation");
+                enable_animation(ui, self.finished_text_animation, &id);
+                ui.send(
+                    self.finished_text_animation,
+                    AnimationPlayerMessage::RewindAnimation { animation: id },
+                );
             }
         }
+        Ok(())
     }
 
-    fn update(&self, ui: &UserInterface, graph: Option<&Graph>, level: &Level) {
+    fn update(&self, ui: &UserInterface, graph: Option<&Graph>, level: &Level) -> GameResult {
         let minutes = (level.match_timer / 60.0) as u32;
         let seconds = (level.match_timer % 60.0) as u32;
         ui.send(
@@ -397,22 +395,22 @@ impl InGameMenu {
 
         if let Some(graph) = graph {
             for (actor, entry) in &level.leaderboard.entries {
-                if let Some(actor_ref) = graph.try_get_script_component_of::<Actor>(*actor) {
-                    if actor_ref.kind == ActorKind::Player {
-                        ui.send(
-                            self.player_position,
-                            TextMessage::Text(format!(
-                                "Place: {} of {}",
-                                entry.real_time_position + 1,
-                                level.actors.len()
-                            )),
-                        );
+                let actor_ref = graph.try_get_script_component_of::<Actor>(*actor)?;
+                if actor_ref.kind == ActorKind::Player {
+                    ui.send(
+                        self.player_position,
+                        TextMessage::Text(format!(
+                            "Place: {} of {}",
+                            entry.real_time_position + 1,
+                            level.actors.len()
+                        )),
+                    );
 
-                        break;
-                    }
+                    break;
                 }
             }
         }
+        Ok(())
     }
 }
 
@@ -492,20 +490,18 @@ impl Menu {
             ctx.resource_manager
                 .request::<Model>("data/models/menu.rgs"),
             |result, game: &mut Game, ctx| {
-                if let Ok(model) = result {
-                    let scene = model.data_ref().get_scene().clone_one_to_one().0;
-                    let this = game.menu.as_mut().unwrap();
-                    this.click_begin_sound =
-                        scene.graph.find_handle_by_name_from_root("ClickBeginSound");
-                    this.click_end_sound =
-                        scene.graph.find_handle_by_name_from_root("ClickEndSound");
-                    this.root_scene_node = scene.graph.find_handle_by_name_from_root("Root");
-                    this.finished_sound = scene.graph.find_handle_by_name_from_root("Finished");
-                    this.clock_ticking = scene.graph.find_handle_by_name_from_root("ClockTicking");
-                    this.main_camera = scene.graph.find_handle_by_name_from_root("Camera");
-                    this.win_camera = scene.graph.find_handle_by_name_from_root("WinCamera");
-                    this.scene = ctx.scenes.add(scene);
-                }
+                let scene = result?.data_ref().get_scene().clone_one_to_one().0;
+                let this = game.menu.as_mut().unwrap();
+                this.click_begin_sound =
+                    scene.graph.find_handle_by_name_from_root("ClickBeginSound");
+                this.click_end_sound = scene.graph.find_handle_by_name_from_root("ClickEndSound");
+                this.root_scene_node = scene.graph.find_handle_by_name_from_root("Root");
+                this.finished_sound = scene.graph.find_handle_by_name_from_root("Finished");
+                this.clock_ticking = scene.graph.find_handle_by_name_from_root("ClockTicking");
+                this.main_camera = scene.graph.find_handle_by_name_from_root("Camera");
+                this.win_camera = scene.graph.find_handle_by_name_from_root("WinCamera");
+                this.scene = ctx.scenes.add(scene);
+                Ok(())
             },
         );
 
@@ -546,7 +542,7 @@ impl Menu {
         client: &mut Option<Client>,
         settings: &mut Settings,
         game_scene: Handle<Scene>,
-    ) {
+    ) -> GameResult {
         self.server_menu.handle_ui_message(ctx, message, server);
         self.settings_menu.handle_ui_message(
             message,
@@ -557,7 +553,7 @@ impl Menu {
             ctx.scenes,
             game_scene,
             self.scene,
-        );
+        )?;
 
         if let Some(ButtonMessage::Click) = message.data() {
             if message.destination() == self.exit {
@@ -595,14 +591,13 @@ impl Menu {
             }
         }
 
-        if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
-            let graph = &mut scene.graph;
-            if let Some(WidgetMessage::MouseDown { .. }) = message.data() {
-                utils::try_play_sound(self.click_begin_sound, graph);
-            } else if let Some(WidgetMessage::MouseUp { .. }) = message.data() {
-                utils::try_play_sound(self.click_end_sound, graph);
-            }
+        let graph = &mut ctx.scenes.try_get_mut(self.scene)?.graph;
+        if let Some(WidgetMessage::MouseDown { .. }) = message.data() {
+            utils::try_play_sound(self.click_begin_sound, graph)?;
+        } else if let Some(WidgetMessage::MouseUp { .. }) = message.data() {
+            utils::try_play_sound(self.click_end_sound, graph)?;
         }
+        Ok(())
     }
 
     pub fn set_menu_visibility(&self, ui: &UserInterface, visible: bool) {
@@ -638,7 +633,7 @@ impl Menu {
         server: &Option<Server>,
         client: &Option<Client>,
         level: &mut Level,
-    ) {
+    ) -> GameResult {
         self.server_menu.update(ctx, server);
 
         if let GraphicsContext::Initialized(graphics_context) = ctx.graphics_context {
@@ -648,7 +643,7 @@ impl Menu {
                 .send(self.debug_text, TextMessage::Text(format!("FPS: {fps}")));
         }
 
-        if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
+        if let Ok(scene) = ctx.scenes.try_get_mut(self.scene) {
             scene.graph[self.root_scene_node].set_visibility(level.scene.is_none());
 
             let mut is_in_win_state = false;
@@ -662,32 +657,32 @@ impl Menu {
 
         self.in_game_menu.update(
             ctx.user_interfaces.first(),
-            ctx.scenes.try_get_mut(level.scene).map(|s| &s.graph),
+            ctx.scenes.try_get_mut(level.scene).ok().map(|s| &s.graph),
             level,
-        );
+        )?;
 
         while let Ok(event) = self.receiver.try_recv() {
-            if let Some(game_scene) = ctx.scenes.try_get_mut(level.scene) {
-                self.in_game_menu.on_leaderboard_event(
-                    ctx.user_interfaces.first_mut(),
-                    game_scene,
-                    &event,
-                );
-            }
+            let game_scene = ctx.scenes.try_get_mut(level.scene)?;
+            self.in_game_menu.on_leaderboard_event(
+                ctx.user_interfaces.first_mut(),
+                game_scene,
+                &event,
+            )?;
 
             match event {
                 LeaderBoardEvent::Finished { .. } => {
                     level.sudden_death();
 
-                    if let Some(scene) = ctx.scenes.try_get_mut(self.scene) {
-                        utils::try_play_sound(self.finished_sound, &mut scene.graph);
+                    let scene = ctx.scenes.try_get_mut(self.scene)?;
+                    utils::try_play_sound(self.finished_sound, &mut scene.graph)?;
 
-                        if level.is_time_critical() {
-                            utils::try_play_sound(self.clock_ticking, &mut scene.graph);
-                        }
+                    if level.is_time_critical() {
+                        utils::try_play_sound(self.clock_ticking, &mut scene.graph)?;
                     }
                 }
             }
         }
+
+        Ok(())
     }
 }

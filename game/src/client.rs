@@ -6,6 +6,7 @@ use crate::{
     Game,
 };
 use fyrox::graph::SceneGraph;
+use fyrox::plugin::error::GameResult;
 use fyrox::{
     core::{log::Log, net::NetStream, pool::Handle},
     plugin::PluginContext,
@@ -40,27 +41,19 @@ fn instantiate_objects(instances: Vec<InstanceDescriptor>, ctx: &mut PluginConte
     for new_instance in instances {
         ctx.task_pool.spawn_plugin_task(
             ctx.resource_manager.request::<Model>(&new_instance.path),
-            move |result, game: &mut Game, ctx| match result {
-                Ok(model) => {
-                    let scene = &mut ctx.scenes[game.level.scene];
-                    let instance = model
-                        .begin_instantiation(scene)
-                        .with_position(new_instance.position)
-                        .with_rotation(new_instance.rotation)
-                        .with_ids(&new_instance.ids)
-                        .finish();
-
-                    if let Some(rigid_body) = scene.graph[instance].cast_mut::<RigidBody>() {
-                        rigid_body.set_lin_vel(new_instance.velocity);
-                    }
-                }
-                Err(err) => {
-                    Log::err(format!(
-                        "Unable to instantiate {} prefab. Reason: {:?}",
-                        new_instance.path.display(),
-                        err
-                    ));
-                }
+            move |result, game: &mut Game, ctx| {
+                let scene = ctx.scenes.try_get_mut(game.level.scene)?;
+                let instance = result?
+                    .begin_instantiation(scene)
+                    .with_position(new_instance.position)
+                    .with_rotation(new_instance.rotation)
+                    .with_ids(&new_instance.ids)
+                    .finish();
+                scene
+                    .graph
+                    .try_get_mut_of_type::<RigidBody>(instance)?
+                    .set_lin_vel(new_instance.velocity);
+                Ok(())
             },
         );
     }
@@ -70,31 +63,21 @@ fn add_players(players: Vec<PlayerDescriptor>, ctx: &mut PluginContext) {
     for player in players {
         ctx.task_pool.spawn_plugin_task(
             ctx.resource_manager.request::<Model>(&player.instance.path),
-            move |result, game: &mut Game, ctx| match result {
-                Ok(model) => {
-                    let scene = &mut ctx.scenes[game.level.scene];
-                    let root = model
-                        .begin_instantiation(scene)
-                        .with_ids(&player.instance.ids)
-                        .finish();
-                    if let Some(actor) = scene.graph.try_get_script_component_of_mut::<Actor>(root)
-                    {
-                        actor.kind = player.kind;
-                        let rigid_body = actor.rigid_body;
-                        if let Some(rigid_body) = scene.graph.try_get_mut(rigid_body) {
-                            rigid_body
-                                .local_transform_mut()
-                                .set_position(player.instance.position);
-                        }
-                    }
-                }
-                Err(err) => {
-                    Log::err(format!(
-                        "Unable to instantiate {} prefab. Reason: {:?}",
-                        player.instance.path.display(),
-                        err
-                    ));
-                }
+            move |result, game: &mut Game, ctx| {
+                let scene = &mut ctx.scenes[game.level.scene];
+                let root = result?
+                    .begin_instantiation(scene)
+                    .with_ids(&player.instance.ids)
+                    .finish();
+                let actor = scene.graph.try_get_script_component_of_mut::<Actor>(root)?;
+                actor.kind = player.kind;
+                let rigid_body = actor.rigid_body;
+                scene
+                    .graph
+                    .try_get_mut(rigid_body)?
+                    .local_transform_mut()
+                    .set_position(player.instance.position);
+                Ok(())
             },
         );
     }
@@ -123,32 +106,31 @@ impl Client {
         level: &mut Level,
         menu: Option<&Menu>,
         ctx: &mut PluginContext,
-    ) {
-        self.connection.process_input(|msg| match msg {
-            ServerMessage::LoadLevel { path } => {
-                ctx.async_scene_loader.request(path);
-            }
-            ServerMessage::UpdateTick(data) => {
-                if let Some(scene) = ctx.scenes.try_get_mut(level.scene) {
+    ) -> GameResult {
+        while let Some(msg) = self.connection.pop_message() {
+            match msg {
+                ServerMessage::LoadLevel { path } => {
+                    ctx.async_scene_loader.request(path);
+                }
+                ServerMessage::UpdateTick(data) => {
+                    let scene = ctx.scenes.try_get_mut(level.scene)?;
                     for entry in data.nodes {
-                        if let Some((_, node)) = scene.graph.node_by_id_mut(entry.node) {
-                            let transform = node.local_transform_mut();
-                            if **transform.position() != entry.position {
-                                transform.set_position(entry.position);
-                            }
-                            if **transform.rotation() != entry.rotation {
-                                transform.set_rotation(entry.rotation);
-                            }
+                        let (_, node) = scene.graph.node_by_id_mut(entry.node)?;
+                        let transform = node.local_transform_mut();
+                        if **transform.position() != entry.position {
+                            transform.set_position(entry.position);
+                        }
+                        if **transform.rotation() != entry.rotation {
+                            transform.set_rotation(entry.rotation);
                         }
                     }
                 }
-            }
-            ServerMessage::Instantiate(instances) => {
-                instantiate_objects(instances, ctx);
-            }
-            ServerMessage::AddPlayers(players) => add_players(players, ctx),
-            ServerMessage::EndMatch => {
-                if let Some(scene) = ctx.scenes.try_get(level.scene) {
+                ServerMessage::Instantiate(instances) => {
+                    instantiate_objects(instances, ctx);
+                }
+                ServerMessage::AddPlayers(players) => add_players(players, ctx),
+                ServerMessage::EndMatch => {
+                    let scene = ctx.scenes.try_get(level.scene)?;
                     let mut players = level
                         .leaderboard
                         .entries
@@ -180,11 +162,13 @@ impl Client {
                     ctx.scenes.remove(level.scene);
                     level.scene = Handle::NONE;
                 }
+                ServerMessage::LeaderBoard(msg) => {
+                    level.leaderboard.entries =
+                        msg.players.into_iter().map(|e| (e.actor, e)).collect();
+                }
             }
-            ServerMessage::LeaderBoard(msg) => {
-                level.leaderboard.entries = msg.players.into_iter().map(|e| (e.actor, e)).collect();
-            }
-        })
+        }
+        Ok(())
     }
 
     pub fn update(&mut self, dt: f32) {
@@ -202,10 +186,11 @@ impl Client {
         has_server: bool,
         scene: Handle<Scene>,
         ctx: &mut PluginContext,
-    ) {
-        let scene = &mut ctx.scenes[scene];
+    ) -> GameResult {
+        let scene = ctx.scenes.try_get_mut(scene)?;
         if !has_server {
             scene.graph.physics.enabled.set_value_silent(false);
         }
+        Ok(())
     }
 }

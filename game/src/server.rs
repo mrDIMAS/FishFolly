@@ -9,6 +9,8 @@ use crate::{
     start::StartPoint,
 };
 use fyrox::graph::SceneGraphNode;
+use fyrox::plugin::error::GameResult;
+use fyrox::scene::graph::GraphError;
 use fyrox::{
     core::{
         futures::executor::block_on,
@@ -72,10 +74,10 @@ impl Server {
         });
     }
 
-    pub fn update(&mut self, level: &mut Level, ctx: &mut PluginContext) {
-        level.update(ctx);
+    pub fn update(&mut self, level: &mut Level, ctx: &mut PluginContext) -> GameResult {
+        level.update(ctx)?;
 
-        if let Some(scene) = ctx.scenes.try_get_mut(level.scene) {
+        if let Ok(scene) = ctx.scenes.try_get_mut(level.scene) {
             if level.is_match_ended() {
                 self.broadcast_message_to_clients(ServerMessage::EndMatch);
             }
@@ -127,26 +129,32 @@ impl Server {
 
             self.broadcast_message_to_clients(ServerMessage::UpdateTick(tick_data));
         }
+
+        Ok(())
     }
 
-    pub fn read_messages(&mut self, scene: Handle<Scene>, ctx: &mut PluginContext) {
+    pub fn read_messages(&mut self, scene: Handle<Scene>, ctx: &mut PluginContext) -> GameResult {
         for player in self.connections.iter_mut() {
-            player.process_input::<ClientMessage>(|msg| match msg {
-                ClientMessage::Input {
-                    player,
-                    input_state,
-                } => {
-                    let scene = &mut ctx.scenes[scene];
-                    if let Some((_, player_node)) = scene.graph.node_by_id_mut(player) {
-                        if let Some(player_ref) = player_node.try_get_script_mut::<Player>() {
-                            player_ref.input_controller = input_state;
-                        }
-                    } else {
-                        Log::err("No such player!");
+            while let Some(msg) = player.pop_message::<ClientMessage>() {
+                match msg {
+                    ClientMessage::Input {
+                        player,
+                        input_state,
+                    } => {
+                        let scene = &mut ctx.scenes[scene];
+                        let (_, player_node) = scene.graph.node_by_id_mut(player)?;
+                        player_node
+                            .try_get_script_mut::<Player>()
+                            .ok_or_else(|| GraphError::NoScript {
+                                handle: Default::default(),
+                                script_type_name: std::any::type_name::<Player>(),
+                            })?
+                            .input_controller = input_state;
                     }
                 }
-            });
+            }
         }
+        Ok(())
     }
 
     pub fn on_scene_loaded(&mut self, scene: Handle<Scene>, ctx: &mut PluginContext) {

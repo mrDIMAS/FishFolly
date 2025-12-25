@@ -1,11 +1,11 @@
 //! A simple bot that tries to react Target points on a level.
 
-use crate::actor::ActorKind;
 use crate::{
-    actor::{Actor, ActorMessage},
+    actor::{Actor, ActorKind, ActorMessage},
     respawn::Respawner,
     utils, Game,
 };
+use fyrox::plugin::error::{GameError, GameResult};
 use fyrox::{
     core::{
         algebra::{Matrix4, Point3, UnitQuaternion, Vector3},
@@ -16,6 +16,7 @@ use fyrox::{
         parking_lot::{Mutex, RwLock},
         pool::Handle,
         reflect::prelude::*,
+        some_or_return,
         type_traits::prelude::*,
         visitor::prelude::*,
     },
@@ -249,16 +250,11 @@ impl Bot {
     }
 
     // Checks if there are a gap on the way, that can be jumped over.
-    fn gap_test(&self, ctx: &ScriptContext) -> GapTestResult {
+    fn gap_test(&self, ctx: &ScriptContext) -> Result<GapTestResult, GameError> {
         let graph = &ctx.scene.graph;
 
-        let Some(begin) = graph.try_get(self.probe_begin).map(|n| n.global_position()) else {
-            return GapTestResult::Run;
-        };
-
-        let Some(end) = graph.try_get(self.probe_end).map(|n| n.global_position()) else {
-            return GapTestResult::Run;
-        };
+        let begin = graph.try_get(self.probe_begin)?.global_position();
+        let end = graph.try_get(self.probe_end)?.global_position();
 
         let middle = (begin + end).scale(0.5);
 
@@ -268,35 +264,31 @@ impl Bot {
         if is_safe_height_difference(begin, max_height, graph, |p| {
             self.debug_data.add_line(begin, p, Color::YELLOW);
         }) {
-            return GapTestResult::Run;
+            return Ok(GapTestResult::Run);
         }
 
         // Otherwise there might be a gap between the two probe points.
         if is_safe_height_difference(middle, max_height, graph, |p| {
             self.debug_data.add_line(middle, p, Color::PINK);
         }) {
-            return GapTestResult::Run;
+            return Ok(GapTestResult::Run);
         }
 
         // If a bot have a platform to jump on right in front of it, then it needs to jump.
         if is_safe_height_difference(end, max_height, graph, |p| {
             self.debug_data.add_line(end, p, Color::ORANGE);
         }) {
-            GapTestResult::JumpOver
+            Ok(GapTestResult::JumpOver)
         } else {
-            GapTestResult::Stop
+            Ok(GapTestResult::Stop)
         }
     }
 
-    fn is_any_obstacle_in_front(&self, ctx: &ScriptContext) -> bool {
+    fn is_any_obstacle_in_front(&self, ctx: &ScriptContext) -> Result<bool, GameError> {
         let game = ctx.plugins.get::<Game>();
         let graph = &ctx.scene.graph;
 
-        let Some(sensor_collider) =
-            graph.try_get_of_type::<Collider>(self.obstacle_sensor_collider)
-        else {
-            return false;
-        };
+        let sensor_collider = graph.try_get_of_type::<Collider>(self.obstacle_sensor_collider)?;
 
         let mut result = false;
 
@@ -305,10 +297,7 @@ impl Bot {
             .filter(|i| i.has_any_active_contact)
         {
             for respawner in game.level.respawners.iter() {
-                let Some(respawner) = ctx.scene.graph.try_get_script_of::<Respawner>(*respawner)
-                else {
-                    continue;
-                };
+                let respawner = ctx.scene.graph.try_get_script_of::<Respawner>(*respawner)?;
 
                 if intersection.collider1 == *respawner.collider
                     || intersection.collider2 == *respawner.collider
@@ -330,21 +319,23 @@ impl Bot {
             })
         }
 
-        result
+        Ok(result)
     }
 }
 
 impl ScriptTrait for Bot {
-    fn on_init(&mut self, ctx: &mut ScriptContext) {
+    fn on_init(&mut self, ctx: &mut ScriptContext) -> GameResult {
         ctx.plugins
             .get_mut::<Game>()
             .level
             .actors
             .insert(ctx.handle);
         Log::info(format!("Bot {:?} created!", ctx.handle));
+
+        Ok(())
     }
 
-    fn on_start(&mut self, ctx: &mut ScriptContext) {
+    fn on_start(&mut self, ctx: &mut ScriptContext) -> GameResult {
         ctx.message_dispatcher
             .subscribe_to::<ActorMessage>(ctx.handle);
 
@@ -357,26 +348,30 @@ impl ScriptTrait for Bot {
 
         self.agent
             .set_position(ctx.scene.graph[ctx.handle].global_position());
+
+        Ok(())
     }
 
-    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
+    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) -> GameResult {
         ctx.plugins
             .get_mut::<Game>()
             .level
             .actors
             .remove(&ctx.node_handle);
         Log::info(format!("Bot {:?} destroyed!", ctx.node_handle));
+
+        Ok(())
     }
 
-    fn on_update(&mut self, ctx: &mut ScriptContext) {
+    fn on_update(&mut self, ctx: &mut ScriptContext) -> GameResult {
         self.debug_data.clear();
 
         let game = ctx.plugins.get::<Game>();
         if game.is_client() {
-            return;
+            return Ok(());
         }
 
-        let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph);
+        let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph)?;
 
         // Dead-simple AI - run straight to target.
         let target_pos = game
@@ -387,9 +382,9 @@ impl ScriptTrait for Bot {
             .cloned()
             .map(|t| ctx.scene.graph[t].global_position());
 
-        let gap_test_result = self.gap_test(ctx);
-        let is_any_obstacle_in_front = self.is_any_obstacle_in_front(ctx);
-        let has_ground_contact = utils::has_ground_contact(self.actor.collider, &ctx.scene.graph);
+        let gap_test_result = self.gap_test(ctx)?;
+        let is_any_obstacle_in_front = self.is_any_obstacle_in_front(ctx)?;
+        let has_ground_contact = utils::has_ground_contact(self.actor.collider, &ctx.scene.graph)?;
 
         self.actor.target_desired_velocity = Vector3::new(0.0, 0.0, 0.0);
 
@@ -408,95 +403,99 @@ impl ScriptTrait for Bot {
         self.backwards_movement_timer -= ctx.dt;
 
         if let Some(target_pos) = target_pos {
-            if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>()
-            {
-                let self_position = rigid_body.global_position();
+            let rigid_body = ctx
+                .scene
+                .graph
+                .try_get_mut_of_type::<RigidBody>(self.actor.rigid_body)?;
 
-                if let Some(navmesh) = self.navmesh.as_ref() {
-                    let navmesh = navmesh.read();
-                    let agent_speed = if self.backwards_movement_timer > 0.0 {
-                        -self.actor.speed
-                    } else {
-                        self.actor.speed
-                    };
-                    self.agent.set_speed(agent_speed);
-                    self.agent.set_target(target_pos);
-                    let new_position = navmesh
-                        .query_closest(self_position)
-                        .map(|p| p.0)
-                        .unwrap_or(self_position);
-                    if self.agent.position().metric_distance(&new_position) > 1.99 {
-                        self.agent.set_position(new_position);
-                    }
-                    let _ = self.agent.update(ctx.dt, &navmesh);
-                }
+            let self_position = rigid_body.global_position();
 
-                let has_reached_destination =
-                    self.agent.target().metric_distance(&self_position) <= 1.0;
-                let horizontal_velocity = if has_reached_destination {
-                    Vector3::new(0.0, 0.0, 0.0)
+            if let Some(navmesh) = self.navmesh.as_ref() {
+                let navmesh = navmesh.read();
+                let agent_speed = if self.backwards_movement_timer > 0.0 {
+                    -self.actor.speed
                 } else {
-                    let mut vel = (self.agent.position() - self_position)
-                        .try_normalize(f32::EPSILON)
-                        .unwrap_or_default()
-                        .scale(speed);
-                    vel.y = 0.0;
-                    vel
+                    self.actor.speed
                 };
-
-                let mut jump_y_vel = 0.0;
-                if has_ground_contact
-                    && !is_in_jump_state
-                    && self.actor.jump_interval <= 0.0
-                    && gap_test_result == GapTestResult::JumpOver
-                {
-                    self.actor.jump();
-                    jump_y_vel = self.actor.jump_vel;
+                self.agent.set_speed(agent_speed);
+                self.agent.set_target(target_pos);
+                let new_position = navmesh
+                    .query_closest(self_position)
+                    .map(|p| p.0)
+                    .unwrap_or(self_position);
+                if self.agent.position().metric_distance(&new_position) > 1.99 {
+                    self.agent.set_position(new_position);
                 }
-
-                self.actor.target_desired_velocity =
-                    Vector3::new(horizontal_velocity.x, jump_y_vel, horizontal_velocity.z);
-
-                // Reborrow the node.
-                let rigid_body = ctx.scene.graph[self.actor.rigid_body]
-                    .cast_mut::<RigidBody>()
-                    .unwrap();
-
-                let mut look_dir = self.agent.steering_target().unwrap_or_default() - self_position;
-                look_dir.y = 0.0;
-                self.target_orientation =
-                    UnitQuaternion::face_towards(&look_dir, &Vector3::y_axis());
-
-                self.orientation = self
-                    .orientation
-                    .slerp(&self.target_orientation, 8.0 * ctx.dt);
-
-                rigid_body
-                    .local_transform_mut()
-                    .set_rotation(self.orientation);
+                let _ = self.agent.update(ctx.dt, &navmesh);
             }
+
+            let has_reached_destination =
+                self.agent.target().metric_distance(&self_position) <= 1.0;
+            let horizontal_velocity = if has_reached_destination {
+                Vector3::new(0.0, 0.0, 0.0)
+            } else {
+                let mut vel = (self.agent.position() - self_position)
+                    .try_normalize(f32::EPSILON)
+                    .unwrap_or_default()
+                    .scale(speed);
+                vel.y = 0.0;
+                vel
+            };
+
+            let mut jump_y_vel = 0.0;
+            if has_ground_contact
+                && !is_in_jump_state
+                && self.actor.jump_interval <= 0.0
+                && gap_test_result == GapTestResult::JumpOver
+            {
+                self.actor.jump();
+                jump_y_vel = self.actor.jump_vel;
+            }
+
+            self.actor.target_desired_velocity =
+                Vector3::new(horizontal_velocity.x, jump_y_vel, horizontal_velocity.z);
+
+            // Reborrow the node.
+            let rigid_body = ctx
+                .scene
+                .graph
+                .try_get_mut_of_type::<RigidBody>(self.actor.rigid_body)?;
+
+            let mut look_dir = self.agent.steering_target().unwrap_or_default() - self_position;
+            look_dir.y = 0.0;
+            self.target_orientation = UnitQuaternion::face_towards(&look_dir, &Vector3::y_axis());
+
+            self.orientation = self
+                .orientation
+                .slerp(&self.target_orientation, 8.0 * ctx.dt);
+
+            rigid_body
+                .local_transform_mut()
+                .set_rotation(self.orientation);
         }
 
-        self.actor.on_update(ctx);
+        self.actor.on_update(ctx)?;
 
         self.debug_draw(ctx);
+
+        Ok(())
     }
 
     fn on_message(
         &mut self,
         message: &mut dyn ScriptMessagePayload,
         ctx: &mut ScriptMessageContext,
-    ) {
-        self.actor.on_message(message, ctx);
+    ) -> GameResult {
+        self.actor.on_message(message, ctx)?;
 
-        let Some(message) = message.downcast_ref::<ActorMessage>() else {
-            return;
-        };
+        let message = some_or_return!(message.downcast_ref::<ActorMessage>(), Ok(()));
 
         match message {
             ActorMessage::RespawnAt(position) => {
                 self.agent.set_position(*position);
             }
         }
+
+        Ok(())
     }
 }

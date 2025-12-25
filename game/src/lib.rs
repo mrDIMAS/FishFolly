@@ -23,6 +23,7 @@ use crate::{
     trigger::Action, trigger::Trigger,
 };
 pub use fyrox;
+use fyrox::plugin::error::GameResult;
 
 pub mod actor;
 pub mod bot;
@@ -106,7 +107,7 @@ impl Game {
 }
 
 impl Plugin for Game {
-    fn register(&self, context: PluginRegistrationContext) {
+    fn register(&self, context: PluginRegistrationContext) -> GameResult {
         let script_constructors = &context.serialization_context.script_constructors;
         script_constructors
             .add::<Player>("Player")
@@ -118,6 +119,7 @@ impl Plugin for Game {
             .add::<Cannon>("Cannon")
             .add::<Trigger>("Trigger")
             .add::<Jumper>("Jumper");
+        Ok(())
     }
 
     fn register_property_editors(&self) -> PropertyEditorDefinitionContainer {
@@ -128,40 +130,41 @@ impl Plugin for Game {
         container
     }
 
-    fn init(&mut self, _scene_path: Option<&str>, ctx: PluginContext) {
+    fn init(&mut self, _scene_path: Option<&str>, ctx: PluginContext) -> GameResult {
         Log::info("Game started!");
 
         ctx.task_pool.spawn_plugin_task(
             UserInterface::load_from_file("data/menu.ui", ctx.resource_manager.clone()),
-            |result, game: &mut Game, ctx| match result {
-                Ok(menu) => {
-                    *ctx.user_interfaces.first_mut() = menu;
-                    let menu = Some(Menu::new(ctx, game));
-                    game.menu = menu;
-                }
-                Err(e) => Log::err(format!("Unable to load main menu! Reason: {:?}", e)),
+            |result, game: &mut Game, ctx| {
+                *ctx.user_interfaces.first_mut() = result?;
+                let menu = Some(Menu::new(ctx, game));
+                game.menu = menu;
+                Ok(())
             },
         );
+
+        Ok(())
     }
 
-    fn on_deinit(&mut self, _context: PluginContext) {
+    fn on_deinit(&mut self, _context: PluginContext) -> GameResult {
         Log::info("Game stopped!");
+        Ok(())
     }
 
-    fn update(&mut self, ctx: &mut PluginContext) {
+    fn update(&mut self, ctx: &mut PluginContext) -> GameResult {
         if let Some(server) = self.server.as_mut() {
             server.accept_connections();
 
-            server.read_messages(self.level.scene, ctx);
-            server.update(&mut self.level, ctx);
+            server.read_messages(self.level.scene, ctx)?;
+            server.update(&mut self.level, ctx)?;
         }
 
         if let Some(client) = self.client.as_mut() {
-            client.read_messages(&mut self.level, self.menu.as_ref(), ctx);
+            client.read_messages(&mut self.level, self.menu.as_ref(), ctx)?;
             client.update(ctx.dt);
         }
 
-        if let Some(scene) = ctx.scenes.try_get_mut(self.level.scene) {
+        if let Ok(scene) = ctx.scenes.try_get_mut(self.level.scene) {
             scene.drawing_context.clear_lines();
 
             if self.debug_settings.show_physics {
@@ -170,11 +173,13 @@ impl Plugin for Game {
         }
 
         if let Some(menu) = self.menu.as_mut() {
-            menu.update(ctx, &self.server, &self.client, &mut self.level);
+            menu.update(ctx, &self.server, &self.client, &mut self.level)?;
         }
+
+        Ok(())
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, ctx: PluginContext) {
+    fn on_os_event(&mut self, event: &Event<()>, ctx: PluginContext) -> GameResult {
         if let Event::WindowEvent {
             event: WindowEvent::KeyboardInput { event, .. },
             ..
@@ -209,9 +214,11 @@ impl Plugin for Game {
                 }
             }
         }
+
+        Ok(())
     }
 
-    fn on_graphics_context_initialized(&mut self, ctx: PluginContext) {
+    fn on_graphics_context_initialized(&mut self, ctx: PluginContext) -> GameResult {
         self.settings
             .read()
             .apply_graphics_settings(ctx.graphics_context);
@@ -226,6 +233,8 @@ impl Plugin for Game {
                 .window
                 .set_fullscreen(Some(Fullscreen::Borderless(None)));
         }
+
+        Ok(())
     }
 
     fn on_ui_message(
@@ -233,7 +242,7 @@ impl Plugin for Game {
         context: &mut PluginContext,
         message: &UiMessage,
         _ui_handle: Handle<UserInterface>,
-    ) {
+    ) -> GameResult {
         if let Some(menu) = self.menu.as_mut() {
             menu.handle_ui_message(
                 context,
@@ -242,14 +251,18 @@ impl Plugin for Game {
                 &mut self.client,
                 &mut self.settings,
                 self.level.scene,
-            );
+            )?;
         }
+
+        Ok(())
     }
 
-    fn on_scene_begin_loading(&mut self, _path: &Path, context: &mut PluginContext) {
+    fn on_scene_begin_loading(&mut self, _path: &Path, context: &mut PluginContext) -> GameResult {
         if self.level.scene.is_some() {
             context.scenes.remove(self.level.scene);
         }
+
+        Ok(())
     }
 
     fn on_scene_loaded(
@@ -258,7 +271,7 @@ impl Plugin for Game {
         scene: Handle<Scene>,
         _data: &[u8],
         ctx: &mut PluginContext,
-    ) {
+    ) -> GameResult {
         self.settings.read().apply_sound_volume(&ctx.scenes[scene]);
 
         self.level = Level {
@@ -274,7 +287,9 @@ impl Plugin for Game {
             server.on_scene_loaded(scene, ctx);
         }
         if let Some(client) = self.client.as_mut() {
-            client.on_scene_loaded(self.server.is_some(), scene, ctx);
+            client.on_scene_loaded(self.server.is_some(), scene, ctx)?;
         }
+
+        Ok(())
     }
 }

@@ -5,6 +5,7 @@ use crate::{
     Game,
 };
 use fyrox::core::math::vector_to_quat;
+use fyrox::plugin::error::GameResult;
 use fyrox::{
     core::{
         pool::Handle, reflect::prelude::*, type_traits::prelude::*, variable::InheritableVariable,
@@ -39,14 +40,14 @@ impl Default for Cannon {
 }
 
 impl ScriptTrait for Cannon {
-    fn on_update(&mut self, ctx: &mut ScriptContext) {
+    fn on_update(&mut self, ctx: &mut ScriptContext) -> GameResult {
         let game = ctx.plugins.get_mut::<Game>();
         if game.is_client() {
-            return;
+            return Ok(());
         }
 
         let Some(server) = game.server.as_mut() else {
-            return;
+            return Ok(());
         };
 
         let mbc = ctx.scene.graph.begin_multi_borrow();
@@ -58,46 +59,43 @@ impl ScriptTrait for Cannon {
             .try_normalize(f32::EPSILON)
             .unwrap_or_default();
 
-        if let Ok(mut animation_player) =
-            mbc.try_get_component_of_type_mut::<AnimationPlayer>(*self.animation_player)
-        {
-            let animations = animation_player.animations_mut().get_value_mut_silent();
-            if let Some(shot_animation) = animations.iter_mut().next() {
-                while let Some(event) = shot_animation.pop_event() {
-                    if event.name == "Shoot" {
-                        if let Some(ball_prefab) = self.ball_prefab.as_ref() {
-                            server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
-                                InstanceDescriptor {
-                                    path: ctx.resource_manager.resource_path(ball_prefab).unwrap(),
-                                    position: self_position,
-                                    rotation: Default::default(),
-                                    velocity: shooting_dir.scale(*self.shooting_force),
-                                    ids: ball_prefab.generate_ids(),
-                                },
-                            ]));
-                        }
+        let mut animation_player =
+            mbc.try_get_component_of_type_mut::<AnimationPlayer>(*self.animation_player)?;
 
-                        if let Some(shot_effect) = self.shot_effect.as_ref() {
-                            server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
-                                InstanceDescriptor {
-                                    path: ctx.resource_manager.resource_path(shot_effect).unwrap(),
-                                    position: self_position,
-                                    rotation: vector_to_quat(shooting_dir),
-                                    ids: shot_effect.generate_ids(),
-                                    ..Default::default()
-                                },
-                            ]));
-                        }
-
-                        if let Ok(mut sound) =
-                            mbc.try_get_component_of_type_mut::<Sound>(*self.shot_sound)
-                        {
-                            sound.set_playback_time(0.0);
-                            sound.play();
-                        }
+        let animations = animation_player.animations_mut().get_value_mut_silent();
+        if let Some(shot_animation) = animations.iter_mut().next() {
+            while let Some(event) = shot_animation.pop_event() {
+                if event.name == "Shoot" {
+                    if let Some(ball_prefab) = self.ball_prefab.as_ref() {
+                        server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
+                            InstanceDescriptor {
+                                path: ctx.resource_manager.resource_path(ball_prefab).unwrap(),
+                                position: self_position,
+                                rotation: Default::default(),
+                                velocity: shooting_dir.scale(*self.shooting_force),
+                                ids: ball_prefab.generate_ids(),
+                            },
+                        ]));
                     }
+
+                    if let Some(shot_effect) = self.shot_effect.as_ref() {
+                        server.broadcast_message_to_clients(ServerMessage::Instantiate(vec![
+                            InstanceDescriptor {
+                                path: ctx.resource_manager.resource_path(shot_effect).unwrap(),
+                                position: self_position,
+                                rotation: vector_to_quat(shooting_dir),
+                                ids: shot_effect.generate_ids(),
+                                ..Default::default()
+                            },
+                        ]));
+                    }
+
+                    let mut sound = mbc.try_get_component_of_type_mut::<Sound>(*self.shot_sound)?;
+                    sound.set_playback_time(0.0);
+                    sound.play();
                 }
             }
-        };
+        }
+        Ok(())
     }
 }

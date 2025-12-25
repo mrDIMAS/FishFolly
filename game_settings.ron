@@ -27,9 +27,16 @@
             light_scatter_enabled: false,
             fxaa: false,
             use_parallax_mapping: false,
-            use_bloom: false,
             use_occlusion_culling: false,
             use_light_occlusion_culling: false,
+            hdr_settings: (
+                use_hdr: true,
+                luminance_calculation_method: DownSampling,
+                bloom_settings: (
+                    use_bloom: true,
+                    threshold: 1.01,
+                ),
+            ),
         )),
         ("Medium", (
             point_shadow_map_size: 512,
@@ -55,9 +62,16 @@
             light_scatter_enabled: false,
             fxaa: true,
             use_parallax_mapping: false,
-            use_bloom: true,
             use_occlusion_culling: false,
             use_light_occlusion_culling: false,
+            hdr_settings: (
+                use_hdr: true,
+                luminance_calculation_method: DownSampling,
+                bloom_settings: (
+                    use_bloom: true,
+                    threshold: 1.01,
+                ),
+            ),
         )),
         ("High", (
             point_shadow_map_size: 1024,
@@ -83,9 +97,16 @@
             light_scatter_enabled: true,
             fxaa: true,
             use_parallax_mapping: false,
-            use_bloom: true,
             use_occlusion_culling: false,
             use_light_occlusion_culling: false,
+            hdr_settings: (
+                use_hdr: true,
+                luminance_calculation_method: DownSampling,
+                bloom_settings: (
+                    use_bloom: true,
+                    threshold: 1.01,
+                ),
+            ),
         )),
         ("Ultra", (
             point_shadow_map_size: 2048,
@@ -111,11 +132,18 @@
             light_scatter_enabled: true,
             fxaa: true,
             use_parallax_mapping: false,
-            use_bloom: true,
             use_occlusion_culling: false,
             use_light_occlusion_culling: false,
+            hdr_settings: (
+                use_hdr: true,
+                luminance_calculation_method: DownSampling,
+                bloom_settings: (
+                    use_bloom: true,
+                    threshold: 1.01,
+                ),
+            ),
         )),
     ],
     mouse_sensitivity: 0.5,
-    mouse_smoothness: 0.75,
+    mouse_smoothness: 0.7083333,
 )

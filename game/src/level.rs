@@ -1,5 +1,6 @@
 use crate::actor::Actor;
 use fyrox::graph::SceneGraph;
+use fyrox::scene::graph::GraphError;
 use fyrox::{
     core::{pool::Handle, visitor::prelude::*},
     fxhash::FxHashMap,
@@ -70,18 +71,15 @@ impl Leaderboard {
         actors: &HashSet<Handle<Node>>,
         finish_point: Handle<Node>,
         graph: &Graph,
-    ) {
-        let Some(finish_point) = graph.try_get(finish_point).map(|n| n.global_position()) else {
-            return;
-        };
+    ) -> Result<(), GraphError> {
+        let finish_point = graph.try_get(finish_point)?.global_position();
 
         self.temp_array.clear();
         for actor in actors {
-            if let Some(actor_ref) = graph.try_get_script_component_of::<Actor>(*actor) {
-                let position = graph[actor_ref.rigid_body].global_position();
-                self.temp_array
-                    .push((*actor, position.metric_distance(&finish_point)));
-            }
+            let actor_ref = graph.try_get_script_component_of::<Actor>(*actor)?;
+            let position = graph[actor_ref.rigid_body].global_position();
+            self.temp_array
+                .push((*actor, position.metric_distance(&finish_point)));
         }
 
         self.temp_array
@@ -97,6 +95,8 @@ impl Leaderboard {
                 });
             entry.real_time_position = position;
         }
+
+        Ok(())
     }
 }
 
@@ -126,16 +126,14 @@ impl Default for Level {
 }
 
 impl Level {
-    pub fn update(&mut self, ctx: &PluginContext) {
-        if let Some(scene) = ctx.scenes.try_get(self.scene) {
-            self.match_timer = (self.match_timer - ctx.dt).max(0.0);
-
-            self.leaderboard.update(
-                &self.actors,
-                self.targets.iter().next().cloned().unwrap_or_default(),
-                &scene.graph,
-            );
-        }
+    pub fn update(&mut self, ctx: &PluginContext) -> Result<(), GraphError> {
+        let scene = ctx.scenes.try_get(self.scene)?;
+        self.match_timer = (self.match_timer - ctx.dt).max(0.0);
+        self.leaderboard.update(
+            &self.actors,
+            self.targets.iter().next().cloned().unwrap_or_default(),
+            &scene.graph,
+        )
     }
 
     pub fn sudden_death(&mut self) {

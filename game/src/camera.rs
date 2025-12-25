@@ -3,6 +3,7 @@
 
 use crate::Game;
 use fyrox::graph::SceneGraph;
+use fyrox::plugin::error::GameResult;
 use fyrox::{
     core::{
         algebra::{Point3, Vector3},
@@ -61,7 +62,7 @@ impl CameraController {
         end: Vector3<f32>,
         context: &mut ScriptContext,
         player_collider: Handle<Node>,
-    ) {
+    ) -> GameResult {
         let mut buffer = ArrayVec::<_, 64>::new();
 
         let dir = (end - begin)
@@ -87,14 +88,13 @@ impl CameraController {
             }
 
             // Filter out ragdoll colliders.
-            if let Some(collider) = context
+            let collider = context
                 .scene
                 .graph
-                .try_get_of_type::<Collider>(intersection.collider)
-            {
-                if collider.collision_groups().memberships.0 & 0b0000_0010 == 0b0000_0010 {
-                    continue;
-                }
+                .try_get_of_type::<Collider>(intersection.collider)?;
+
+            if collider.collision_groups().memberships.0 & 0b0000_0010 == 0b0000_0010 {
+                continue;
             }
 
             let new_offset = intersection.toi;
@@ -103,14 +103,16 @@ impl CameraController {
             }
         }
 
-        context.scene.graph[self.camera].set_position_xyz(0.0, 0.0, -distance + self.probe_radius);
+        let camera = context.scene.graph.try_get_mut(self.camera)?;
+        camera.set_position_xyz(0.0, 0.0, -distance + self.probe_radius);
+        Ok(())
     }
 }
 
 impl ScriptTrait for CameraController {
-    fn on_update(&mut self, ctx: &mut ScriptContext) {
+    fn on_update(&mut self, ctx: &mut ScriptContext) -> GameResult {
         if ctx.plugins.get::<Game>().is_client() {
-            return;
+            return Ok(());
         }
 
         let controller = &mut ctx.scene.graph[ctx.handle];
@@ -121,17 +123,15 @@ impl ScriptTrait for CameraController {
         local_transform.set_position(new_position);
         controller.set_rotation_y(self.yaw);
 
-        if let Some(hinge) = ctx.scene.graph.try_get_mut(self.hinge) {
-            hinge.set_rotation_x(self.pitch);
-            let hinge_position = hinge.global_position();
-            if let Some(camera) = ctx.scene.graph.try_get(self.camera) {
-                self.check_for_obstacles(
-                    hinge_position,
-                    camera.global_position(),
-                    ctx,
-                    self.collider_to_ignore,
-                );
-            }
-        }
+        let hinge = ctx.scene.graph.try_get_mut(self.hinge)?;
+        hinge.set_rotation_x(self.pitch);
+        let hinge_position = hinge.global_position();
+        let camera = ctx.scene.graph.try_get(self.camera)?;
+        self.check_for_obstacles(
+            hinge_position,
+            camera.global_position(),
+            ctx,
+            self.collider_to_ignore,
+        )
     }
 }

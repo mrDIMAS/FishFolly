@@ -1,6 +1,7 @@
 //! Object marker components.
 
 use crate::{utils, Game};
+use fyrox::plugin::error::{GameError, GameResult};
 use fyrox::{
     core::{
         algebra::Vector3, math::Vector3Ext, pool::Handle, pool::MultiBorrowContext,
@@ -101,54 +102,54 @@ impl Default for Actor {
 }
 
 impl Actor {
-    fn is_ragdoll_has_ground_contact(&self, graph: &Graph) -> bool {
+    fn is_ragdoll_has_ground_contact(&self, graph: &Graph) -> Result<bool, GameError> {
         let mut result = false;
-        if let Some(ragdoll) = graph.try_get_of_type::<Ragdoll>(self.ragdoll) {
-            ragdoll.root_limb.iterate_recursive(&mut |limb| {
-                if let Some(rigid_body) = graph.try_get_of_type::<RigidBody>(limb.physical_bone) {
-                    for child in rigid_body.children() {
-                        if utils::has_ground_contact(*child, graph) {
-                            result = true;
-                            break;
-                        }
+        let ragdoll = graph.try_get_of_type::<Ragdoll>(self.ragdoll)?;
+        ragdoll.root_limb.iterate_recursive(&mut |limb| {
+            if let Ok(rigid_body) = graph.try_get_of_type::<RigidBody>(limb.physical_bone) {
+                for child in rigid_body.children() {
+                    if utils::has_ground_contact(*child, graph).unwrap() {
+                        result = true;
+                        break;
                     }
                 }
-            });
-        }
-        result
+            }
+        });
+        Ok(result)
     }
 
-    pub fn has_ground_contact(&self, graph: &Graph) -> bool {
-        utils::has_ground_contact(self.collider, graph) || self.is_ragdoll_has_ground_contact(graph)
+    pub fn has_ground_contact(&self, graph: &Graph) -> Result<bool, GameError> {
+        Ok(utils::has_ground_contact(self.collider, graph)?
+            || self.is_ragdoll_has_ground_contact(graph)?)
     }
 
-    pub fn set_ragdoll_enabled(&mut self, graph: &mut Graph, enabled: bool) {
-        if let Some(ragdoll) = graph.try_get_mut_of_type::<Ragdoll>(self.ragdoll) {
-            ragdoll.is_active.set_value_and_mark_modified(enabled);
-        }
+    pub fn set_ragdoll_enabled(&mut self, graph: &mut Graph, enabled: bool) -> GameResult {
+        graph
+            .try_get_mut_of_type::<Ragdoll>(self.ragdoll)?
+            .is_active
+            .set_value_and_mark_modified(enabled);
+        Ok(())
     }
 
-    pub fn is_ragdoll_enabled(&self, graph: &Graph) -> bool {
-        if let Some(ragdoll) = graph.try_get_of_type::<Ragdoll>(self.ragdoll) {
-            *ragdoll.is_active
-        } else {
-            false
-        }
+    pub fn is_ragdoll_enabled(&self, graph: &Graph) -> Result<bool, GameError> {
+        let ragdoll = graph.try_get_of_type::<Ragdoll>(self.ragdoll)?;
+        Ok(*ragdoll.is_active)
     }
 
     pub fn on_message(
         &mut self,
         message: &mut dyn ScriptMessagePayload,
         ctx: &mut ScriptMessageContext,
-    ) {
+    ) -> GameResult {
         let Some(message) = message.downcast_ref::<ActorMessage>() else {
-            return;
+            return Ok(());
         };
 
         match message {
             ActorMessage::RespawnAt(position) => {
                 if let Some(disappear_effect) = self.disappear_effect.as_ref() {
-                    let current_position = ctx.scene.graph[self.rigid_body].global_position();
+                    let current_position =
+                        ctx.scene.graph.try_get(self.rigid_body)?.global_position();
                     disappear_effect.instantiate_at(
                         ctx.scene,
                         current_position,
@@ -156,7 +157,7 @@ impl Actor {
                     );
                 }
 
-                self.set_ragdoll_enabled(&mut ctx.scene.graph, false);
+                self.set_ragdoll_enabled(&mut ctx.scene.graph, false)?;
 
                 self.for_each_rigid_body(&mut ctx.scene.graph, |rb| {
                     rb.local_transform_mut().set_position(*position);
@@ -167,6 +168,8 @@ impl Actor {
                 }
             }
         }
+
+        Ok(())
     }
 
     pub fn for_each_rigid_body<F>(&mut self, graph: &mut Graph, mut func: F)
@@ -204,10 +207,11 @@ impl Actor {
         });
     }
 
-    pub fn do_move(&mut self, velocity: Vector3<f32>, graph: &mut Graph) {
-        if !self.is_ragdoll_enabled(graph) {
+    pub fn do_move(&mut self, velocity: Vector3<f32>, graph: &mut Graph) -> GameResult {
+        if !self.is_ragdoll_enabled(graph)? {
             self.set_velocity(velocity, graph);
         }
+        Ok(())
     }
 
     pub fn jump(&mut self) {
@@ -217,88 +221,72 @@ impl Actor {
         }
     }
 
-    fn has_serious_impact(&mut self, ctx: &mut ScriptContext) -> bool {
-        if let Some(collider) = ctx.scene.graph.try_get_of_type::<Collider>(self.collider) {
-            for contact in collider.contacts(&ctx.scene.graph.physics) {
-                if contact.has_any_active_contact {
-                    for manifold in contact.manifolds.iter() {
-                        if let (Some(rb1), Some(rb2)) = (
-                            ctx.scene
-                                .graph
-                                .try_get_of_type::<RigidBody>(manifold.rigid_body1),
-                            ctx.scene
-                                .graph
-                                .try_get_of_type::<RigidBody>(manifold.rigid_body2),
-                        ) {
-                            if (rb1.lin_vel() - rb2.lin_vel()).norm() > 10.0
-                                || manifold.points.iter().any(|p| p.impulse > 2.0)
-                            {
-                                return true;
-                            }
-                        }
+    fn has_serious_impact(&mut self, ctx: &mut ScriptContext) -> Result<bool, GameError> {
+        let graph = &ctx.scene.graph;
+        let collider = ctx.scene.graph.try_get_of_type::<Collider>(self.collider)?;
+        for contact in collider.contacts(&ctx.scene.graph.physics) {
+            if contact.has_any_active_contact {
+                for manifold in contact.manifolds.iter() {
+                    let rb1 = graph.try_get_of_type::<RigidBody>(manifold.rigid_body1)?;
+                    let rb2 = graph.try_get_of_type::<RigidBody>(manifold.rigid_body2)?;
+                    if (rb1.lin_vel() - rb2.lin_vel()).norm() > 10.0
+                        || manifold.points.iter().any(|p| p.impulse > 2.0)
+                    {
+                        return Ok(true);
                     }
                 }
             }
         }
-        false
+        Ok(false)
     }
 
-    pub fn is_in_jump_state(&self, graph: &Graph) -> bool {
+    pub fn is_in_jump_state(&self, graph: &Graph) -> Result<bool, GameError> {
         let name = "Jump";
-        if let Some(absm) = graph.try_get_of_type::<AnimationBlendingStateMachine>(self.absm) {
-            absm.machine().layers().first().map_or(false, |layer| {
-                if let Some(active_state) = layer.states().try_borrow(layer.active_state()) {
-                    active_state.name == name
-                } else if let Some(active_transition) =
-                    layer.transitions().try_borrow(layer.active_transition())
-                {
-                    if let Some(source) = layer.states().try_borrow(active_transition.source()) {
-                        source.name == name
-                    } else if let Some(dest) = layer.states().try_borrow(active_transition.dest()) {
-                        dest.name == name
-                    } else {
-                        false
-                    }
+        let absm = graph.try_get_of_type::<AnimationBlendingStateMachine>(self.absm)?;
+        Ok(absm.machine().layers().first().map_or(false, |layer| {
+            if let Ok(active_state) = layer.states().try_borrow(layer.active_state()) {
+                active_state.name == name
+            } else if let Ok(active_transition) =
+                layer.transitions().try_borrow(layer.active_transition())
+            {
+                if let Ok(source) = layer.states().try_borrow(active_transition.source()) {
+                    source.name == name
+                } else if let Ok(dest) = layer.states().try_borrow(active_transition.dest()) {
+                    dest.name == name
                 } else {
                     false
                 }
-            })
-        } else {
-            false
-        }
+            } else {
+                false
+            }
+        }))
     }
 
-    fn play_random_footstep_sound(&mut self, mbc: &MultiBorrowContext<Node, NodeContainer>) {
+    fn play_random_footstep_sound(
+        &mut self,
+        mbc: &MultiBorrowContext<Node, NodeContainer>,
+    ) -> GameResult {
         let Some(random_footstep_sound) = self.footsteps.choose(&mut thread_rng()) else {
-            return;
+            return Ok(());
         };
-
-        let Ok(mut sound) = mbc.try_get_component_of_type_mut::<Sound>(*random_footstep_sound)
-        else {
-            return;
-        };
-
-        sound.play();
+        mbc.try_get_component_of_type_mut::<Sound>(*random_footstep_sound)?
+            .play();
+        Ok(())
     }
 
-    fn process_animation_events(&mut self, ctx: &mut ScriptContext, has_ground_contact: bool) {
+    fn process_animation_events(
+        &mut self,
+        ctx: &mut ScriptContext,
+        has_ground_contact: bool,
+    ) -> GameResult {
         let mbc = ctx.scene.graph.begin_multi_borrow();
-
-        let Ok(absm) = mbc.try_get_component_of_type::<AnimationBlendingStateMachine>(self.absm)
-        else {
-            return;
-        };
-
+        let absm = mbc.try_get_component_of_type::<AnimationBlendingStateMachine>(self.absm)?;
         let machine = absm.machine();
-
-        let Ok(mut animation_player) =
-            mbc.try_get_component_of_type_mut::<AnimationPlayer>(absm.animation_player())
-        else {
-            return;
-        };
+        let mut animation_player =
+            mbc.try_get_component_of_type_mut::<AnimationPlayer>(absm.animation_player())?;
 
         let Some(first) = machine.layers().first() else {
-            return;
+            return Ok(());
         };
 
         let events_collection = first.collect_active_animations_events(
@@ -309,7 +297,7 @@ impl Actor {
 
         for (_, event) in events_collection.events {
             if event.name == "Footstep" && has_ground_contact {
-                self.play_random_footstep_sound(&mbc);
+                self.play_random_footstep_sound(&mbc)?;
             }
         }
 
@@ -317,22 +305,24 @@ impl Actor {
             .animations_mut()
             .get_value_mut_silent()
             .clear_animation_events();
+
+        Ok(())
     }
 
-    pub fn on_update(&mut self, ctx: &mut ScriptContext) {
+    pub fn on_update(&mut self, ctx: &mut ScriptContext) -> GameResult {
         let game = ctx.plugins.get::<Game>();
-        let has_ground_contact = self.has_ground_contact(&ctx.scene.graph);
+        let has_ground_contact = self.has_ground_contact(&ctx.scene.graph)?;
         if has_ground_contact {
             self.in_air_time = 0.0;
             self.stand_up_timer += ctx.dt;
             if self.stand_up_timer >= self.stand_up_interval {
-                self.set_ragdoll_enabled(&mut ctx.scene.graph, false);
+                self.set_ragdoll_enabled(&mut ctx.scene.graph, false)?;
             }
         } else {
             self.in_air_time += ctx.dt;
             self.stand_up_timer = 0.0;
             if !game.debug_settings.disable_ragdoll && self.in_air_time >= self.max_in_air_time {
-                self.set_ragdoll_enabled(&mut ctx.scene.graph, true);
+                self.set_ragdoll_enabled(&mut ctx.scene.graph, true)?;
             }
         }
         let finished = game.level.leaderboard.is_finished(ctx.handle);
@@ -342,7 +332,7 @@ impl Actor {
             self.target_desired_velocity.z = 0.0;
         }
 
-        if self.has_serious_impact(ctx) {
+        if self.has_serious_impact(ctx)? {
             self.in_air_time = 999.0;
         }
 
@@ -353,26 +343,24 @@ impl Actor {
         );
         self.desired_velocity.y = y_vel;
 
-        self.do_move(self.desired_velocity, &mut ctx.scene.graph);
+        self.do_move(self.desired_velocity, &mut ctx.scene.graph)?;
 
-        if let Some(absm) = ctx
-            .scene
+        ctx.scene
             .graph
-            .try_get_mut_of_type::<AnimationBlendingStateMachine>(self.absm)
-        {
-            absm.machine_mut()
-                .get_value_mut_silent()
-                .set_parameter(
-                    "Run",
-                    Parameter::Rule(self.desired_velocity.xz().norm() >= 0.75 * self.speed),
-                )
-                .set_parameter("Jump", Parameter::Rule(self.jump));
-        }
+            .try_get_mut_of_type::<AnimationBlendingStateMachine>(self.absm)?
+            .machine_mut()
+            .get_value_mut_silent()
+            .set_parameter(
+                "Run",
+                Parameter::Rule(self.desired_velocity.xz().norm() >= 0.75 * self.speed),
+            )
+            .set_parameter("Jump", Parameter::Rule(self.jump));
 
-        self.process_animation_events(ctx, has_ground_contact);
+        self.process_animation_events(ctx, has_ground_contact)?;
 
         self.jump_interval -= ctx.dt;
 
         self.jump = false;
+        Ok(())
     }
 }

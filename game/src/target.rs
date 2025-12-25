@@ -1,6 +1,7 @@
 //! A target that bots will try to reach.
 
 use crate::Game;
+use fyrox::plugin::error::GameResult;
 use fyrox::{
     core::{log::Log, reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*},
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
@@ -12,21 +13,23 @@ use fyrox::{
 pub struct Target {}
 
 impl ScriptTrait for Target {
-    fn on_init(&mut self, ctx: &mut ScriptContext) {
+    fn on_init(&mut self, ctx: &mut ScriptContext) -> GameResult {
         ctx.plugins
             .get_mut::<Game>()
             .level
             .targets
             .insert(ctx.handle);
         Log::info(format!("Target {:?} added!", ctx.handle));
+        Ok(())
     }
 
-    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
+    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) -> GameResult {
         ctx.plugins
             .get_mut::<Game>()
             .level
             .targets
             .remove(&ctx.node_handle);
         Log::info(format!("Target {:?} destroyed!", ctx.node_handle));
+        Ok(())
     }
 }

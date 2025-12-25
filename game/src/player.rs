@@ -6,6 +6,7 @@ use crate::{
     net::ClientMessage,
     CameraController, Event, Game,
 };
+use fyrox::plugin::error::GameResult;
 use fyrox::{
     core::{
         algebra::Vector3, log::Log, math::SmoothAngle, pool::Handle, reflect::prelude::*,
@@ -144,7 +145,7 @@ impl Default for Player {
 }
 
 impl ScriptTrait for Player {
-    fn on_init(&mut self, ctx: &mut ScriptContext) {
+    fn on_init(&mut self, ctx: &mut ScriptContext) -> GameResult {
         ctx.plugins
             .get_mut::<Game>()
             .level
@@ -155,26 +156,26 @@ impl ScriptTrait for Player {
             "Player {:?} created!",
             ctx.scene.graph[ctx.handle].instance_id()
         ));
+
+        Ok(())
     }
 
-    fn on_start(&mut self, ctx: &mut ScriptContext) {
+    fn on_start(&mut self, ctx: &mut ScriptContext) -> GameResult {
         ctx.message_dispatcher
             .subscribe_to::<ActorMessage>(ctx.handle);
 
         // Disable camera for remote players, because multiple camera will.
-        if let Some(camera_controller) = ctx
-            .scene
-            .graph
-            .try_get_script_component_of_mut::<CameraController>(self.camera)
-        {
-            let camera = camera_controller.camera;
-            if let Some(camera) = ctx.scene.graph.try_get_mut_of_type::<Camera>(camera) {
-                camera.set_enabled(self.actor.kind == ActorKind::Player);
-            }
-        }
+        let graph = &mut ctx.scene.graph;
+        let camera_controller =
+            graph.try_get_script_component_of_mut::<CameraController>(self.camera)?;
+        let camera_handle = camera_controller.camera;
+        graph
+            .try_get_mut_of_type::<Camera>(camera_handle)?
+            .set_enabled(self.actor.kind == ActorKind::Player);
+        Ok(())
     }
 
-    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) {
+    fn on_deinit(&mut self, ctx: &mut ScriptDeinitContext) -> GameResult {
         ctx.plugins
             .get_mut::<Game>()
             .level
@@ -184,9 +185,10 @@ impl ScriptTrait for Player {
             "Player {:?} destroyed!",
             ctx.scene.graph[ctx.node_handle].instance_id()
         ));
+        Ok(())
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) {
+    fn on_os_event(&mut self, event: &Event<()>, ctx: &mut ScriptContext) -> GameResult {
         let game = ctx.plugins.get_mut::<Game>();
 
         if self.actor.kind == ActorKind::RemotePlayer
@@ -195,7 +197,7 @@ impl ScriptTrait for Player {
                 .as_ref()
                 .map_or(false, |menu| menu.is_active(ctx.user_interfaces.first()))
         {
-            return;
+            return Ok(());
         }
 
         let this = &ctx.scene.graph[ctx.handle];
@@ -216,13 +218,15 @@ impl ScriptTrait for Player {
                 }
             }
         }
+
+        Ok(())
     }
 
-    fn on_update(&mut self, ctx: &mut ScriptContext) {
+    fn on_update(&mut self, ctx: &mut ScriptContext) -> GameResult {
         let game = ctx.plugins.get_mut::<Game>();
 
         if game.is_client() {
-            return;
+            return Ok(());
         }
 
         let finished = game.level.leaderboard.is_finished(ctx.handle);
@@ -235,30 +239,30 @@ impl ScriptTrait for Player {
             .scene
             .graph
             .try_get_script_component_of::<Actor>(self.spectator_target)
+            .ok()
             .and_then(|n| {
                 ctx.scene
                     .graph
                     .try_get(n.rigid_body)
+                    .ok()
                     .map(|n| n.global_position())
             });
 
-        if let Some(camera_controller) = ctx
+        let camera_controller = ctx
             .scene
             .graph
-            .try_get_script_component_of_mut::<CameraController>(self.camera)
-        {
-            camera_controller.pitch = self.pitch;
-            camera_controller.yaw = self.yaw;
-            if let (true, Some(spectator_target_position)) = (finished, spectator_target_position) {
-                // Spectate a player.
-                camera_controller.target_position = spectator_target_position;
-            } else {
-                camera_controller.target_position = self_position;
-            }
+            .try_get_script_component_of_mut::<CameraController>(self.camera)?;
+        camera_controller.pitch = self.pitch;
+        camera_controller.yaw = self.yaw;
+        if let (true, Some(spectator_target_position)) = (finished, spectator_target_position) {
+            // Spectate a player.
+            camera_controller.target_position = spectator_target_position;
+        } else {
+            camera_controller.target_position = self_position;
         }
 
-        let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph);
-        let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph);
+        let has_ground_contact = self.actor.has_ground_contact(&ctx.scene.graph)?;
+        let is_in_jump_state = self.actor.is_in_jump_state(&ctx.scene.graph)?;
 
         self.actor.target_desired_velocity = Vector3::default();
 
@@ -341,14 +345,16 @@ impl ScriptTrait for Player {
 
         self.model_angle.update(ctx.dt);
 
-        self.actor.on_update(ctx);
+        self.actor.on_update(ctx)?;
+
+        Ok(())
     }
 
     fn on_message(
         &mut self,
         message: &mut dyn ScriptMessagePayload,
         ctx: &mut ScriptMessageContext,
-    ) {
-        self.actor.on_message(message, ctx);
+    ) -> GameResult {
+        self.actor.on_message(message, ctx)
     }
 }
