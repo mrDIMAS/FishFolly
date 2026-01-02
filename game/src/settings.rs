@@ -18,11 +18,11 @@ impl Settings {
         Self(SettingsData::load())
     }
 
-    pub fn read(&self) -> SettingsDataRef {
+    pub fn read(&self) -> SettingsDataRef<'_> {
         SettingsDataRef(&self.0)
     }
 
-    pub fn write(&mut self) -> SettingsDataRefMut {
+    pub fn write(&mut self) -> SettingsDataRefMut<'_> {
         SettingsDataRefMut(&mut self.0)
     }
 }

@@ -6,11 +6,11 @@ use crate::{
     settings::Settings,
     utils, Game,
 };
-use fyrox::plugin::error::GameResult;
 use fyrox::{
     asset::manager::ResourceManager,
-    core::visitor::prelude::*,
-    core::{log::Log, pool::Handle},
+    core::{
+        log::Log, pool::Handle, reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*,
+    },
     engine::GraphicsContext,
     graph::{BaseSceneGraph, SceneGraph},
     gui::{
@@ -26,7 +26,7 @@ use fyrox::{
         widget::{WidgetBuilder, WidgetMessage},
         BuildContext, HorizontalAlignment, Thickness, UiNode, UserInterface, VerticalAlignment,
     },
-    plugin::PluginContext,
+    plugin::{error::GameResult, PluginContext},
     resource::model::Model,
     scene::{graph::Graph, node::Node, Scene, SceneContainer},
 };
@@ -59,8 +59,9 @@ fn set_visibility(ui: &UserInterface, pairs: &[(Handle<UiNode>, bool)]) {
     }
 }
 
-#[derive(Default, Visit, Debug)]
-struct ServerMenu {
+#[derive(Visit, Reflect, Debug, Default, Clone, TypeUuidProvider)]
+#[type_uuid(id = "7dc2d3b9-1990-464c-bab3-3b6973f930e9")]
+pub struct ServerMenu {
     self_handle: Handle<UiNode>,
     main_menu: Handle<UiNode>,
     back: Handle<UiNode>,
@@ -68,29 +69,26 @@ struct ServerMenu {
     start: Handle<UiNode>,
     server_address_input: Handle<UiNode>,
     add_bots_check_box: Handle<UiNode>,
-    server_address: String,
     level_selector: Handle<UiNode>,
+    #[reflect(hidden)]
+    server_address: String,
+    #[reflect(hidden)]
     available_levels: Vec<PathBuf>,
+    #[reflect(hidden)]
     selected_level: Option<usize>,
 }
 
 impl ServerMenu {
-    pub fn new(
-        self_handle: Handle<UiNode>,
-        main_menu: Handle<UiNode>,
-        ui: &mut UserInterface,
-        resource_manager: &ResourceManager,
-    ) -> Self {
-        let level_selector = ui.find_handle_by_name_from_root("SVLevelSelector");
-
-        let available_levels = walkdir::WalkDir::new("./data/maps")
+    pub fn fill_levels_list(&mut self, ui: &mut UserInterface, resource_manager: &ResourceManager) {
+        self.available_levels = walkdir::WalkDir::new("./data/maps")
             .into_iter()
             .filter_map(|result| result.ok())
             .filter(|entry| entry.path().extension() == Some(OsStr::new("rgs")))
             .map(|entry| entry.path().to_path_buf())
             .collect::<Vec<_>>();
 
-        let levels_list_items = available_levels
+        let levels_list_items = self
+            .available_levels
             .iter()
             .map(|path| {
                 make_text_widget(
@@ -106,29 +104,18 @@ impl ServerMenu {
             .collect::<Vec<_>>();
 
         if !levels_list_items.is_empty() {
-            ui.send(level_selector, SelectorMessage::Current(Some(0)))
+            ui.send(self.level_selector, SelectorMessage::Current(Some(0)))
         }
         ui.send(
-            level_selector,
+            self.level_selector,
             SelectorMessage::SetItems {
                 items: levels_list_items,
                 remove_previous: true,
             },
         );
 
-        Self {
-            self_handle,
-            main_menu,
-            back: ui.find_handle_by_name_from_root("SVBack"),
-            players_list: ui.find_handle_by_name_from_root("SVPlayersList"),
-            start: ui.find_handle_by_name_from_root("SVStart"),
-            server_address_input: ui.find_handle_by_name_from_root("SVServerAddress"),
-            add_bots_check_box: ui.find_handle_by_name_from_root("SVAddBotsCheckBox"),
-            level_selector,
-            server_address: "127.0.0.1:10001".to_string(),
-            selected_level: available_levels.first().map(|_| 0),
-            available_levels,
-        }
+        self.server_address = "127.0.0.1:10001".to_string();
+        self.selected_level = self.available_levels.first().map(|_| 0);
     }
 
     pub fn handle_ui_message(
@@ -206,7 +193,8 @@ impl ServerMenu {
     }
 }
 
-#[derive(Visit, Default, Debug)]
+#[derive(Visit, Reflect, Debug, Default, Clone, TypeUuidProvider)]
+#[type_uuid(id = "556115c2-6f30-4bca-98cf-b94a0810f38c")]
 pub struct SettingsMenu {
     menu: Handle<UiNode>,
     graphics_quality: Handle<UiNode>,
@@ -219,11 +207,12 @@ pub struct SettingsMenu {
 }
 
 impl SettingsMenu {
-    pub fn new(
+    pub fn sync_with_settings(
+        &mut self,
         ui: &mut UserInterface,
         resource_manager: &ResourceManager,
         settings: &Settings,
-    ) -> Self {
+    ) {
         let settings = settings.read();
 
         let items = settings
@@ -239,43 +228,25 @@ impl SettingsMenu {
             })
             .collect::<Vec<_>>();
 
-        let graphics_quality = ui.find_handle_by_name_from_root("SettingsGraphicsQuality");
-
         ui.send(
-            graphics_quality,
+            self.graphics_quality,
             SelectorMessage::SetItems {
                 items,
                 remove_previous: true,
             },
         );
         ui.send(
-            graphics_quality,
+            self.graphics_quality,
             SelectorMessage::Current(Some(settings.graphics_quality)),
         );
-
-        let sound_volume = ui.find_handle_by_name_from_root("SettingsSoundVolume");
-        let music_volume = ui.find_handle_by_name_from_root("SettingsMusicVolume");
-        let mouse_sens = ui.find_handle_by_name_from_root("SettingsMouseSens");
-        let mouse_smoothness = ui.find_handle_by_name_from_root("SettingsMouseSmooth");
 
         fn set_sb_value(ui: &UserInterface, handle: Handle<UiNode>, value: f32) {
             ui.send(handle, ScrollBarMessage::Value(value));
         }
-        set_sb_value(ui, sound_volume, settings.sound_volume);
-        set_sb_value(ui, music_volume, settings.music_volume);
-        set_sb_value(ui, mouse_sens, settings.mouse_sensitivity);
-        set_sb_value(ui, mouse_smoothness, settings.mouse_smoothness);
-
-        Self {
-            menu: ui.find_handle_by_name_from_root("SettingsMenu"),
-            graphics_quality,
-            sound_volume,
-            music_volume,
-            mouse_sens,
-            mouse_smoothness,
-            back: ui.find_handle_by_name_from_root("SettingsBack"),
-            reset: ui.find_handle_by_name_from_root("SettingsReset"),
-        }
+        set_sb_value(ui, self.sound_volume, settings.sound_volume);
+        set_sb_value(ui, self.music_volume, settings.music_volume);
+        set_sb_value(ui, self.mouse_sens, settings.mouse_sensitivity);
+        set_sb_value(ui, self.mouse_smoothness, settings.mouse_smoothness);
     }
 
     pub fn handle_ui_message(
@@ -319,8 +290,9 @@ impl SettingsMenu {
     }
 }
 
-#[derive(Visit, Default, Debug)]
-struct InGameMenu {
+#[derive(Visit, Reflect, Debug, Default, Clone, TypeUuidProvider)]
+#[type_uuid(id = "24d6e2ad-918c-45db-987b-3605d70469c2")]
+pub struct InGameMenu {
     root: Handle<UiNode>,
     finished_text: Handle<UiNode>,
     finished_text_animation: Handle<UiNode>,
@@ -329,17 +301,6 @@ struct InGameMenu {
 }
 
 impl InGameMenu {
-    fn new(ui: &UserInterface) -> Self {
-        Self {
-            root: ui.find_handle_by_name_from_root("InGameMenuRoot"),
-            finished_text: ui.find_handle_by_name_from_root("FinishedText"),
-            match_timer_text: ui.find_handle_by_name_from_root("MatchTimer"),
-            finished_text_animation: ui
-                .find_handle_by_name_from_root("FinishedTextAnimationPlayer"),
-            player_position: ui.find_handle_by_name_from_root("PlayerPosition"),
-        }
-    }
-
     fn on_leaderboard_event(
         &self,
         ui: &mut UserInterface,
@@ -414,8 +375,48 @@ impl InGameMenu {
     }
 }
 
-#[derive(Visit, Debug)]
-pub struct Menu {
+#[derive(Visit, Reflect, Debug, TypeUuidProvider)]
+#[type_uuid(id = "87b01b49-af2b-439a-a077-61700f817e3e")]
+pub struct LeaderBoardChannel {
+    #[visit(skip)]
+    #[reflect(hidden)]
+    pub sender: Sender<LeaderBoardEvent>,
+    #[visit(skip)]
+    #[reflect(hidden)]
+    receiver: Receiver<LeaderBoardEvent>,
+}
+
+impl Default for LeaderBoardChannel {
+    fn default() -> Self {
+        let (sender, receiver) = mpsc::channel();
+        Self { sender, receiver }
+    }
+}
+
+impl Clone for LeaderBoardChannel {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+#[derive(Visit, Reflect, Default, Debug, Clone, TypeUuidProvider)]
+#[type_uuid(id = "82708d44-2abe-4792-b144-ef70c26cb693")]
+pub struct MenuSceneData {
+    click_begin_sound: Handle<Node>,
+    click_end_sound: Handle<Node>,
+    root_scene_node: Handle<Node>,
+    finished_sound: Handle<Node>,
+    win_camera: Handle<Node>,
+    main_camera: Handle<Node>,
+    clock_ticking: Handle<Node>,
+}
+
+#[derive(Visit, Reflect, Default, Debug, Clone, TypeUuidProvider)]
+#[type_uuid(id = "87b01b49-af2b-439a-a077-61700f817e3e")]
+pub struct MenuData {
+    server_menu: ServerMenu,
+    settings_menu: SettingsMenu,
+    in_game_menu: InGameMenu,
     debug_text: Handle<UiNode>,
     settings: Handle<UiNode>,
     exit: Handle<UiNode>,
@@ -424,50 +425,14 @@ pub struct Menu {
     main_menu: Handle<UiNode>,
     main_menu_root: Handle<UiNode>,
     background: Handle<UiNode>,
-    server_menu: ServerMenu,
-    settings_menu: SettingsMenu,
-    scene: Handle<Scene>,
-    click_begin_sound: Handle<Node>,
-    click_end_sound: Handle<Node>,
-    root_scene_node: Handle<Node>,
-    finished_sound: Handle<Node>,
-    #[visit(skip)]
-    pub sender: Sender<LeaderBoardEvent>,
-    #[visit(skip)]
-    receiver: Receiver<LeaderBoardEvent>,
-    in_game_menu: InGameMenu,
-    clock_ticking: Handle<Node>,
-    win_camera: Handle<Node>,
-    main_camera: Handle<Node>,
 }
 
-impl Default for Menu {
-    fn default() -> Self {
-        let (sender, receiver) = mpsc::channel();
-        Self {
-            debug_text: Default::default(),
-            settings: Default::default(),
-            exit: Default::default(),
-            start_as_server: Default::default(),
-            start_as_client: Default::default(),
-            main_menu: Default::default(),
-            main_menu_root: Default::default(),
-            background: Default::default(),
-            server_menu: Default::default(),
-            settings_menu: Default::default(),
-            scene: Default::default(),
-            click_begin_sound: Default::default(),
-            click_end_sound: Default::default(),
-            root_scene_node: Default::default(),
-            finished_sound: Default::default(),
-            sender,
-            receiver,
-            in_game_menu: Default::default(),
-            clock_ticking: Default::default(),
-            win_camera: Default::default(),
-            main_camera: Default::default(),
-        }
-    }
+#[derive(Debug, Clone, Reflect, Visit, Default)]
+pub struct Menu {
+    scene: Handle<Scene>,
+    pub menu_data: MenuData,
+    pub menu_scene_data: MenuSceneData,
+    pub leader_board_channel: LeaderBoardChannel,
 }
 
 fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
@@ -486,51 +451,33 @@ where
 impl Menu {
     pub fn new(ctx: &mut PluginContext, game: &mut Game) -> Self {
         let settings = &game.settings;
+
+        let ui = ctx.user_interfaces.first_mut();
+        let mut menu_data = ui.user_data.try_take::<MenuData>().unwrap();
+        menu_data
+            .server_menu
+            .fill_levels_list(ui, ctx.resource_manager);
+        menu_data
+            .settings_menu
+            .sync_with_settings(ui, ctx.resource_manager, settings);
+
         ctx.task_pool.spawn_plugin_task(
             ctx.resource_manager
                 .request::<Model>("data/models/menu.rgs"),
             |result, game: &mut Game, ctx| {
-                let scene = result?.data_ref().get_scene().clone_one_to_one().0;
+                let mut scene = result?.data_ref().get_scene().clone_one_to_one().0;
                 let this = game.menu.as_mut().unwrap();
-                this.click_begin_sound =
-                    scene.graph.find_handle_by_name_from_root("ClickBeginSound");
-                this.click_end_sound = scene.graph.find_handle_by_name_from_root("ClickEndSound");
-                this.root_scene_node = scene.graph.find_handle_by_name_from_root("Root");
-                this.finished_sound = scene.graph.find_handle_by_name_from_root("Finished");
-                this.clock_ticking = scene.graph.find_handle_by_name_from_root("ClockTicking");
-                this.main_camera = scene.graph.find_handle_by_name_from_root("Camera");
-                this.win_camera = scene.graph.find_handle_by_name_from_root("WinCamera");
+                this.menu_scene_data = scene.graph.user_data.try_take::<MenuSceneData>()?;
                 this.scene = ctx.scenes.add(scene);
                 Ok(())
             },
         );
 
-        let ui = ctx.user_interfaces.first_mut();
-        let main_menu = ui.find_handle_by_name_from_root("MainMenu");
-        let server_menu = ui.find_handle_by_name_from_root("ServerMenu");
-        let (sender, receiver) = mpsc::channel();
         Self {
-            debug_text: ui.find_handle_by_name_from_root("DebugText"),
-            settings: ui.find_handle_by_name_from_root("Settings"),
-            exit: ui.find_handle_by_name_from_root("Exit"),
-            start_as_server: ui.find_handle_by_name_from_root("Server"),
-            start_as_client: ui.find_handle_by_name_from_root("Client"),
-            main_menu,
-            main_menu_root: ui.find_handle_by_name_from_root("MainMenuRoot"),
-            background: ui.find_handle_by_name_from_root("Background"),
-            server_menu: ServerMenu::new(server_menu, main_menu, ui, ctx.resource_manager),
-            settings_menu: SettingsMenu::new(ui, ctx.resource_manager, settings),
             scene: Default::default(),
-            click_begin_sound: Default::default(),
-            click_end_sound: Default::default(),
-            root_scene_node: Default::default(),
-            finished_sound: Default::default(),
-            sender,
-            receiver,
-            in_game_menu: InGameMenu::new(ui),
-            clock_ticking: Default::default(),
-            win_camera: Default::default(),
-            main_camera: Default::default(),
+            menu_data,
+            menu_scene_data: Default::default(),
+            leader_board_channel: Default::default(),
         }
     }
 
@@ -543,11 +490,16 @@ impl Menu {
         settings: &mut Settings,
         game_scene: Handle<Scene>,
     ) -> GameResult {
-        self.server_menu.handle_ui_message(ctx, message, server);
-        self.settings_menu.handle_ui_message(
+        self.menu_data
+            .server_menu
+            .handle_ui_message(ctx, message, server);
+
+        let ui = ctx.user_interfaces.first();
+
+        self.menu_data.settings_menu.handle_ui_message(
             message,
-            self.main_menu,
-            ctx.user_interfaces.first(),
+            self.menu_data.main_menu,
+            ui,
             ctx.graphics_context,
             settings,
             ctx.scenes,
@@ -556,73 +508,79 @@ impl Menu {
         )?;
 
         if let Some(ButtonMessage::Click) = message.data() {
-            if message.destination() == self.exit {
+            if message.destination() == self.menu_data.exit {
                 ctx.loop_controller.exit();
-            } else if message.destination() == self.start_as_server {
+            } else if message.destination() == self.menu_data.start_as_server {
                 set_visibility(
-                    ctx.user_interfaces.first(),
+                    ui,
                     &[
-                        (self.server_menu.self_handle, true),
-                        (self.main_menu, false),
+                        (self.menu_data.server_menu.self_handle, true),
+                        (self.menu_data.main_menu, false),
                     ],
                 );
-                ctx.user_interfaces.first().send(
-                    self.server_menu.server_address_input,
+                ui.send(
+                    self.menu_data.server_menu.server_address_input,
                     TextMessage::Text(Server::LOCALHOST.to_string()),
                 );
 
                 // Try to start the server and the client.
-                match Server::new(&self.server_menu.server_address) {
+                match Server::new(&self.menu_data.server_menu.server_address) {
                     Ok(new_server) => {
                         *server = Some(new_server);
-                        *client = try_connect_to_server(&self.server_menu.server_address);
+                        *client = try_connect_to_server(&self.menu_data.server_menu.server_address);
                         let server = server.as_mut().unwrap();
                         server.accept_connections();
                     }
                     Err(err) => Log::err(format!("Unable to create a server. Reason: {:?}", err)),
                 }
-            } else if message.destination() == self.start_as_client {
-                *client = try_connect_to_server(&self.server_menu.server_address);
-            } else if message.destination() == self.settings {
+            } else if message.destination() == self.menu_data.start_as_client {
+                *client = try_connect_to_server(&self.menu_data.server_menu.server_address);
+            } else if message.destination() == self.menu_data.settings {
                 set_visibility(
-                    ctx.user_interfaces.first(),
-                    &[(self.settings_menu.menu, true), (self.main_menu, false)],
+                    ui,
+                    &[
+                        (self.menu_data.settings_menu.menu, true),
+                        (self.menu_data.main_menu, false),
+                    ],
                 );
             }
         }
 
         let graph = &mut ctx.scenes.try_get_mut(self.scene)?.graph;
         if let Some(WidgetMessage::MouseDown { .. }) = message.data() {
-            utils::try_play_sound(self.click_begin_sound, graph)?;
+            utils::try_play_sound(self.menu_scene_data.click_begin_sound, graph)?;
         } else if let Some(WidgetMessage::MouseUp { .. }) = message.data() {
-            utils::try_play_sound(self.click_end_sound, graph)?;
+            utils::try_play_sound(self.menu_scene_data.click_end_sound, graph)?;
         }
         Ok(())
     }
 
     pub fn set_menu_visibility(&self, ui: &UserInterface, visible: bool) {
-        ui.send(self.main_menu_root, WidgetMessage::Visibility(visible));
+        ui.send(
+            self.menu_data.main_menu_root,
+            WidgetMessage::Visibility(visible),
+        );
     }
 
     pub fn set_main_menu_visibility(&self, ui: &UserInterface, visible: bool) {
-        ui.send(self.main_menu, WidgetMessage::Visibility(visible));
+        ui.send(self.menu_data.main_menu, WidgetMessage::Visibility(visible));
     }
 
     pub fn switch_visibility(&self, ui: &UserInterface, is_client_running: bool) {
-        let is_visible = ui.node(self.main_menu_root).is_globally_visible();
+        let is_visible = ui.node(self.menu_data.main_menu_root).is_globally_visible();
         set_visibility(
             ui,
             &[
-                (self.main_menu_root, !is_visible),
-                (self.main_menu, !is_visible),
-                (self.server_menu.self_handle, false),
-                (self.background, !is_client_running),
+                (self.menu_data.main_menu_root, !is_visible),
+                (self.menu_data.main_menu, !is_visible),
+                (self.menu_data.server_menu.self_handle, false),
+                (self.menu_data.background, !is_client_running),
             ],
         );
     }
 
     pub fn is_active(&self, ui: &UserInterface) -> bool {
-        ui.try_get(self.main_menu_root)
+        ui.try_get(self.menu_data.main_menu_root)
             .map(|n| n.is_globally_visible())
             .unwrap_or_default()
     }
@@ -634,36 +592,39 @@ impl Menu {
         client: &Option<Client>,
         level: &mut Level,
     ) -> GameResult {
-        self.server_menu.update(ctx, server);
+        let menu = &self.menu_data;
+        let menu_scene = &self.menu_scene_data;
+
+        menu.server_menu.update(ctx, server);
 
         if let GraphicsContext::Initialized(graphics_context) = ctx.graphics_context {
             let fps = graphics_context.renderer.get_statistics().frames_per_second;
             ctx.user_interfaces
                 .first()
-                .send(self.debug_text, TextMessage::Text(format!("FPS: {fps}")));
+                .send(menu.debug_text, TextMessage::Text(format!("FPS: {fps}")));
         }
 
         if let Ok(scene) = ctx.scenes.try_get_mut(self.scene) {
-            scene.graph[self.root_scene_node].set_visibility(level.scene.is_none());
+            scene.graph[self.menu_scene_data.root_scene_node].set_visibility(level.scene.is_none());
 
             let mut is_in_win_state = false;
             if let Some(client) = client {
                 is_in_win_state = client.win_context.is_some();
             }
 
-            scene.graph[self.win_camera].set_enabled(is_in_win_state);
-            scene.graph[self.main_camera].set_enabled(!is_in_win_state);
+            scene.graph[menu_scene.win_camera].set_enabled(is_in_win_state);
+            scene.graph[menu_scene.main_camera].set_enabled(!is_in_win_state);
         }
 
-        self.in_game_menu.update(
+        menu.in_game_menu.update(
             ctx.user_interfaces.first(),
             ctx.scenes.try_get_mut(level.scene).ok().map(|s| &s.graph),
             level,
         )?;
 
-        while let Ok(event) = self.receiver.try_recv() {
+        while let Ok(event) = self.leader_board_channel.receiver.try_recv() {
             let game_scene = ctx.scenes.try_get_mut(level.scene)?;
-            self.in_game_menu.on_leaderboard_event(
+            menu.in_game_menu.on_leaderboard_event(
                 ctx.user_interfaces.first_mut(),
                 game_scene,
                 &event,
@@ -674,10 +635,9 @@ impl Menu {
                     level.sudden_death();
 
                     let scene = ctx.scenes.try_get_mut(self.scene)?;
-                    utils::try_play_sound(self.finished_sound, &mut scene.graph)?;
-
+                    utils::try_play_sound(menu_scene.finished_sound, &mut scene.graph)?;
                     if level.is_time_critical() {
-                        utils::try_play_sound(self.clock_ticking, &mut scene.graph)?;
+                        utils::try_play_sound(menu_scene.clock_ticking, &mut scene.graph)?;
                     }
                 }
             }

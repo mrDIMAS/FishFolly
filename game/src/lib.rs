@@ -1,4 +1,22 @@
 //! Game project.
+use crate::{
+    actor::Actor,
+    bot::Bot,
+    camera::CameraController,
+    cannon::Cannon,
+    client::Client,
+    jumper::Jumper,
+    level::Level,
+    menu::{InGameMenu, Menu, MenuData, MenuSceneData, ServerMenu, SettingsMenu},
+    player::Player,
+    respawn::{RespawnMode, Respawner},
+    server::Server,
+    settings::Settings,
+    start::StartPoint,
+    target::Target,
+    trigger::{Action, Trigger},
+};
+pub use fyrox;
 use fyrox::{
     core::{log::Log, pool::Handle, reflect::prelude::*, visitor::prelude::*},
     event::{ElementState, Event, WindowEvent},
@@ -10,20 +28,11 @@ use fyrox::{
         UserInterface,
     },
     keyboard::{KeyCode, PhysicalKey},
-    plugin::{Plugin, PluginContext, PluginRegistrationContext},
+    plugin::{error::GameResult, Plugin, PluginContext, PluginRegistrationContext},
     scene::Scene,
     window::Fullscreen,
 };
-use std::path::Path;
-
-use crate::{
-    actor::Actor, bot::Bot, camera::CameraController, cannon::Cannon, client::Client,
-    jumper::Jumper, level::Level, menu::Menu, player::Player, respawn::RespawnMode,
-    respawn::Respawner, server::Server, settings::Settings, start::StartPoint, target::Target,
-    trigger::Action, trigger::Trigger,
-};
-pub use fyrox;
-use fyrox::plugin::error::GameResult;
+use std::{path::Path, sync::Arc};
 
 pub mod actor;
 pub mod bot;
@@ -108,8 +117,13 @@ impl Game {
 
 impl Plugin for Game {
     fn register(&self, context: PluginRegistrationContext) -> GameResult {
-        let script_constructors = &context.serialization_context.script_constructors;
-        script_constructors
+        context
+            .dyn_type_constructors
+            .add::<MenuData>("Menu Data")
+            .add::<MenuSceneData>("Menu Scene Data");
+        context
+            .serialization_context
+            .script_constructors
             .add::<Player>("Player")
             .add::<CameraController>("Camera Controller")
             .add::<Bot>("Bot")
@@ -122,19 +136,26 @@ impl Plugin for Game {
         Ok(())
     }
 
-    fn register_property_editors(&self) -> PropertyEditorDefinitionContainer {
-        let container = PropertyEditorDefinitionContainer::empty();
+    fn register_property_editors(&self, container: Arc<PropertyEditorDefinitionContainer>) {
         container.insert(InspectablePropertyEditorDefinition::<Actor>::new());
+        container.insert(InspectablePropertyEditorDefinition::<Menu>::new());
+        container.insert(InspectablePropertyEditorDefinition::<InGameMenu>::new());
+        container.insert(InspectablePropertyEditorDefinition::<ServerMenu>::new());
+        container.insert(InspectablePropertyEditorDefinition::<SettingsMenu>::new());
         container.register_inheritable_enum::<RespawnMode, _>();
         container.register_inheritable_enum::<Action, _>();
-        container
     }
 
     fn init(&mut self, _scene_path: Option<&str>, ctx: PluginContext) -> GameResult {
         Log::info("Game started!");
 
         ctx.task_pool.spawn_plugin_task(
-            UserInterface::load_from_file("data/menu.ui", ctx.resource_manager.clone()),
+            UserInterface::load_from_file(
+                "data/menu.ui",
+                ctx.widget_constructors.clone(),
+                ctx.dyn_type_constructors.clone(),
+                ctx.resource_manager.clone(),
+            ),
             |result, game: &mut Game, ctx| {
                 *ctx.user_interfaces.first_mut() = result?;
                 let menu = Some(Menu::new(ctx, game));
@@ -280,7 +301,7 @@ impl Plugin for Game {
         };
 
         if let Some(menu) = self.menu.as_ref() {
-            self.level.leaderboard.sender = Some(menu.sender.clone());
+            self.level.leaderboard.sender = Some(menu.leader_board_channel.sender.clone());
             menu.set_menu_visibility(ctx.user_interfaces.first(), false);
         }
         if let Some(server) = self.server.as_mut() {

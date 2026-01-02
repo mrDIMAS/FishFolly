@@ -127,13 +127,15 @@ impl Default for Level {
 
 impl Level {
     pub fn update(&mut self, ctx: &PluginContext) -> Result<(), GraphError> {
-        let scene = ctx.scenes.try_get(self.scene)?;
-        self.match_timer = (self.match_timer - ctx.dt).max(0.0);
-        self.leaderboard.update(
-            &self.actors,
-            self.targets.iter().next().cloned().unwrap_or_default(),
-            &scene.graph,
-        )
+        if let Ok(scene) = ctx.scenes.try_get(self.scene) {
+            self.match_timer = (self.match_timer - ctx.dt).max(0.0);
+            self.leaderboard.update(
+                &self.actors,
+                self.targets.iter().next().cloned().unwrap_or_default(),
+                &scene.graph,
+            )?;
+        }
+        Ok(())
     }
 
     pub fn sudden_death(&mut self) {
