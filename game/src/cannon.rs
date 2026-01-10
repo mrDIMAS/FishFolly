@@ -23,8 +23,8 @@ pub struct Cannon {
     ball_prefab: InheritableVariable<Option<ModelResource>>,
     shot_effect: InheritableVariable<Option<ModelResource>>,
     shooting_force: InheritableVariable<f32>,
-    shot_sound: InheritableVariable<Handle<Node>>,
-    animation_player: InheritableVariable<Handle<Node>>,
+    shot_sound: InheritableVariable<Handle<Sound>>,
+    animation_player: InheritableVariable<Handle<AnimationPlayer>>,
 }
 
 impl Default for Cannon {
@@ -59,8 +59,7 @@ impl ScriptTrait for Cannon {
             .try_normalize(f32::EPSILON)
             .unwrap_or_default();
 
-        let mut animation_player =
-            mbc.try_get_component_of_type_mut::<AnimationPlayer>(*self.animation_player)?;
+        let mut animation_player = mbc.try_get_mut(*self.animation_player)?;
 
         let animations = animation_player.animations_mut().get_value_mut_silent();
         if let Some(shot_animation) = animations.iter_mut().next() {
@@ -90,7 +89,7 @@ impl ScriptTrait for Cannon {
                         ]));
                     }
 
-                    let mut sound = mbc.try_get_component_of_type_mut::<Sound>(*self.shot_sound)?;
+                    let mut sound = mbc.try_get_mut(*self.shot_sound)?;
                     sound.set_playback_time(0.0);
                     sound.play();
                 }

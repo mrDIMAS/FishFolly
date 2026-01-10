@@ -5,8 +5,8 @@ use fyrox::{
     scene::{collider::Collider, graph::Graph, node::Node, sound::Sound},
 };
 
-pub fn has_ground_contact(collider: Handle<Node>, graph: &Graph) -> Result<bool, GameError> {
-    let collider = graph.try_get_of_type::<Collider>(collider)?;
+pub fn has_ground_contact(collider: Handle<Collider>, graph: &Graph) -> Result<bool, GameError> {
+    let collider = graph.try_get(collider)?;
     for contact in collider.contacts(&graph.physics) {
         for manifold in contact.manifolds.iter() {
             if manifold.local_n1.y.abs() > 0.7 || manifold.local_n2.y.abs() > 0.7 {

@@ -15,7 +15,7 @@ use fyrox::{
     event::{DeviceEvent, ElementState, MouseButton, WindowEvent},
     graph::SceneGraph,
     keyboard::{KeyCode, PhysicalKey},
-    scene::{camera::Camera, node::Node, rigidbody::RigidBody},
+    scene::{camera::Camera, node::Node},
     script::{
         ScriptContext, ScriptDeinitContext, ScriptMessageContext, ScriptMessagePayload, ScriptTrait,
     },
@@ -170,7 +170,7 @@ impl ScriptTrait for Player {
             graph.try_get_script_component_of_mut::<CameraController>(self.camera)?;
         let camera_handle = camera_controller.camera;
         graph
-            .try_get_mut_of_type::<Camera>(camera_handle)?
+            .try_get_mut(camera_handle)?
             .set_enabled(self.actor.kind == ActorKind::Player);
         Ok(())
     }
@@ -266,81 +266,80 @@ impl ScriptTrait for Player {
 
         self.actor.target_desired_velocity = Vector3::default();
 
-        if let Some(rigid_body) = ctx.scene.graph[self.actor.rigid_body].cast_mut::<RigidBody>() {
-            if !finished {
-                let forward_vec = rigid_body.look_vector();
-                let side_vec = rigid_body.side_vector();
+        let rigid_body = ctx.scene.graph.try_get_mut(self.actor.rigid_body)?;
+        if !finished {
+            let forward_vec = rigid_body.look_vector();
+            let side_vec = rigid_body.side_vector();
 
+            if self.input_controller.move_forward {
+                self.actor.target_desired_velocity += forward_vec;
+            }
+            if self.input_controller.move_backward {
+                self.actor.target_desired_velocity -= forward_vec;
+            }
+            if self.input_controller.move_left {
+                self.actor.target_desired_velocity += side_vec;
+            }
+            if self.input_controller.move_right {
+                self.actor.target_desired_velocity -= side_vec;
+            }
+        }
+
+        self.actor.target_desired_velocity = self
+            .actor
+            .target_desired_velocity
+            .try_normalize(f32::EPSILON)
+            .map(|v| v.scale(self.actor.speed))
+            .unwrap_or_default();
+
+        if !finished
+            && self.input_controller.jump
+            && has_ground_contact
+            && !is_in_jump_state
+            && self.actor.jump_interval <= 0.0
+        {
+            self.actor.target_desired_velocity.y = self.actor.jump_vel;
+            self.input_controller.jump = false;
+            self.actor.jump();
+        } else {
+            self.actor.target_desired_velocity.y = 0.0;
+        }
+
+        let is_moving = self.input_controller.move_left
+            || self.input_controller.move_right
+            || self.input_controller.move_forward
+            || self.input_controller.move_backward;
+
+        if is_moving {
+            rigid_body.set_rotation_y(self.input_controller.target_yaw);
+
+            // Apply additional rotation to model - it will turn in front of walking direction.
+            let angle: f32 = if self.input_controller.move_left {
                 if self.input_controller.move_forward {
-                    self.actor.target_desired_velocity += forward_vec;
-                }
-                if self.input_controller.move_backward {
-                    self.actor.target_desired_velocity -= forward_vec;
-                }
-                if self.input_controller.move_left {
-                    self.actor.target_desired_velocity += side_vec;
-                }
-                if self.input_controller.move_right {
-                    self.actor.target_desired_velocity -= side_vec;
-                }
-            }
-
-            self.actor.target_desired_velocity = self
-                .actor
-                .target_desired_velocity
-                .try_normalize(f32::EPSILON)
-                .map(|v| v.scale(self.actor.speed))
-                .unwrap_or_default();
-
-            if !finished
-                && self.input_controller.jump
-                && has_ground_contact
-                && !is_in_jump_state
-                && self.actor.jump_interval <= 0.0
-            {
-                self.actor.target_desired_velocity.y = self.actor.jump_vel;
-                self.input_controller.jump = false;
-                self.actor.jump();
-            } else {
-                self.actor.target_desired_velocity.y = 0.0;
-            }
-
-            let is_moving = self.input_controller.move_left
-                || self.input_controller.move_right
-                || self.input_controller.move_forward
-                || self.input_controller.move_backward;
-
-            if is_moving {
-                rigid_body.set_rotation_y(self.input_controller.target_yaw);
-
-                // Apply additional rotation to model - it will turn in front of walking direction.
-                let angle: f32 = if self.input_controller.move_left {
-                    if self.input_controller.move_forward {
-                        45.0
-                    } else if self.input_controller.move_backward {
-                        135.0
-                    } else {
-                        90.0
-                    }
-                } else if self.input_controller.move_right {
-                    if self.input_controller.move_forward {
-                        -45.0
-                    } else if self.input_controller.move_backward {
-                        -135.0
-                    } else {
-                        -90.0
-                    }
+                    45.0
                 } else if self.input_controller.move_backward {
-                    180.0
+                    135.0
                 } else {
-                    0.0
-                };
+                    90.0
+                }
+            } else if self.input_controller.move_right {
+                if self.input_controller.move_forward {
+                    -45.0
+                } else if self.input_controller.move_backward {
+                    -135.0
+                } else {
+                    -90.0
+                }
+            } else if self.input_controller.move_backward {
+                180.0
+            } else {
+                0.0
+            };
 
-                self.model_angle.set_target(angle.to_radians());
+            self.model_angle.set_target(angle.to_radians());
 
-                ctx.scene.graph[self.model]
-                    .set_rotation_y(180.0f32.to_radians() + self.model_angle.angle());
-            }
+            ctx.scene.graph[self.model]
+                .set_rotation_y(180.0f32.to_radians() + self.model_angle.angle());
         }
 
         self.model_angle.update(ctx.dt);

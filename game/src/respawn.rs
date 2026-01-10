@@ -13,7 +13,7 @@ use fyrox::{
     },
     graph::SceneGraph,
     rand::{seq::SliceRandom, thread_rng},
-    scene::{collider::Collider, node::Node},
+    scene::collider::Collider,
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
 };
 use strum_macros::{AsRefStr, EnumString, VariantNames};
@@ -43,7 +43,7 @@ pub enum RespawnMode {
 #[visit(optional)]
 pub struct Respawner {
     mode: InheritableVariable<RespawnMode>,
-    pub collider: InheritableVariable<Handle<Node>>,
+    pub collider: InheritableVariable<Handle<Collider>>,
 }
 
 impl ScriptTrait for Respawner {
@@ -101,10 +101,7 @@ impl ScriptTrait for Respawner {
                     }
                 }
                 RespawnMode::OnContact => {
-                    let collider = ctx
-                        .scene
-                        .graph
-                        .try_get_of_type::<Collider>(*self.collider)?;
+                    let collider = ctx.scene.graph.try_get(*self.collider)?;
                     for contact in collider.contacts(&ctx.scene.graph.physics) {
                         if contact.has_any_active_contact
                             && (contact.collider1 == actor_script.collider

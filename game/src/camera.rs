@@ -4,6 +4,7 @@
 use crate::Game;
 use fyrox::graph::SceneGraph;
 use fyrox::plugin::error::GameResult;
+use fyrox::scene::camera::Camera;
 use fyrox::{
     core::{
         algebra::{Point3, Vector3},
@@ -27,11 +28,11 @@ pub struct CameraController {
     /// Handle of camera hinge.
     hinge: Handle<Node>,
     /// Handle of Camera node.
-    pub camera: Handle<Node>,
+    pub camera: Handle<Camera>,
     /// Distance from first blocker that in the way of camera.
     probe_radius: f32,
     /// A collider that should be ignored by ray casting.
-    pub collider_to_ignore: Handle<Node>,
+    pub collider_to_ignore: Handle<Collider>,
     #[reflect(hidden)]
     pub target_position: Vector3<f32>,
     #[reflect(hidden)]
@@ -61,7 +62,7 @@ impl CameraController {
         begin: Vector3<f32>,
         end: Vector3<f32>,
         context: &mut ScriptContext,
-        player_collider: Handle<Node>,
+        player_collider: Handle<Collider>,
     ) -> GameResult {
         let mut buffer = ArrayVec::<_, 64>::new();
 
@@ -88,11 +89,7 @@ impl CameraController {
             }
 
             // Filter out ragdoll colliders.
-            let collider = context
-                .scene
-                .graph
-                .try_get_of_type::<Collider>(intersection.collider)?;
-
+            let collider = context.scene.graph.try_get(intersection.collider)?;
             if collider.collision_groups().memberships.0 & 0b0000_0010 == 0b0000_0010 {
                 continue;
             }

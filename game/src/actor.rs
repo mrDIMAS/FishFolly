@@ -51,13 +51,13 @@ pub struct Actor {
     #[reflect(hidden)]
     pub stand_up_interval: f32,
     /// A handle of the ragdoll
-    pub ragdoll: Handle<Node>,
+    pub ragdoll: Handle<Ragdoll>,
     #[reflect(hidden)]
     pub jump: bool,
     /// Handle to actor's collider.
-    pub collider: Handle<Node>,
+    pub collider: Handle<Collider>,
     /// Handle to actor's rigid body.
-    pub rigid_body: Handle<Node>,
+    pub rigid_body: Handle<RigidBody>,
     /// Speed of the actor.
     pub speed: f32,
     /// Jump speed of the actor.
@@ -67,7 +67,7 @@ pub struct Actor {
     #[reflect(hidden)]
     pub desired_velocity: Vector3<f32>,
     /// Handle of animation state machine.
-    pub absm: Handle<Node>,
+    pub absm: Handle<AnimationBlendingStateMachine>,
     #[reflect(hidden)]
     pub jump_interval: f32,
     pub footsteps: InheritableVariable<Vec<Handle<Node>>>,
@@ -104,11 +104,11 @@ impl Default for Actor {
 impl Actor {
     fn is_ragdoll_has_ground_contact(&self, graph: &Graph) -> Result<bool, GameError> {
         let mut result = false;
-        let ragdoll = graph.try_get_of_type::<Ragdoll>(self.ragdoll)?;
+        let ragdoll = graph.try_get(self.ragdoll)?;
         ragdoll.root_limb.iterate_recursive(&mut |limb| {
             if let Ok(rigid_body) = graph.try_get_of_type::<RigidBody>(limb.physical_bone) {
                 for child in rigid_body.children() {
-                    if utils::has_ground_contact(*child, graph).unwrap() {
+                    if utils::has_ground_contact(child.to_variant(), graph).unwrap() {
                         result = true;
                         break;
                     }
@@ -125,15 +125,14 @@ impl Actor {
 
     pub fn set_ragdoll_enabled(&mut self, graph: &mut Graph, enabled: bool) -> GameResult {
         graph
-            .try_get_mut_of_type::<Ragdoll>(self.ragdoll)?
+            .try_get_mut(self.ragdoll)?
             .is_active
             .set_value_and_mark_modified(enabled);
         Ok(())
     }
 
     pub fn is_ragdoll_enabled(&self, graph: &Graph) -> Result<bool, GameError> {
-        let ragdoll = graph.try_get_of_type::<Ragdoll>(self.ragdoll)?;
-        Ok(*ragdoll.is_active)
+        Ok(*graph.try_get(self.ragdoll)?.is_active)
     }
 
     pub fn on_message(
@@ -177,11 +176,11 @@ impl Actor {
         F: FnMut(&mut RigidBody),
     {
         let mbc = graph.begin_multi_borrow();
-        if let Ok(mut rigid_body) = mbc.try_get_component_of_type_mut::<RigidBody>(self.rigid_body)
+        if let Ok(mut rigid_body) = mbc.try_get_mut(self.rigid_body)
         {
             func(&mut rigid_body)
         }
-        if let Ok(ragdoll) = mbc.try_get_component_of_type::<Ragdoll>(self.ragdoll) {
+        if let Ok(ragdoll) = mbc.try_get(self.ragdoll) {
             ragdoll.root_limb.iterate_recursive(&mut |limb| {
                 if let Ok(mut rigid_body) =
                     mbc.try_get_component_of_type_mut::<RigidBody>(limb.physical_bone)
@@ -223,12 +222,12 @@ impl Actor {
 
     fn has_serious_impact(&mut self, ctx: &mut ScriptContext) -> Result<bool, GameError> {
         let graph = &ctx.scene.graph;
-        let collider = ctx.scene.graph.try_get_of_type::<Collider>(self.collider)?;
+        let collider = ctx.scene.graph.try_get(self.collider)?;
         for contact in collider.contacts(&ctx.scene.graph.physics) {
             if contact.has_any_active_contact {
                 for manifold in contact.manifolds.iter() {
-                    let rb1 = graph.try_get_of_type::<RigidBody>(manifold.rigid_body1)?;
-                    let rb2 = graph.try_get_of_type::<RigidBody>(manifold.rigid_body2)?;
+                    let rb1 = graph.try_get(manifold.rigid_body1)?;
+                    let rb2 = graph.try_get(manifold.rigid_body2)?;
                     if (rb1.lin_vel() - rb2.lin_vel()).norm() > 10.0
                         || manifold.points.iter().any(|p| p.impulse > 2.0)
                     {
@@ -242,7 +241,7 @@ impl Actor {
 
     pub fn is_in_jump_state(&self, graph: &Graph) -> Result<bool, GameError> {
         let name = "Jump";
-        let absm = graph.try_get_of_type::<AnimationBlendingStateMachine>(self.absm)?;
+        let absm = graph.try_get(self.absm)?;
         Ok(absm.machine().layers().first().map_or(false, |layer| {
             if let Ok(active_state) = layer.states().try_borrow(layer.active_state()) {
                 active_state.name == name
@@ -280,7 +279,7 @@ impl Actor {
         has_ground_contact: bool,
     ) -> GameResult {
         let mbc = ctx.scene.graph.begin_multi_borrow();
-        let absm = mbc.try_get_component_of_type::<AnimationBlendingStateMachine>(self.absm)?;
+        let absm = mbc.try_get(self.absm)?;
         let machine = absm.machine();
         let mut animation_player =
             mbc.try_get_component_of_type_mut::<AnimationPlayer>(absm.animation_player())?;
@@ -347,7 +346,7 @@ impl Actor {
 
         ctx.scene
             .graph
-            .try_get_mut_of_type::<AnimationBlendingStateMachine>(self.absm)?
+            .try_get_mut(self.absm)?
             .machine_mut()
             .get_value_mut_silent()
             .set_parameter(

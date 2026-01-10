@@ -27,7 +27,6 @@ use fyrox::{
         graph::{physics::RayCastOptions, Graph},
         navmesh::NavigationalMesh,
         node::Node,
-        rigidbody::RigidBody,
     },
     script::{
         ScriptContext, ScriptDeinitContext, ScriptMessageContext, ScriptMessagePayload, ScriptTrait,
@@ -79,7 +78,7 @@ pub struct Bot {
     /// Handle of an edge probe locator end node
     probe_end: Handle<Node>,
     /// Handle of an obstacle sensor collider
-    obstacle_sensor_collider: Handle<Node>,
+    obstacle_sensor_collider: Handle<Collider>,
     #[component(include)]
     pub actor: Actor,
     #[reflect(hidden)]
@@ -142,7 +141,7 @@ fn probe_ground(begin: Vector3<f32>, max_height: f32, graph: &Graph) -> Option<V
     );
 
     for intersection in buffer {
-        if let Some(collider) = graph[intersection.collider].cast::<Collider>() {
+        if let Ok(collider) = graph.try_get(intersection.collider) {
             if let ColliderShape::Trimesh(_) = collider.shape() {
                 return Some(intersection.position.coords);
             }
@@ -288,7 +287,7 @@ impl Bot {
         let game = ctx.plugins.get::<Game>();
         let graph = &ctx.scene.graph;
 
-        let sensor_collider = graph.try_get_of_type::<Collider>(self.obstacle_sensor_collider)?;
+        let sensor_collider = graph.try_get(self.obstacle_sensor_collider)?;
 
         let mut result = false;
 
@@ -403,10 +402,7 @@ impl ScriptTrait for Bot {
         self.backwards_movement_timer -= ctx.dt;
 
         if let Some(target_pos) = target_pos {
-            let rigid_body = ctx
-                .scene
-                .graph
-                .try_get_mut_of_type::<RigidBody>(self.actor.rigid_body)?;
+            let rigid_body = ctx.scene.graph.try_get_mut(self.actor.rigid_body)?;
 
             let self_position = rigid_body.global_position();
 
@@ -456,10 +452,7 @@ impl ScriptTrait for Bot {
                 Vector3::new(horizontal_velocity.x, jump_y_vel, horizontal_velocity.z);
 
             // Reborrow the node.
-            let rigid_body = ctx
-                .scene
-                .graph
-                .try_get_mut_of_type::<RigidBody>(self.actor.rigid_body)?;
+            let rigid_body = ctx.scene.graph.try_get_mut(self.actor.rigid_body)?;
 
             let mut look_dir = self.agent.steering_target().unwrap_or_default() - self_position;
             look_dir.y = 0.0;
