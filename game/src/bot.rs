@@ -181,7 +181,7 @@ fn is_safe_height_difference<F>(
 where
     F: FnOnce(Vector3<f32>),
 {
-    height_difference(begin, max_height, graph, debug).map_or(false, |diff| diff <= 8.0)
+    height_difference(begin, max_height, graph, debug).is_some_and( |diff| diff <= 8.0)
 }
 
 #[derive(PartialEq, Eq, Copy, Clone)]

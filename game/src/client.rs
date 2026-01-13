@@ -49,10 +49,9 @@ fn instantiate_objects(instances: Vec<InstanceDescriptor>, ctx: &mut PluginConte
                     .with_rotation(new_instance.rotation)
                     .with_ids(&new_instance.ids)
                     .finish();
-                scene
-                    .graph
-                    .try_get_mut_of_type::<RigidBody>(instance)?
-                    .set_lin_vel(new_instance.velocity);
+                if let Ok(rigid_body) = scene.graph.try_get_mut_of_type::<RigidBody>(instance) {
+                    rigid_body.set_lin_vel(new_instance.velocity);
+                }
                 Ok(())
             },
         );
@@ -115,13 +114,14 @@ impl Client {
                 ServerMessage::UpdateTick(data) => {
                     let scene = ctx.scenes.try_get_mut(level.scene)?;
                     for entry in data.nodes {
-                        let (_, node) = scene.graph.node_by_id_mut(entry.node)?;
-                        let transform = node.local_transform_mut();
-                        if **transform.position() != entry.position {
-                            transform.set_position(entry.position);
-                        }
-                        if **transform.rotation() != entry.rotation {
-                            transform.set_rotation(entry.rotation);
+                        if let Ok((_, node)) = scene.graph.node_by_id_mut(entry.node) {
+                            let transform = node.local_transform_mut();
+                            if **transform.position() != entry.position {
+                                transform.set_position(entry.position);
+                            }
+                            if **transform.rotation() != entry.rotation {
+                                transform.set_rotation(entry.rotation);
+                            }
                         }
                     }
                 }

@@ -6,13 +6,14 @@ use crate::{
     settings::Settings,
     utils, Game,
 };
+use fyrox::scene::sound::Sound;
 use fyrox::{
     asset::manager::ResourceManager,
     core::{
         log::Log, pool::Handle, reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*,
     },
     engine::GraphicsContext,
-    graph::{BaseSceneGraph, SceneGraph},
+    graph::SceneGraph,
     gui::{
         animation::AnimationPlayerMessage,
         button::ButtonMessage,
@@ -249,6 +250,7 @@ impl SettingsMenu {
         set_sb_value(ui, self.mouse_smoothness, settings.mouse_smoothness);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn handle_ui_message(
         &self,
         message: &UiMessage,
@@ -275,7 +277,9 @@ impl SettingsMenu {
             if message.destination() == self.sound_volume {
                 let mut settings = settings.write();
                 settings.sound_volume = *value;
-                settings.apply_sound_volume(scenes.try_get(game_scene)?);
+                if let Ok(game_scene) = scenes.try_get(game_scene) {
+                    settings.apply_sound_volume(game_scene);
+                }
             } else if message.destination() == self.music_volume {
                 let mut settings = settings.write();
                 settings.apply_music_volume(scenes.try_get(menu_scene)?);
@@ -402,13 +406,13 @@ impl Clone for LeaderBoardChannel {
 #[derive(Visit, Reflect, Default, Debug, Clone, TypeUuidProvider)]
 #[type_uuid(id = "82708d44-2abe-4792-b144-ef70c26cb693")]
 pub struct MenuSceneData {
-    click_begin_sound: Handle<Node>,
-    click_end_sound: Handle<Node>,
+    click_begin_sound: Handle<Sound>,
+    click_end_sound: Handle<Sound>,
     root_scene_node: Handle<Node>,
-    finished_sound: Handle<Node>,
+    finished_sound: Handle<Sound>,
     win_camera: Handle<Node>,
     main_camera: Handle<Node>,
-    clock_ticking: Handle<Node>,
+    clock_ticking: Handle<Sound>,
 }
 
 #[derive(Visit, Reflect, Default, Debug, Clone, TypeUuidProvider)]
@@ -546,12 +550,15 @@ impl Menu {
             }
         }
 
-        let graph = &mut ctx.scenes.try_get_mut(self.scene)?.graph;
-        if let Some(WidgetMessage::MouseDown { .. }) = message.data() {
-            utils::try_play_sound(self.menu_scene_data.click_begin_sound, graph)?;
-        } else if let Some(WidgetMessage::MouseUp { .. }) = message.data() {
-            utils::try_play_sound(self.menu_scene_data.click_end_sound, graph)?;
+        if let Ok(scene) = ctx.scenes.try_get_mut(self.scene) {
+            let graph = &mut scene.graph;
+            if let Some(WidgetMessage::MouseDown { .. }) = message.data() {
+                utils::try_play_sound(self.menu_scene_data.click_begin_sound, graph)?;
+            } else if let Some(WidgetMessage::MouseUp { .. }) = message.data() {
+                utils::try_play_sound(self.menu_scene_data.click_end_sound, graph)?;
+            }
         }
+
         Ok(())
     }
 

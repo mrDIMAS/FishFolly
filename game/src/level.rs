@@ -1,6 +1,6 @@
 use crate::actor::Actor;
 use fyrox::graph::SceneGraph;
-use fyrox::scene::graph::GraphError;
+use fyrox::plugin::error::GameResult;
 use fyrox::{
     core::{pool::Handle, visitor::prelude::*},
     fxhash::FxHashMap,
@@ -71,7 +71,7 @@ impl Leaderboard {
         actors: &HashSet<Handle<Node>>,
         finish_point: Handle<Node>,
         graph: &Graph,
-    ) -> Result<(), GraphError> {
+    ) -> GameResult {
         let finish_point = graph.try_get(finish_point)?.global_position();
 
         self.temp_array.clear();
@@ -126,14 +126,13 @@ impl Default for Level {
 }
 
 impl Level {
-    pub fn update(&mut self, ctx: &PluginContext) -> Result<(), GraphError> {
+    pub fn update(&mut self, ctx: &PluginContext) -> GameResult {
         if let Ok(scene) = ctx.scenes.try_get(self.scene) {
             self.match_timer = (self.match_timer - ctx.dt).max(0.0);
-            self.leaderboard.update(
-                &self.actors,
-                self.targets.iter().next().cloned().unwrap_or_default(),
-                &scene.graph,
-            )?;
+            if let Some(target) = self.targets.iter().next().cloned() {
+                self.leaderboard
+                    .update(&self.actors, target, &scene.graph)?;
+            }
         }
         Ok(())
     }

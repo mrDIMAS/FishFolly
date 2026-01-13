@@ -11,7 +11,7 @@ use fyrox::{
     rand::{prelude::SliceRandom, thread_rng},
     resource::model::{ModelResource, ModelResourceExtension},
     scene::{
-        animation::{absm::prelude::*, AnimationPlayer},
+        animation::absm::prelude::*,
         collider::Collider,
         graph::Graph,
         node::{container::NodeContainer, Node},
@@ -70,7 +70,7 @@ pub struct Actor {
     pub absm: Handle<AnimationBlendingStateMachine>,
     #[reflect(hidden)]
     pub jump_interval: f32,
-    pub footsteps: InheritableVariable<Vec<Handle<Node>>>,
+    pub footsteps: InheritableVariable<Vec<Handle<Sound>>>,
     pub disappear_effect: InheritableVariable<Option<ModelResource>>,
     pub appear_effect: InheritableVariable<Option<ModelResource>>,
 }
@@ -106,15 +106,15 @@ impl Actor {
         let mut result = false;
         let ragdoll = graph.try_get(self.ragdoll)?;
         ragdoll.root_limb.iterate_recursive(&mut |limb| {
-            if let Ok(rigid_body) = graph.try_get_of_type::<RigidBody>(limb.physical_bone) {
-                for child in rigid_body.children() {
-                    if utils::has_ground_contact(child.to_variant(), graph).unwrap() {
-                        result = true;
-                        break;
-                    }
+            let rigid_body = graph.try_get(limb.physical_bone)?;
+            for child in rigid_body.children() {
+                if utils::has_ground_contact(child.to_variant(), graph).unwrap() {
+                    result = true;
+                    break;
                 }
             }
-        });
+            Ok(())
+        })?;
         Ok(result)
     }
 
@@ -160,7 +160,7 @@ impl Actor {
 
                 self.for_each_rigid_body(&mut ctx.scene.graph, |rb| {
                     rb.local_transform_mut().set_position(*position);
-                });
+                })?;
 
                 if let Some(appear_effect) = self.appear_effect.as_ref() {
                     appear_effect.instantiate_at(ctx.scene, *position, Default::default());
@@ -171,44 +171,52 @@ impl Actor {
         Ok(())
     }
 
-    pub fn for_each_rigid_body<F>(&mut self, graph: &mut Graph, mut func: F)
+    pub fn for_each_rigid_body<F>(&mut self, graph: &mut Graph, mut func: F) -> GameResult
     where
         F: FnMut(&mut RigidBody),
     {
         let mbc = graph.begin_multi_borrow();
-        if let Ok(mut rigid_body) = mbc.try_get_mut(self.rigid_body)
-        {
-            func(&mut rigid_body)
-        }
-        if let Ok(ragdoll) = mbc.try_get(self.ragdoll) {
-            ragdoll.root_limb.iterate_recursive(&mut |limb| {
-                if let Ok(mut rigid_body) =
-                    mbc.try_get_component_of_type_mut::<RigidBody>(limb.physical_bone)
-                {
-                    func(&mut rigid_body)
-                }
-            });
-        };
+        let mut rigid_body = mbc.try_get_mut(self.rigid_body)?;
+        func(&mut rigid_body);
+
+        let ragdoll = mbc.try_get(self.ragdoll)?;
+        ragdoll.root_limb.iterate_recursive(&mut |limb| {
+            let mut rigid_body = mbc.try_get_mut(limb.physical_bone)?;
+            func(&mut rigid_body);
+            Ok(())
+        })?;
+
+        Ok(())
     }
 
-    pub fn set_velocity(&mut self, velocity: Vector3<f32>, graph: &mut Graph) {
-        self.for_each_rigid_body(graph, &mut |rigid_body: &mut RigidBody| {
-            let y_vel = rigid_body.lin_vel().y + velocity.y;
-            rigid_body.set_lin_vel(Vector3::new(velocity.x, y_vel, velocity.z));
-        });
+    pub fn set_velocity(&mut self, velocity: Vector3<f32>, graph: &mut Graph) -> GameResult {
+        let rigid_body = graph.try_get_mut(self.rigid_body)?;
+        let y_vel = rigid_body.lin_vel().y + velocity.y;
+        rigid_body.set_lin_vel(Vector3::new(velocity.x, y_vel, velocity.z));
+        Ok(())
+
+        // self.for_each_rigid_body(graph, &mut |rigid_body: &mut RigidBody| {
+        //     let y_vel = rigid_body.lin_vel().y + velocity.y;
+        //     rigid_body.set_lin_vel(Vector3::new(velocity.x, y_vel, velocity.z));
+        // })
     }
 
-    pub fn add_force(&mut self, force: Vector3<f32>, max_speed: f32, graph: &mut Graph) {
+    pub fn add_force(
+        &mut self,
+        force: Vector3<f32>,
+        max_speed: f32,
+        graph: &mut Graph,
+    ) -> GameResult {
         self.for_each_rigid_body(graph, &mut |rigid_body: &mut RigidBody| {
             if rigid_body.lin_vel().xz().norm() < max_speed {
                 rigid_body.apply_force(force);
             }
-        });
+        })
     }
 
     pub fn do_move(&mut self, velocity: Vector3<f32>, graph: &mut Graph) -> GameResult {
         if !self.is_ragdoll_enabled(graph)? {
-            self.set_velocity(velocity, graph);
+            self.set_velocity(velocity, graph)?;
         }
         Ok(())
     }
@@ -242,7 +250,7 @@ impl Actor {
     pub fn is_in_jump_state(&self, graph: &Graph) -> Result<bool, GameError> {
         let name = "Jump";
         let absm = graph.try_get(self.absm)?;
-        Ok(absm.machine().layers().first().map_or(false, |layer| {
+        Ok(absm.machine().layers().first().is_some_and(|layer| {
             if let Ok(active_state) = layer.states().try_borrow(layer.active_state()) {
                 active_state.name == name
             } else if let Ok(active_transition) =
@@ -268,8 +276,7 @@ impl Actor {
         let Some(random_footstep_sound) = self.footsteps.choose(&mut thread_rng()) else {
             return Ok(());
         };
-        mbc.try_get_component_of_type_mut::<Sound>(*random_footstep_sound)?
-            .play();
+        mbc.try_get_mut(*random_footstep_sound)?.play();
         Ok(())
     }
 
@@ -281,8 +288,7 @@ impl Actor {
         let mbc = ctx.scene.graph.begin_multi_borrow();
         let absm = mbc.try_get(self.absm)?;
         let machine = absm.machine();
-        let mut animation_player =
-            mbc.try_get_component_of_type_mut::<AnimationPlayer>(absm.animation_player())?;
+        let mut animation_player = mbc.try_get_mut(absm.animation_player())?;
 
         let Some(first) = machine.layers().first() else {
             return Ok(());

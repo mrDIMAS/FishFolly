@@ -12,7 +12,7 @@ use fyrox::{
         visitor::prelude::*,
     },
     resource::model::{ModelResource, ModelResourceExtension},
-    scene::{animation::AnimationPlayer, node::Node, sound::Sound},
+    scene::{animation::AnimationPlayer, sound::Sound},
     script::{ScriptContext, ScriptTrait},
 };
 

@@ -17,6 +17,7 @@ use crate::{
     trigger::{Action, Trigger},
 };
 pub use fyrox;
+use fyrox::plugin::error;
 use fyrox::{
     core::{log::Log, pool::Handle, reflect::prelude::*, visitor::prelude::*},
     event::{ElementState, Event, WindowEvent},
@@ -98,6 +99,12 @@ impl Visit for Game {
     }
 }
 
+impl Default for Game {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Game {
     pub fn new() -> Self {
         Self {
@@ -148,6 +155,8 @@ impl Plugin for Game {
 
     fn init(&mut self, _scene_path: Option<&str>, ctx: PluginContext) -> GameResult {
         Log::info("Game started!");
+
+        error::enable_backtrace_capture(true);
 
         ctx.task_pool.spawn_plugin_task(
             UserInterface::load_from_file(

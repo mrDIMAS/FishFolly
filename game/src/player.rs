@@ -15,7 +15,7 @@ use fyrox::{
     event::{DeviceEvent, ElementState, MouseButton, WindowEvent},
     graph::SceneGraph,
     keyboard::{KeyCode, PhysicalKey},
-    scene::{camera::Camera, node::Node},
+    scene::node::Node,
     script::{
         ScriptContext, ScriptDeinitContext, ScriptMessageContext, ScriptMessagePayload, ScriptTrait,
     },
@@ -195,7 +195,7 @@ impl ScriptTrait for Player {
             || game
                 .menu
                 .as_ref()
-                .map_or(false, |menu| menu.is_active(ctx.user_interfaces.first()))
+                .is_some_and(|menu| menu.is_active(ctx.user_interfaces.first()))
         {
             return Ok(());
         }
@@ -208,14 +208,13 @@ impl ScriptTrait for Player {
             game.settings.read().mouse_sensitivity,
             game,
             &mut self.spectator_target,
-        ) {
-            if !game.level.leaderboard.is_finished(ctx.handle) {
-                if let Some(client) = game.client.as_mut() {
-                    client.send_message_to_server(ClientMessage::Input {
-                        player: this.instance_id(),
-                        input_state: self.input_controller.clone(),
-                    })
-                }
+        ) && !game.level.leaderboard.is_finished(ctx.handle)
+        {
+            if let Some(client) = game.client.as_mut() {
+                client.send_message_to_server(ClientMessage::Input {
+                    player: this.instance_id(),
+                    input_state: self.input_controller.clone(),
+                })
             }
         }
 
