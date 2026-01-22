@@ -98944,7 +98944,7 @@ __ROOT__[]
 																	Shader[Uuid<uuid:87195f6e-cba4-4c27-9f89-d0bf726db965>]{}
 																	ResourceBindings[Count<u32:9>]
 																	{
-																		Item0[Key<str:"heightTexture">]
+																		Item0[Key<str:"roughnessTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -99046,7 +99046,7 @@ __ROOT__[]
 																				}
 																			}
 																		}
-																		Item7[Key<str:"aoTexture">]
+																		Item7[Key<str:"heightTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -99056,7 +99056,7 @@ __ROOT__[]
 																				}
 																			}
 																		}
-																		Item8[Key<str:"roughnessTexture">]
+																		Item8[Key<str:"aoTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -104554,7 +104554,7 @@ __ROOT__[]
 																	Shader[Uuid<uuid:87195f6e-cba4-4c27-9f89-d0bf726db965>]{}
 																	ResourceBindings[Count<u32:9>]
 																	{
-																		Item0[Key<str:"heightTexture">]
+																		Item0[Key<str:"roughnessTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -104653,7 +104653,17 @@ __ROOT__[]
 																				}
 																			}
 																		}
-																		Item7[Key<str:"diffuseTexture">]
+																		Item7[Key<str:"heightTexture">]
+																		{
+																			Value[Id<u32:0>]
+																			{
+																				0[]
+																				{
+																					Value[IsSome<u8:0>]{}
+																				}
+																			}
+																		}
+																		Item8[Key<str:"diffuseTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -104663,16 +104673,6 @@ __ROOT__[]
 																					{
 																						Data[Uuid<uuid:58b0e112-a21a-481f-b305-a2dc5a8bea1f>]{}
 																					}
-																				}
-																			}
-																		}
-																		Item8[Key<str:"roughnessTexture">]
-																		{
-																			Value[Id<u32:0>]
-																			{
-																				0[]
-																				{
-																					Value[IsSome<u8:0>]{}
 																				}
 																			}
 																		}
@@ -116513,7 +116513,7 @@ __ROOT__[]
 						{
 							ArcData[Paused<bool:false>]
 							{
-								Listener[Basis<mat3:-0.27056766; 0; 0.96270096; 0.87506217; 0.41687086; 0.24593672; 0.40132198; -0.9089657; 0.11279177>Position<vec3f32:1.3988948; 4.112051; -15.83651>]{}
+								Listener[Basis<mat3:-0.9130889; 0; 0.4077605; 0.23692317; 0.8138785; 0.5305367; 0.33186752; -0.5810351; 0.74314344>Position<vec3f32:-0.05999601; 1; -2.9994001>]{}
 								Sources[]
 								{
 									Records[Length<u32:0>]{}

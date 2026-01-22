@@ -6,6 +6,12 @@ use crate::{
     settings::Settings,
     utils, Game,
 };
+use fyrox::core::pool::HandlesVecExtension;
+use fyrox::gui::animation::AnimationPlayer;
+use fyrox::gui::button::Button;
+use fyrox::gui::scroll_bar::ScrollBar;
+use fyrox::gui::selector::Selector;
+use fyrox::gui::text::Text;
 use fyrox::scene::sound::Sound;
 use fyrox::{
     asset::manager::ResourceManager,
@@ -44,7 +50,7 @@ pub fn make_text_widget(
     name: &str,
     resource_manager: &ResourceManager,
     horizontal_alignment: HorizontalAlignment,
-) -> Handle<UiNode> {
+) -> Handle<Text> {
     TextBuilder::new(WidgetBuilder::new().with_margin(Thickness::uniform(2.0)))
         .with_vertical_text_alignment(VerticalAlignment::Center)
         .with_horizontal_text_alignment(horizontal_alignment)
@@ -110,7 +116,7 @@ impl ServerMenu {
         ui.send(
             self.level_selector,
             SelectorMessage::SetItems {
-                items: levels_list_items,
+                items: levels_list_items.to_base(),
                 remove_previous: true,
             },
         );
@@ -188,7 +194,7 @@ impl ServerMenu {
                 .collect::<Vec<_>>();
             ctx.user_interfaces.first().send(
                 self.players_list,
-                ListViewMessage::Items(new_player_entries),
+                ListViewMessage::Items(new_player_entries.to_base()),
             );
         }
     }
@@ -198,13 +204,13 @@ impl ServerMenu {
 #[type_uuid(id = "556115c2-6f30-4bca-98cf-b94a0810f38c")]
 pub struct SettingsMenu {
     menu: Handle<UiNode>,
-    graphics_quality: Handle<UiNode>,
-    sound_volume: Handle<UiNode>,
-    music_volume: Handle<UiNode>,
-    mouse_sens: Handle<UiNode>,
-    mouse_smoothness: Handle<UiNode>,
-    back: Handle<UiNode>,
-    reset: Handle<UiNode>,
+    graphics_quality: Handle<Selector>,
+    sound_volume: Handle<ScrollBar>,
+    music_volume: Handle<ScrollBar>,
+    mouse_sens: Handle<ScrollBar>,
+    mouse_smoothness: Handle<ScrollBar>,
+    back: Handle<Button>,
+    reset: Handle<Button>,
 }
 
 impl SettingsMenu {
@@ -232,7 +238,7 @@ impl SettingsMenu {
         ui.send(
             self.graphics_quality,
             SelectorMessage::SetItems {
-                items,
+                items: items.to_base(),
                 remove_previous: true,
             },
         );
@@ -241,7 +247,7 @@ impl SettingsMenu {
             SelectorMessage::Current(Some(settings.graphics_quality)),
         );
 
-        fn set_sb_value(ui: &UserInterface, handle: Handle<UiNode>, value: f32) {
+        fn set_sb_value(ui: &UserInterface, handle: Handle<ScrollBar>, value: f32) {
             ui.send(handle, ScrollBarMessage::Value(value));
         }
         set_sb_value(ui, self.sound_volume, settings.sound_volume);
@@ -298,10 +304,10 @@ impl SettingsMenu {
 #[type_uuid(id = "24d6e2ad-918c-45db-987b-3605d70469c2")]
 pub struct InGameMenu {
     root: Handle<UiNode>,
-    finished_text: Handle<UiNode>,
-    finished_text_animation: Handle<UiNode>,
-    match_timer_text: Handle<UiNode>,
-    player_position: Handle<UiNode>,
+    finished_text: Handle<Text>,
+    finished_text_animation: Handle<AnimationPlayer>,
+    match_timer_text: Handle<Text>,
+    player_position: Handle<Text>,
 }
 
 impl InGameMenu {
@@ -328,7 +334,11 @@ impl InGameMenu {
                     TextMessage::Text(format!("{} finished {place}{suffix}", actor.name)),
                 );
 
-                fn enable_animation(ui: &UserInterface, widget: Handle<UiNode>, name: &str) {
+                fn enable_animation(
+                    ui: &UserInterface,
+                    widget: Handle<AnimationPlayer>,
+                    name: &str,
+                ) {
                     ui.send(
                         widget,
                         AnimationPlayerMessage::EnableAnimation {
@@ -421,11 +431,11 @@ pub struct MenuData {
     server_menu: ServerMenu,
     settings_menu: SettingsMenu,
     in_game_menu: InGameMenu,
-    debug_text: Handle<UiNode>,
-    settings: Handle<UiNode>,
-    exit: Handle<UiNode>,
-    start_as_server: Handle<UiNode>,
-    start_as_client: Handle<UiNode>,
+    debug_text: Handle<Text>,
+    settings: Handle<Button>,
+    exit: Handle<Button>,
+    start_as_server: Handle<Button>,
+    start_as_client: Handle<Button>,
     main_menu: Handle<UiNode>,
     main_menu_root: Handle<UiNode>,
     background: Handle<UiNode>,

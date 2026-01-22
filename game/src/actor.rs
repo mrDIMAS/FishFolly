@@ -194,11 +194,6 @@ impl Actor {
         let y_vel = rigid_body.lin_vel().y + velocity.y;
         rigid_body.set_lin_vel(Vector3::new(velocity.x, y_vel, velocity.z));
         Ok(())
-
-        // self.for_each_rigid_body(graph, &mut |rigid_body: &mut RigidBody| {
-        //     let y_vel = rigid_body.lin_vel().y + velocity.y;
-        //     rigid_body.set_lin_vel(Vector3::new(velocity.x, y_vel, velocity.z));
-        // })
     }
 
     pub fn add_force(
