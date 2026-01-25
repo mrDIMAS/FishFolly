@@ -6,36 +6,31 @@ use crate::{
     settings::Settings,
     utils, Game,
 };
-use fyrox::core::pool::HandlesVecExtension;
-use fyrox::gui::animation::AnimationPlayer;
-use fyrox::gui::button::Button;
-use fyrox::gui::scroll_bar::ScrollBar;
-use fyrox::gui::selector::Selector;
-use fyrox::gui::text::Text;
-use fyrox::scene::sound::Sound;
 use fyrox::{
     asset::manager::ResourceManager,
     core::{
-        log::Log, pool::Handle, reflect::prelude::*, type_traits::prelude::*, visitor::prelude::*,
+        log::Log, pool::Handle, pool::HandlesVecExtension, reflect::prelude::*,
+        type_traits::prelude::*, visitor::prelude::*,
     },
     engine::GraphicsContext,
     graph::SceneGraph,
     gui::{
-        animation::AnimationPlayerMessage,
-        button::ButtonMessage,
-        check_box::CheckBoxMessage,
+        animation::{AnimationPlayer, AnimationPlayerMessage},
+        button::{Button, ButtonMessage},
+        check_box::{CheckBox, CheckBoxMessage},
         font::Font,
         list_view::{ListView, ListViewMessage},
         message::UiMessage,
-        scroll_bar::ScrollBarMessage,
-        selector::SelectorMessage,
-        text::{TextBuilder, TextMessage},
+        scroll_bar::{ScrollBar, ScrollBarMessage},
+        selector::{Selector, SelectorMessage},
+        text::{Text, TextBuilder, TextMessage},
+        text_box::TextBox,
         widget::{WidgetBuilder, WidgetMessage},
         BuildContext, HorizontalAlignment, Thickness, UiNode, UserInterface, VerticalAlignment,
     },
     plugin::{error::GameResult, PluginContext},
     resource::model::Model,
-    scene::{graph::Graph, node::Node, Scene, SceneContainer},
+    scene::{graph::Graph, node::Node, sound::Sound, Scene, SceneContainer},
 };
 use std::{
     ffi::OsStr,
@@ -71,12 +66,12 @@ fn set_visibility(ui: &UserInterface, pairs: &[(Handle<UiNode>, bool)]) {
 pub struct ServerMenu {
     self_handle: Handle<UiNode>,
     main_menu: Handle<UiNode>,
-    back: Handle<UiNode>,
-    players_list: Handle<UiNode>,
-    start: Handle<UiNode>,
-    server_address_input: Handle<UiNode>,
-    add_bots_check_box: Handle<UiNode>,
-    level_selector: Handle<UiNode>,
+    back: Handle<Button>,
+    players_list: Handle<ListView>,
+    start: Handle<Button>,
+    server_address_input: Handle<TextBox>,
+    add_bots_check_box: Handle<CheckBox>,
+    level_selector: Handle<Selector>,
     #[reflect(hidden)]
     server_address: String,
     #[reflect(hidden)]
@@ -166,14 +161,7 @@ impl ServerMenu {
             return;
         };
 
-        let player_entries_count = ctx
-            .user_interfaces
-            .first()
-            .node(self.players_list)
-            .query_component::<ListView>()
-            .unwrap()
-            .items()
-            .len();
+        let player_entries_count = ctx.user_interfaces.first()[self.players_list].items().len();
         if server.connections().len() != player_entries_count {
             let new_player_entries = server
                 .connections()
