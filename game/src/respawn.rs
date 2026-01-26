@@ -89,9 +89,22 @@ impl ScriptTrait for Respawner {
 
             match *self.mode {
                 RespawnMode::OnEnterBoundingBox => {
+                    let mut ragdoll_inside = false;
+                    ctx.scene
+                        .graph
+                        .try_get(actor_script.ragdoll)?
+                        .root_limb
+                        .iterate_recursive(&mut |limb| {
+                            let rigid_body = ctx.scene.graph.try_get(limb.physical_bone)?;
+                            if self_bounds.is_contains_point(rigid_body.global_position()) {
+                                ragdoll_inside = true;
+                            }
+                            Ok(())
+                        })?;
                     let rigid_body = actor_script.rigid_body;
                     let rigid_body = ctx.scene.graph.try_get(rigid_body)?;
-                    if self_bounds.is_contains_point(rigid_body.global_position()) {
+                    if self_bounds.is_contains_point(rigid_body.global_position()) || ragdoll_inside
+                    {
                         if let Some(start_point) = start_points.choose(&mut thread_rng()) {
                             ctx.message_sender.send_to_target(
                                 *actor_handle,

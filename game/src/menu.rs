@@ -451,17 +451,16 @@ where
 }
 
 impl Menu {
-    pub fn new(ctx: &mut PluginContext, game: &mut Game) -> Self {
+    pub fn new(mut ui: UserInterface, ctx: &mut PluginContext, game: &mut Game) -> Self {
         let settings = &game.settings;
 
-        let ui = ctx.user_interfaces.first_mut();
         let mut menu_data = ui.user_data.try_take::<MenuData>().unwrap();
         menu_data
             .server_menu
-            .fill_levels_list(ui, ctx.resource_manager);
+            .fill_levels_list(&mut ui, ctx.resource_manager);
         menu_data
             .settings_menu
-            .sync_with_settings(ui, ctx.resource_manager, settings);
+            .sync_with_settings(&mut ui, ctx.resource_manager, settings);
 
         ctx.task_pool.spawn_plugin_task(
             ctx.resource_manager
@@ -474,6 +473,8 @@ impl Menu {
                 Ok(())
             },
         );
+
+        *ctx.user_interfaces.first_mut() = ui;
 
         Self {
             scene: Default::default(),

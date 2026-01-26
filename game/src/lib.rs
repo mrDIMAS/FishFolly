@@ -153,25 +153,15 @@ impl Plugin for Game {
         container.register_inheritable_enum::<Action, _>();
     }
 
-    fn init(&mut self, _scene_path: Option<&str>, ctx: PluginContext) -> GameResult {
+    fn init(&mut self, _scene_path: Option<&str>, mut ctx: PluginContext) -> GameResult {
         Log::info("Game started!");
 
         error::enable_backtrace_capture(true);
 
-        ctx.task_pool.spawn_plugin_task(
-            UserInterface::load_from_file(
-                "data/menu.ui",
-                ctx.widget_constructors.clone(),
-                ctx.dyn_type_constructors.clone(),
-                ctx.resource_manager.clone(),
-            ),
-            |result, game: &mut Game, ctx| {
-                *ctx.user_interfaces.first_mut() = result?;
-                let menu = Some(Menu::new(ctx, game));
-                game.menu = menu;
-                Ok(())
-            },
-        );
+        ctx.load_ui("data/menu.ui", |result, game: &mut Game, ctx| {
+            game.menu = Some(Menu::new(result?, ctx, game));
+            Ok(())
+        });
 
         Ok(())
     }
