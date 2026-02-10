@@ -30,6 +30,7 @@ use fyrox::{
 };
 use std::fmt::{Debug, Formatter};
 use std::net::SocketAddr;
+use std::ops::Deref;
 use std::{io, net::ToSocketAddrs, path::Path};
 
 pub struct Server {
@@ -93,7 +94,7 @@ impl Server {
 
             for (handle, node) in scene.graph.pair_iter() {
                 let current_state = NodeState {
-                    node: node.instance_id(),
+                    node: node.deref().instance_id(),
                     position: **node.local_transform().position(),
                     rotation: **node.local_transform().rotation(),
                 };

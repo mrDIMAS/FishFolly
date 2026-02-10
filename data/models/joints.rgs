@@ -1,4 +1,4 @@
-FTAX:2;
+FTAX:0;
 __ROOT__[]
 {
 	Scene[]
@@ -4098,6 +4098,11 @@ __ROOT__[]
 							ArcData[Paused<bool:false>]
 							{
 								Listener[Basis<mat3:1; 0; 0; 0; 1; 0; 0; 0; 1>Position<vec3f32:0; 0; 0>]{}
+								Sources[]
+								{
+									Records[Length<u32:0>]{}
+									FreeStack[Length<u32:0>]{}
+								}
 								BusGraph[]
 								{
 									Buses[]
@@ -4153,6 +4158,7 @@ __ROOT__[]
 				Gravity[Value<vec2f32:0; -9.81>Flags<u8:1>]{}
 			}
 			Lightmap[IsSome<u8:0>]{}
+			UserData[TypeUuid<uuid:00000000-0000-0000-0000-000000000000>]{}
 		}
 		Enabled[Value<bool:true>Flags<u8:1>]{}
 		SkyBox[Flags<u8:1>]

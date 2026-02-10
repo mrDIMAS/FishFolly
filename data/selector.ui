@@ -1,4 +1,4 @@
-FTAX:2;
+FTAX:0;
 __ROOT__[]
 {
 	Ui[ScreenSize<vec2f32:1262; 938>VisualDebug<bool:false>CursorPosition<vec2f32:0; 0>DoubleClickTimeSlice<f32:0.5>TooltipAppearDelay<f32:0.55>]
@@ -1498,5 +1498,6 @@ __ROOT__[]
 			}
 		}
 		RenderMode[Id<u32:0>]{}
+		UserData[TypeUuid<uuid:00000000-0000-0000-0000-000000000000>]{}
 	}
 }

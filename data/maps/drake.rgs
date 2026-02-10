@@ -98944,7 +98944,7 @@ __ROOT__[]
 																	Shader[Uuid<uuid:87195f6e-cba4-4c27-9f89-d0bf726db965>]{}
 																	ResourceBindings[Count<u32:9>]
 																	{
-																		Item0[Key<str:"roughnessTexture">]
+																		Item0[Key<str:"heightTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -98984,7 +98984,20 @@ __ROOT__[]
 																				}
 																			}
 																		}
-																		Item4[Key<str:"metallicTexture">]
+																		Item4[Key<str:"diffuseTexture">]
+																		{
+																			Value[Id<u32:0>]
+																			{
+																				0[]
+																				{
+																					Value[IsSome<u8:1>]
+																					{
+																						Data[Uuid<uuid:58b0e112-a21a-481f-b305-a2dc5a8bea1f>]{}
+																					}
+																				}
+																			}
+																		}
+																		Item5[Key<str:"aoTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -98994,7 +99007,17 @@ __ROOT__[]
 																				}
 																			}
 																		}
-																		Item5[Key<str:"properties">]
+																		Item6[Key<str:"metallicTexture">]
+																		{
+																			Value[Id<u32:0>]
+																			{
+																				0[]
+																				{
+																					Value[IsSome<u8:0>]{}
+																				}
+																			}
+																		}
+																		Item7[Key<str:"properties">]
 																		{
 																			Value[Id<u32:1>]
 																			{
@@ -99033,30 +99056,7 @@ __ROOT__[]
 																				}
 																			}
 																		}
-																		Item6[Key<str:"diffuseTexture">]
-																		{
-																			Value[Id<u32:0>]
-																			{
-																				0[]
-																				{
-																					Value[IsSome<u8:1>]
-																					{
-																						Data[Uuid<uuid:58b0e112-a21a-481f-b305-a2dc5a8bea1f>]{}
-																					}
-																				}
-																			}
-																		}
-																		Item7[Key<str:"heightTexture">]
-																		{
-																			Value[Id<u32:0>]
-																			{
-																				0[]
-																				{
-																					Value[IsSome<u8:0>]{}
-																				}
-																			}
-																		}
-																		Item8[Key<str:"aoTexture">]
+																		Item8[Key<str:"roughnessTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -104554,7 +104554,7 @@ __ROOT__[]
 																	Shader[Uuid<uuid:87195f6e-cba4-4c27-9f89-d0bf726db965>]{}
 																	ResourceBindings[Count<u32:9>]
 																	{
-																		Item0[Key<str:"roughnessTexture">]
+																		Item0[Key<str:"heightTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -104594,7 +104594,7 @@ __ROOT__[]
 																				}
 																			}
 																		}
-																		Item4[Key<str:"aoTexture">]
+																		Item4[Key<str:"metallicTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
@@ -104604,7 +104604,30 @@ __ROOT__[]
 																				}
 																			}
 																		}
-																		Item5[Key<str:"properties">]
+																		Item5[Key<str:"diffuseTexture">]
+																		{
+																			Value[Id<u32:0>]
+																			{
+																				0[]
+																				{
+																					Value[IsSome<u8:1>]
+																					{
+																						Data[Uuid<uuid:58b0e112-a21a-481f-b305-a2dc5a8bea1f>]{}
+																					}
+																				}
+																			}
+																		}
+																		Item6[Key<str:"aoTexture">]
+																		{
+																			Value[Id<u32:0>]
+																			{
+																				0[]
+																				{
+																					Value[IsSome<u8:0>]{}
+																				}
+																			}
+																		}
+																		Item7[Key<str:"properties">]
 																		{
 																			Value[Id<u32:1>]
 																			{
@@ -104643,36 +104666,13 @@ __ROOT__[]
 																				}
 																			}
 																		}
-																		Item6[Key<str:"metallicTexture">]
+																		Item8[Key<str:"roughnessTexture">]
 																		{
 																			Value[Id<u32:0>]
 																			{
 																				0[]
 																				{
 																					Value[IsSome<u8:0>]{}
-																				}
-																			}
-																		}
-																		Item7[Key<str:"heightTexture">]
-																		{
-																			Value[Id<u32:0>]
-																			{
-																				0[]
-																				{
-																					Value[IsSome<u8:0>]{}
-																				}
-																			}
-																		}
-																		Item8[Key<str:"diffuseTexture">]
-																		{
-																			Value[Id<u32:0>]
-																			{
-																				0[]
-																				{
-																					Value[IsSome<u8:1>]
-																					{
-																						Data[Uuid<uuid:58b0e112-a21a-481f-b305-a2dc5a8bea1f>]{}
-																					}
 																				}
 																			}
 																		}
@@ -116513,7 +116513,7 @@ __ROOT__[]
 						{
 							ArcData[Paused<bool:false>]
 							{
-								Listener[Basis<mat3:-0.9130889; 0; 0.4077605; 0.23692317; 0.8138785; 0.5305367; 0.33186752; -0.5810351; 0.74314344>Position<vec3f32:-0.05999601; 1; -2.9994001>]{}
+								Listener[Basis<mat3:0.7658614; 0; -0.64300555; 0.03264797; 0.99871016; 0.038885854; -0.6421762; 0.050774008; -0.76487356>Position<vec3f32:-1.645397; 5.1195426; -13.083569>]{}
 								Sources[]
 								{
 									Records[Length<u32:0>]{}
@@ -116579,7 +116579,7 @@ __ROOT__[]
 		Enabled[Value<bool:true>Flags<u8:1>]{}
 		RenderingOptions[Flags<u8:1>]
 		{
-			Value[]
+			Value[EnvironmentLightingBrightness<f32:1>]
 			{
 				RenderTarget[IsSome<u8:0>]{}
 				ClearColor[IsSome<u8:0>]{}

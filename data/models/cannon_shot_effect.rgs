@@ -1,4 +1,4 @@
-FTAX:2;
+FTAX:0;
 __ROOT__[]
 {
 	Scene[]
@@ -70,7 +70,7 @@ __ROOT__[]
 						{
 							Data[TypeUuid<uuid:8b210eff-97a4-494f-ba7a-a581d3f4a442>]
 							{
-								NodeData[SoftBoundarySharpnessFactor<f32:100>]
+								NodeData[]
 								{
 									Base[Name<str:"ParticleSystem">IsResourceInstance<bool:false>InstanceId<uuid:83994e27-30b3-42f0-b9a5-35a688dbd697>]
 									{
@@ -289,6 +289,7 @@ __ROOT__[]
 				Gravity[Value<vec2f32:0; -9.81>Flags<u8:1>]{}
 			}
 			Lightmap[IsSome<u8:0>]{}
+			UserData[TypeUuid<uuid:00000000-0000-0000-0000-000000000000>]{}
 		}
 		Enabled[Value<bool:true>Flags<u8:1>]{}
 		RenderingOptions[Flags<u8:1>]
