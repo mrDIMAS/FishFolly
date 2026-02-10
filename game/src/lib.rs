@@ -33,7 +33,7 @@ use fyrox::{
     scene::Scene,
     window::Fullscreen,
 };
-use std::{path::Path, sync::Arc};
+use std::sync::Arc;
 
 pub mod actor;
 pub mod bot;
@@ -119,6 +119,30 @@ impl Game {
 
     pub fn is_client(&self) -> bool {
         self.server.is_none() && self.client.is_some()
+    }
+
+    pub fn on_scene_loaded(&mut self, scene: Scene, ctx: &mut PluginContext) -> GameResult {
+        self.settings.read().apply_sound_volume(&scene);
+
+        let scene = ctx.scenes.add(scene);
+
+        self.level = Level {
+            scene,
+            ..Default::default()
+        };
+
+        if let Some(menu) = self.menu.as_ref() {
+            self.level.leaderboard.sender = Some(menu.leader_board_channel.sender.clone());
+            menu.set_menu_visibility(ctx.user_interfaces.first(), false);
+        }
+        if let Some(server) = self.server.as_mut() {
+            server.on_scene_loaded(scene, ctx);
+        }
+        if let Some(client) = self.client.as_mut() {
+            client.on_scene_loaded(self.server.is_some(), scene, ctx)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -272,42 +296,6 @@ impl Plugin for Game {
                 &mut self.settings,
                 self.level.scene,
             )?;
-        }
-
-        Ok(())
-    }
-
-    fn on_scene_begin_loading(&mut self, _path: &Path, context: &mut PluginContext) -> GameResult {
-        if self.level.scene.is_some() {
-            context.scenes.remove(self.level.scene);
-        }
-
-        Ok(())
-    }
-
-    fn on_scene_loaded(
-        &mut self,
-        _path: &Path,
-        scene: Handle<Scene>,
-        _data: &[u8],
-        ctx: &mut PluginContext,
-    ) -> GameResult {
-        self.settings.read().apply_sound_volume(&ctx.scenes[scene]);
-
-        self.level = Level {
-            scene,
-            ..Default::default()
-        };
-
-        if let Some(menu) = self.menu.as_ref() {
-            self.level.leaderboard.sender = Some(menu.leader_board_channel.sender.clone());
-            menu.set_menu_visibility(ctx.user_interfaces.first(), false);
-        }
-        if let Some(server) = self.server.as_mut() {
-            server.on_scene_loaded(scene, ctx);
-        }
-        if let Some(client) = self.client.as_mut() {
-            client.on_scene_loaded(self.server.is_some(), scene, ctx)?;
         }
 
         Ok(())

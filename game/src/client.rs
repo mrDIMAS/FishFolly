@@ -1,20 +1,23 @@
-use crate::menu::Menu;
 use crate::{
     actor::Actor,
     level::Level,
+    menu::Menu,
     net::{ClientMessage, InstanceDescriptor, PlayerDescriptor, ServerMessage},
     Game,
 };
-use fyrox::graph::SceneGraph;
-use fyrox::plugin::error::GameResult;
 use fyrox::{
     core::{log::Log, net::NetStream, pool::Handle},
-    plugin::PluginContext,
+    graph::SceneGraph,
+    plugin::{error::GameResult, PluginContext},
     resource::model::{Model, ModelResourceExtension},
     scene::{rigidbody::RigidBody, Scene},
 };
-use std::fmt::Formatter;
-use std::{fmt::Debug, io, net::ToSocketAddrs};
+use std::{
+    fmt::{Debug, Formatter},
+    io,
+    net::ToSocketAddrs,
+    path::PathBuf,
+};
 
 pub struct FinishedPlayer {
     pub name: String,
@@ -108,9 +111,7 @@ impl Client {
     ) -> GameResult {
         while let Some(msg) = self.connection.pop_message() {
             match msg {
-                ServerMessage::LoadLevel { path } => {
-                    ctx.async_scene_loader.request(path);
-                }
+                ServerMessage::LoadLevel { path } => self.load_level(path, level, ctx),
                 ServerMessage::UpdateTick(data) => {
                     let scene = ctx.scenes.try_get_mut(level.scene)?;
                     for entry in data.nodes {
@@ -169,6 +170,16 @@ impl Client {
             }
         }
         Ok(())
+    }
+
+    pub fn load_level(&mut self, path: PathBuf, level: &mut Level, ctx: &mut PluginContext) {
+        if level.scene.is_some() {
+            ctx.scenes.remove(level.scene);
+        }
+        ctx.load_scene(path, false, |result, game: &mut Game, ctx| {
+            let (scene, _) = result?;
+            game.on_scene_loaded(scene, ctx)
+        });
     }
 
     pub fn update(&mut self, dt: f32) {
