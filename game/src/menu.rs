@@ -474,7 +474,7 @@ impl Menu {
             },
         );
 
-        *ctx.user_interfaces.first_mut() = ui;
+        ctx.user_interfaces.add(ui);
 
         Self {
             scene: Default::default(),

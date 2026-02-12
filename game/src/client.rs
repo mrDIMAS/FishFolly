@@ -177,8 +177,7 @@ impl Client {
             ctx.scenes.remove(level.scene);
         }
         ctx.load_scene(path, false, |result, game: &mut Game, ctx| {
-            let (scene, _) = result?;
-            game.on_scene_loaded(scene, ctx)
+            game.on_scene_loaded(result?.payload, ctx)
         });
     }
 

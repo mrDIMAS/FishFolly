@@ -183,7 +183,7 @@ impl Plugin for Game {
         error::enable_backtrace_capture(true);
 
         ctx.load_ui("data/menu.ui", |result, game: &mut Game, ctx| {
-            game.menu = Some(Menu::new(result?, ctx, game));
+            game.menu = Some(Menu::new(result?.payload, ctx, game));
             Ok(())
         });
 
