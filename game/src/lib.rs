@@ -150,8 +150,8 @@ impl Plugin for Game {
     fn register(&self, context: PluginRegistrationContext) -> GameResult {
         context
             .dyn_type_constructors
-            .add::<MenuData>("Menu Data")
-            .add::<MenuSceneData>("Menu Scene Data");
+            .add::<MenuData, Self>("Menu Data")
+            .add::<MenuSceneData, Self>("Menu Scene Data");
         context
             .serialization_context
             .script_constructors
