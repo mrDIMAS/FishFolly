@@ -3,6 +3,9 @@ name = "executor-wasm"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+no_network = ["fish_fall/no_network"]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 

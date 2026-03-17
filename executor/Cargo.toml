@@ -10,3 +10,4 @@ fish_fall = { path = "../game", optional = true }
 [features]
 default = ["fish_fall"]
 dylib = []
+no_network = ["fish_fall/no_network"]

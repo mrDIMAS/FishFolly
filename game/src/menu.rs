@@ -162,19 +162,15 @@ impl ServerMenu {
         };
 
         let player_entries_count = ctx.user_interfaces.first()[self.players_list].items().len();
-        if server.connections().len() != player_entries_count {
+        if server.num_connections() != player_entries_count {
             let new_player_entries = server
-                .connections()
+                .connection_addresses()
                 .iter()
                 .enumerate()
                 .map(|(n, e)| {
                     make_text_widget(
                         &mut ctx.user_interfaces.first_mut().build_ctx(),
-                        &format!(
-                            "{} - {}",
-                            e.string_peer_address(),
-                            if n == 0 { "Host" } else { "Peer" }
-                        ),
+                        &format!("{} - {}", e, if n == 0 { "Host" } else { "Peer" }),
                         ctx.resource_manager,
                         HorizontalAlignment::Left,
                     )
@@ -437,11 +433,12 @@ pub struct Menu {
     pub leader_board_channel: LeaderBoardChannel,
 }
 
+#[cfg(not(feature = "no_network"))]
 fn try_connect_to_server<A>(server_addr: A) -> Option<Client>
 where
     A: ToSocketAddrs + Debug,
 {
-    match Client::try_connect(server_addr) {
+    match Client::try_connect_tcp(server_addr) {
         Ok(new_client) => Some(new_client),
         Err(err) => {
             Log::err(format!("Unable to create a client. Reason: {:?}", err));
@@ -526,18 +523,42 @@ impl Menu {
                     TextMessage::Text(Server::LOCALHOST.to_string()),
                 );
 
-                // Try to start the server and the client.
-                match Server::new(&self.menu_data.server_menu.server_address) {
-                    Ok(new_server) => {
-                        *server = Some(new_server);
-                        *client = try_connect_to_server(&self.menu_data.server_menu.server_address);
-                        let server = server.as_mut().unwrap();
-                        server.accept_connections();
+                #[cfg(feature = "no_network")]
+                {
+                    let mut new_server = Server::new_memory();
+                    *client = Some(Client::try_connect_memory(&mut new_server));
+                    *server = Some(new_server);
+                }
+
+                #[cfg(not(feature = "no_network"))]
+                {
+                    // Try to start the server and the client.
+                    match Server::new_tcp(&self.menu_data.server_menu.server_address) {
+                        Ok(new_server) => {
+                            *server = Some(new_server);
+                            *client =
+                                try_connect_to_server(&self.menu_data.server_menu.server_address);
+                            let server = server.as_mut().unwrap();
+                            server.accept_connections();
+                        }
+                        Err(err) => {
+                            Log::err(format!("Unable to create a server. Reason: {:?}", err))
+                        }
                     }
-                    Err(err) => Log::err(format!("Unable to create a server. Reason: {:?}", err)),
                 }
             } else if message.destination() == self.menu_data.start_as_client {
-                *client = try_connect_to_server(&self.menu_data.server_menu.server_address);
+                #[cfg(feature = "no_network")]
+                {
+                    use fyrox::core::err;
+                    err!(
+                        "Cannot connect to server, because the game built with no server support!"
+                    );
+                }
+
+                #[cfg(not(feature = "no_network"))]
+                {
+                    *client = try_connect_to_server(&self.menu_data.server_menu.server_address);
+                }
             } else if message.destination() == self.menu_data.settings {
                 set_visibility(
                     ui,

@@ -8,9 +8,7 @@ use crate::{
     player::Player,
     start::StartPoint,
 };
-use fyrox::graph::SceneGraphNode;
-use fyrox::plugin::error::GameResult;
-use fyrox::scene::graph::GraphError;
+use fyrox::core::info;
 use fyrox::{
     core::{
         futures::executor::block_on,
@@ -19,23 +17,126 @@ use fyrox::{
         pool::Handle,
     },
     fxhash::FxHashMap,
-    graph::SceneGraph,
-    plugin::PluginContext,
+    graph::{SceneGraph, SceneGraphNode},
+    plugin::{error::GameResult, PluginContext},
     resource::model::{Model, ModelResourceExtension},
     scene::{
+        graph::GraphError,
         node::Node,
         sound::{Sound, Status},
         Scene,
     },
 };
-use std::fmt::{Debug, Formatter};
-use std::net::SocketAddr;
-use std::ops::Deref;
-use std::{io, net::ToSocketAddrs, path::Path};
+use std::{
+    fmt::{Debug, Formatter},
+    io,
+    net::{SocketAddr, ToSocketAddrs},
+    ops::Deref,
+    path::Path,
+    sync::mpsc::{self, Receiver, Sender},
+};
+
+pub enum ServerTransportLayer {
+    Memory {
+        clients: Vec<Sender<ServerMessage>>,
+        receiver: Receiver<ClientMessage>,
+        sender: Sender<ClientMessage>,
+    },
+    Tcp {
+        listener: NetListener,
+        connections: Vec<NetStream>,
+    },
+}
+
+impl ServerTransportLayer {
+    fn memory() -> Self {
+        let (sender, receiver) = mpsc::channel();
+        Self::Memory {
+            clients: Default::default(),
+            receiver,
+            sender,
+        }
+    }
+
+    fn tcp<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
+        Ok(Self::Tcp {
+            listener: NetListener::bind(addr)?,
+            connections: Default::default(),
+        })
+    }
+
+    fn num_connections(&self) -> usize {
+        match self {
+            ServerTransportLayer::Memory { clients, .. } => clients.len(),
+            ServerTransportLayer::Tcp { connections, .. } => connections.len(),
+        }
+    }
+
+    fn broadcast_message_to_clients_callback<C>(&mut self, mut callback: C)
+    where
+        C: FnMut(usize) -> ServerMessage,
+    {
+        match self {
+            ServerTransportLayer::Memory { clients, .. } => {
+                for (i, sender) in clients.iter_mut().enumerate() {
+                    match sender.send(callback(i)) {
+                        Ok(_) => {}
+                        Err(err) => Log::err(format!("Unable to send server message: {}", err)),
+                    }
+                }
+            }
+            ServerTransportLayer::Tcp { connections, .. } => {
+                for (i, client_connection) in connections.iter_mut().enumerate() {
+                    match client_connection.send_message(&callback(i)) {
+                        Ok(_) => {}
+                        Err(err) => Log::err(format!("Unable to send server message: {}", err)),
+                    }
+                }
+            }
+        }
+    }
+
+    fn broadcast_message_to_clients(&mut self, message: ServerMessage) {
+        self.broadcast_message_to_clients_callback(|_| message.clone())
+    }
+
+    pub fn read_client_messages<C>(&mut self, mut callback: C) -> GameResult
+    where
+        C: FnMut(ClientMessage) -> GameResult,
+    {
+        match self {
+            ServerTransportLayer::Memory { receiver, .. } => {
+                while let Ok(msg) = receiver.try_recv() {
+                    callback(msg)?
+                }
+            }
+            ServerTransportLayer::Tcp { connections, .. } => {
+                for connection in connections.iter_mut() {
+                    while let Some(msg) = connection.pop_message::<ClientMessage>() {
+                        callback(msg)?
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn connection_addresses(&self) -> Vec<String> {
+        match self {
+            ServerTransportLayer::Memory { clients, .. } => {
+                clients.iter().map(|c| format!("{c:p}")).collect()
+            }
+            ServerTransportLayer::Tcp { connections, .. } => connections
+                .iter()
+                .map(|c| c.string_peer_address())
+                .collect(),
+        }
+    }
+}
 
 pub struct Server {
-    listener: NetListener,
-    connections: Vec<NetStream>,
+    pub transport: ServerTransportLayer,
     previous_node_states: FxHashMap<Handle<Node>, NodeState>,
     previous_sound_states: FxHashMap<Handle<Node>, SoundState>,
     pub add_bots: bool,
@@ -50,23 +151,25 @@ impl Debug for Server {
 impl Server {
     pub const LOCALHOST: &'static str = "127.0.0.1:10001";
 
-    pub fn new<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
-        Ok(Self {
-            listener: NetListener::bind(addr)?,
-            connections: Default::default(),
+    fn with_transport(transport: ServerTransportLayer) -> Self {
+        Self {
+            transport,
             previous_node_states: Default::default(),
             previous_sound_states: Default::default(),
             add_bots: true,
-        })
+        }
+    }
+
+    pub fn new_tcp<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
+        Ok(Self::with_transport(ServerTransportLayer::tcp(addr)?))
+    }
+
+    pub fn new_memory() -> Self {
+        Self::with_transport(ServerTransportLayer::memory())
     }
 
     pub fn broadcast_message_to_clients(&mut self, message: ServerMessage) {
-        for client_connection in self.connections.iter_mut() {
-            match client_connection.send_message(&message) {
-                Ok(_) => {}
-                Err(err) => Log::err(format!("Unable to send server message: {}", err)),
-            }
-        }
+        self.transport.broadcast_message_to_clients(message)
     }
 
     pub fn start_game(&mut self, path: &Path) {
@@ -135,32 +238,32 @@ impl Server {
     }
 
     pub fn read_messages(&mut self, scene: Handle<Scene>, ctx: &mut PluginContext) -> GameResult {
-        for player in self.connections.iter_mut() {
-            while let Some(msg) = player.pop_message::<ClientMessage>() {
-                match msg {
-                    ClientMessage::Input {
-                        player,
-                        input_state,
-                    } => {
-                        let scene = &mut ctx.scenes[scene];
-                        let (_, player_node) = scene.graph.node_by_id_mut(player)?;
-                        player_node
-                            .try_get_script_mut::<Player>()
-                            .ok_or_else(|| GraphError::NoScript {
-                                handle: Default::default(),
-                                script_type_name: std::any::type_name::<Player>(),
-                            })?
-                            .input_controller = input_state;
-                    }
+        self.transport.read_client_messages(|msg| {
+            info!("Message From Client: {msg:?}");
+
+            match msg {
+                ClientMessage::Input {
+                    player,
+                    input_state,
+                } => {
+                    let scene = &mut ctx.scenes[scene];
+                    let (_, player_node) = scene.graph.node_by_id_mut(player)?;
+                    player_node
+                        .try_get_script_mut::<Player>()
+                        .ok_or_else(|| GraphError::NoScript {
+                            handle: Default::default(),
+                            script_type_name: std::any::type_name::<Player>(),
+                        })?
+                        .input_controller = input_state;
+                    Ok(())
                 }
             }
-        }
-        Ok(())
+        })
     }
 
     pub fn on_scene_loaded(&mut self, scene: Handle<Scene>, ctx: &mut PluginContext) {
         let scene = &mut ctx.scenes[scene];
-        let players_to_spawn = self.connections.len();
+        let players_to_spawn = self.transport.num_connections();
 
         let start_points = scene
             .graph
@@ -179,9 +282,9 @@ impl Server {
             let ids = player_prefab.generate_ids();
 
             if let Some(position) = start_points.get(player_num) {
-                for (connection_num, connection) in self.connections.iter_mut().enumerate() {
-                    connection
-                        .send_message(&ServerMessage::AddPlayers(vec![PlayerDescriptor {
+                self.transport
+                    .broadcast_message_to_clients_callback(|connection_num| {
+                        ServerMessage::AddPlayers(vec![PlayerDescriptor {
                             instance: InstanceDescriptor {
                                 path: "data/models/player.rgs".into(),
                                 position: *position,
@@ -194,9 +297,8 @@ impl Server {
                             } else {
                                 ActorKind::Player
                             },
-                        }]))
-                        .unwrap();
-                }
+                        }])
+                    })
             }
         }
 
@@ -208,9 +310,9 @@ impl Server {
                 let ids = bot_prefab.generate_ids();
 
                 if let Some(position) = start_points.get(i) {
-                    for connection in self.connections.iter_mut() {
-                        connection
-                            .send_message(&ServerMessage::AddPlayers(vec![PlayerDescriptor {
+                    self.transport
+                        .broadcast_message_to_clients(ServerMessage::AddPlayers(vec![
+                            PlayerDescriptor {
                                 instance: InstanceDescriptor {
                                     path: "data/models/bot.rgs".into(),
                                     position: *position,
@@ -219,27 +321,35 @@ impl Server {
                                     ids: ids.clone(),
                                 },
                                 kind: ActorKind::Bot,
-                            }]))
-                            .unwrap();
-                    }
+                            },
+                        ]))
                 }
             }
         }
     }
 
-    pub fn address(&self) -> SocketAddr {
-        self.listener.local_address().unwrap()
+    pub fn address(&self) -> Option<SocketAddr> {
+        match self.transport {
+            ServerTransportLayer::Memory { .. } => None,
+            ServerTransportLayer::Tcp { ref listener, .. } => listener.local_address().ok(),
+        }
     }
 
-    pub fn connections(&self) -> &[NetStream] {
-        &self.connections
+    pub fn connection_addresses(&self) -> Vec<String> {
+        self.transport.connection_addresses()
     }
 
-    pub fn is_single_player(&self) -> bool {
-        self.connections.len() == 1
+    pub fn num_connections(&self) -> usize {
+        self.transport.num_connections()
     }
 
     pub fn accept_connections(&mut self) {
-        self.connections.extend(self.listener.accept_connections())
+        if let ServerTransportLayer::Tcp {
+            ref mut connections,
+            ref listener,
+        } = self.transport
+        {
+            connections.extend(listener.accept_connections())
+        }
     }
 }

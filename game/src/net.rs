@@ -18,7 +18,7 @@ pub struct NodeState {
     pub rotation: UnitQuaternion<f32>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct InstanceDescriptor {
     pub path: PathBuf,
     pub position: Vector3<f32>,
@@ -27,7 +27,7 @@ pub struct InstanceDescriptor {
     pub ids: FxHashMap<Handle<Node>, SceneNodeId>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PlayerDescriptor {
     pub instance: InstanceDescriptor,
     pub kind: ActorKind,
@@ -39,19 +39,19 @@ pub struct SoundState {
     pub is_playing: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateTickMessage {
     pub nodes: Vec<NodeState>,
     pub sounds: Vec<SoundState>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LeaderBoardMessage {
     pub players: Vec<LeaderBoardEntry>,
 }
 
 /// A message sent from the server to a client.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ServerMessage {
     LoadLevel { path: PathBuf },
     UpdateTick(UpdateTickMessage),

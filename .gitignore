@@ -3,3 +3,4 @@
 fyrox.log
 Cargo.lock
 settings.ron
+/executor-wasm/pkg

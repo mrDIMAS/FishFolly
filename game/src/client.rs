@@ -3,8 +3,10 @@ use crate::{
     level::Level,
     menu::Menu,
     net::{ClientMessage, InstanceDescriptor, PlayerDescriptor, ServerMessage},
+    server::{Server, ServerTransportLayer},
     Game,
 };
+use fyrox::core::info;
 use fyrox::{
     core::{log::Log, net::NetStream, pool::Handle},
     graph::SceneGraph,
@@ -17,6 +19,7 @@ use std::{
     io,
     net::ToSocketAddrs,
     path::PathBuf,
+    sync::mpsc::{self, Receiver, Sender},
 };
 
 pub struct FinishedPlayer {
@@ -29,8 +32,49 @@ pub struct WinContext {
     pub players: Vec<FinishedPlayer>,
 }
 
+enum ClientTransportLayer {
+    Memory {
+        to_server: Sender<ClientMessage>,
+        from_server: Receiver<ServerMessage>,
+    },
+    Tcp {
+        connection: NetStream,
+    },
+}
+
+impl ClientTransportLayer {
+    fn tcp<A>(server_addr: A) -> io::Result<Self>
+    where
+        A: ToSocketAddrs + Debug,
+    {
+        Ok(Self::Tcp {
+            connection: NetStream::connect(server_addr)?,
+        })
+    }
+
+    fn send_message_to_server(&mut self, message: ClientMessage) {
+        match self {
+            ClientTransportLayer::Memory { to_server, .. } => match to_server.send(message) {
+                Ok(_) => {}
+                Err(err) => Log::err(format!("Unable to send client message: {}", err)),
+            },
+            ClientTransportLayer::Tcp { connection } => match connection.send_message(&message) {
+                Ok(_) => {}
+                Err(err) => Log::err(format!("Unable to send client message: {}", err)),
+            },
+        }
+    }
+
+    fn pop_server_message(&mut self) -> Option<ServerMessage> {
+        match self {
+            ClientTransportLayer::Memory { from_server, .. } => from_server.try_recv().ok(),
+            ClientTransportLayer::Tcp { connection } => connection.pop_message(),
+        }
+    }
+}
+
 pub struct Client {
-    connection: NetStream,
+    transport: ClientTransportLayer,
     pub win_context: Option<WinContext>,
 }
 
@@ -86,21 +130,40 @@ fn add_players(players: Vec<PlayerDescriptor>, ctx: &mut PluginContext) {
 }
 
 impl Client {
-    pub fn try_connect<A>(server_addr: A) -> io::Result<Self>
+    pub fn try_connect_tcp<A>(server_addr: A) -> io::Result<Self>
     where
         A: ToSocketAddrs + Debug,
     {
         Ok(Self {
-            connection: NetStream::connect(server_addr)?,
+            transport: ClientTransportLayer::tcp(server_addr)?,
             win_context: None,
         })
     }
 
-    pub fn send_message_to_server(&mut self, message: ClientMessage) {
-        match self.connection.send_message(&message) {
-            Ok(_) => {}
-            Err(err) => Log::err(format!("Unable to send client message: {}", err)),
+    pub fn try_connect_memory(server: &mut Server) -> Self {
+        if let ServerTransportLayer::Memory {
+            ref mut clients,
+            ref sender,
+            ..
+        } = server.transport
+        {
+            let (to_server, from_server) = mpsc::channel::<ServerMessage>();
+            clients.push(to_server);
+
+            Self {
+                transport: ClientTransportLayer::Memory {
+                    to_server: sender.clone(),
+                    from_server,
+                },
+                win_context: None,
+            }
+        } else {
+            unreachable!()
         }
+    }
+
+    pub fn send_message_to_server(&mut self, message: ClientMessage) {
+        self.transport.send_message_to_server(message)
     }
 
     pub fn read_messages(
@@ -109,7 +172,9 @@ impl Client {
         menu: Option<&Menu>,
         ctx: &mut PluginContext,
     ) -> GameResult {
-        while let Some(msg) = self.connection.pop_message() {
+        while let Some(msg) = self.transport.pop_server_message() {
+            info!("Message From Server: {msg:?}");
+
             match msg {
                 ServerMessage::LoadLevel { path } => self.load_level(path, level, ctx),
                 ServerMessage::UpdateTick(data) => {

@@ -79,17 +79,30 @@ impl Visit for Game {
         let _ = self.level.visit("Level", &mut region);
         let _ = self.debug_settings.visit("DebugSettings", &mut region);
 
-        if self.server.as_ref().map_or(0, |s| s.connections().len()) > 1 {
+        if self.server.as_ref().map_or(0, |s| s.num_connections()) > 1 {
             Log::warn("Hot reloading is not possible when there's more than one client!");
         }
 
-        let mut server_address = self.server.as_ref().map(|s| s.address().to_string());
+        let mut server_address = self
+            .server
+            .as_ref()
+            .and_then(|s| s.address().map(|a| a.to_string()));
         let _ = server_address.visit("ServerAddress", &mut region);
 
         if region.is_reading() {
             if let Some(address) = server_address {
-                self.server = Some(Server::new(address.clone()).unwrap());
-                self.client = Some(Client::try_connect(address).unwrap());
+                #[cfg(not(feature = "no_network"))]
+                {
+                    self.server = Some(Server::new_tcp(address.clone()).unwrap());
+                    self.client = Some(Client::try_connect_tcp(address).unwrap());
+                }
+
+                #[cfg(feature = "no_network")]
+                {
+                    let mut server = Server::new_memory();
+                    self.client = Some(Client::try_connect_memory(&mut server));
+                    self.server = Some(server);
+                }
             }
 
             self.settings = Settings::load();
