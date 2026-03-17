@@ -6,6 +6,7 @@ use crate::{
     settings::Settings,
     utils, Game,
 };
+use fyrox::core::SafeLock;
 use fyrox::{
     asset::manager::ResourceManager,
     core::{
@@ -82,11 +83,16 @@ pub struct ServerMenu {
 
 impl ServerMenu {
     pub fn fill_levels_list(&mut self, ui: &mut UserInterface, resource_manager: &ResourceManager) {
-        self.available_levels = walkdir::WalkDir::new("./data/maps")
-            .into_iter()
-            .filter_map(|result| result.ok())
-            .filter(|entry| entry.path().extension() == Some(OsStr::new("rgs")))
-            .map(|entry| entry.path().to_path_buf())
+        self.available_levels = resource_manager
+            .state()
+            .resource_registry
+            .safe_lock()
+            .inner()
+            .values()
+            .filter(|path| {
+                path.starts_with("data/maps") && path.extension() == Some(OsStr::new("rgs"))
+            })
+            .map(|entry| entry.to_path_buf())
             .collect::<Vec<_>>();
 
         let levels_list_items = self
