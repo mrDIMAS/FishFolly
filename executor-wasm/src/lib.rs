@@ -26,6 +26,7 @@ pub fn main() {
             named_objects: false,
         },
     );
+    executor.set_throttle_threshold(1.0);
     executor.add_plugin(Game::new());
     executor.run()
 }
